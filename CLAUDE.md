@@ -11,3 +11,34 @@ Emacsとの互換性は持たないし、完全なコピーは目指さない。
  - git のコミットはタスク単位で行い、コミットの前には必ず開発者のレビューを通さなければならない 開発者は git diff で差分を確認するのでレビューが済むまでは git add も行ってはいけない
  - 設計に関するドキュメントを design/ に .md 形式で保存する
  - **進捗管理**: design/development-plan.md を使って開発の進捗を管理する タスクの完了時にはチェックボックスを [x] に変更して進捗を記録する
+ - **ビルド出力**: ビルド成果物は build/ ディレクトリに出力する プロジェクトルートに直接バイナリを出力してはいけない
+
+## ビルドコマンド
+
+### 開発用ビルド
+```bash
+# デバッグビルド（build/ディレクトリに出力）
+go build -o build/gmacs cmd/gmacs/main.go
+
+# リリースビルド（最適化付き）
+go build -ldflags="-s -w" -o build/gmacs cmd/gmacs/main.go
+```
+
+### 実行方法
+```bash
+# 通常モード（raw keyboard入力対応）
+./build/gmacs
+
+# シンプルモード（デバッグ用）
+./build/gmacs --simple
+```
+
+### テスト実行
+```bash
+# 全テスト実行
+go test ./...
+
+# 特定パッケージのテスト
+go test ./internal/buffer
+go test ./internal/keymap
+```

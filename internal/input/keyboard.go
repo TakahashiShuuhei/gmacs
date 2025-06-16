@@ -90,16 +90,48 @@ func (kb *Keyboard) ReadLine() (string, error) {
 
 // parseInput attempts to parse input as a key sequence
 func (kb *Keyboard) parseInput(input string) (keymap.Key, error) {
-	// Handle escape sequences (like ^[x for M-x)
-	if len(input) >= 2 && input[0] == 0x1b { // ESC character
+	// Handle escape sequences (like ESC+x for M-x)
+	if len(input) >= 2 && input[0] == 0x1b { // ESC character (27)
 		if len(input) == 2 {
-			// Alt+key combination
+			// Alt+key combination: ESC + key
 			char := rune(input[1])
 			return keymap.NewAltKey(char), nil
 		}
 	}
 	
-	// Handle ^[x format (sometimes displayed as such)
+	// Handle Ctrl+key combinations (single byte control characters)
+	if len(input) == 1 {
+		b := input[0]
+		switch b {
+		case 0x18: // Ctrl+X
+			return keymap.NewCtrlKey('x'), nil
+		case 0x03: // Ctrl+C
+			return keymap.NewCtrlKey('c'), nil
+		case 0x07: // Ctrl+G
+			return keymap.NewCtrlKey('g'), nil
+		case 0x06: // Ctrl+F
+			return keymap.NewCtrlKey('f'), nil
+		case 0x13: // Ctrl+S
+			return keymap.NewCtrlKey('s'), nil
+		case 0x01: // Ctrl+A
+			return keymap.NewCtrlKey('a'), nil
+		case 0x05: // Ctrl+E
+			return keymap.NewCtrlKey('e'), nil
+		case 0x0E: // Ctrl+N
+			return keymap.NewCtrlKey('n'), nil
+		case 0x10: // Ctrl+P
+			return keymap.NewCtrlKey('p'), nil
+		}
+		
+		// Handle other control characters (0x01-0x1F)
+		if b >= 0x01 && b <= 0x1F && b != 0x09 && b != 0x0A && b != 0x0D {
+			// Convert control character back to letter
+			char := rune('a' + b - 1)
+			return keymap.NewCtrlKey(char), nil
+		}
+	}
+	
+	// Handle ^[x format (sometimes displayed as such in terminals)
 	if strings.HasPrefix(input, "^[") && len(input) == 3 {
 		char := rune(input[2])
 		return keymap.NewAltKey(char), nil

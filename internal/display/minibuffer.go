@@ -42,34 +42,29 @@ func (mb *Minibuffer) ReadCommand() (string, error) {
 		mb.clearMinibuffer()
 	}()
 	
-	for {
-		mb.displayMinibuffer()
-		
-		line, err := mb.keyboard.ReadLine()
-		if err != nil {
-			return "", err
+	// Initial display
+	mb.displayMinibuffer()
+	
+	line, err := mb.keyboard.ReadLine()
+	if err != nil {
+		return "", err
+	}
+	
+	// Handle special inputs
+	switch line {
+	case "": // Enter pressed - return empty to cancel
+		return "", nil
+	case "C-g", "\\C-g": // Cancel
+		return "", fmt.Errorf("quit")
+	case "C-c", "\\C-c": // Cancel
+		return "", fmt.Errorf("quit")
+	default:
+		// Normal input - this is the command name
+		if line != "" {
+			mb.addToHistory(line)
+			return line, nil
 		}
-		
-		// Handle special inputs
-		switch line {
-		case "": // Enter pressed
-			if mb.input != "" {
-				mb.addToHistory(mb.input)
-				return mb.input, nil
-			}
-			continue
-		case "C-g", "\\C-g": // Cancel
-			return "", fmt.Errorf("quit")
-		case "C-c", "\\C-c": // Cancel
-			return "", fmt.Errorf("quit")
-		case "\\tab", "tab": // Tab completion
-			mb.handleCompletion()
-			continue
-		default:
-			// Normal input
-			mb.input = line
-			mb.cursorPos = len(mb.input)
-		}
+		return "", nil
 	}
 }
 

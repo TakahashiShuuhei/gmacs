@@ -79,7 +79,10 @@ func (e *SimpleEditor) Run() error {
 
 // handleCommand processes a command
 func (e *SimpleEditor) handleCommand(input string) error {
-	switch input {
+	// First, try to parse as key input (handle escape sequences)
+	parsedInput := e.parseKeyInput(input)
+	
+	switch parsedInput {
 	case "M-x":
 		return e.executeExtendedCommand()
 	case "help":
@@ -100,8 +103,53 @@ func (e *SimpleEditor) handleCommand(input string) error {
 		return nil
 	default:
 		// Try to execute as a direct command
-		return e.registry.Execute(input)
+		err := e.registry.Execute(parsedInput)
+		if err != nil {
+			return fmt.Errorf("command %s not found", parsedInput)
+		}
+		return nil
 	}
+}
+
+// parseKeyInput parses input and converts escape sequences to key names
+func (e *SimpleEditor) parseKeyInput(input string) string {
+	// Handle escape sequences (like ^[x for M-x)
+	if len(input) >= 2 && input[0] == 0x1b { // ESC character (27)
+		if len(input) == 2 {
+			// Alt+key combination: ESC + key
+			char := input[1]
+			return fmt.Sprintf("M-%c", char)
+		}
+	}
+	
+	// Handle ^[x format (display format)
+	if strings.HasPrefix(input, "^[") && len(input) == 3 {
+		char := input[2]
+		return fmt.Sprintf("M-%c", char)
+	}
+	
+	// Handle Ctrl+key combinations (single byte control characters)
+	if len(input) == 1 {
+		b := input[0]
+		switch b {
+		case 0x18: // Ctrl+X
+			return "C-x"
+		case 0x03: // Ctrl+C
+			return "C-c"
+		case 0x07: // Ctrl+G
+			return "C-g"
+		}
+		
+		// Handle other control characters (0x01-0x1F)
+		if b >= 0x01 && b <= 0x1F && b != 0x09 && b != 0x0A && b != 0x0D {
+			// Convert control character back to letter
+			char := 'a' + b - 1
+			return fmt.Sprintf("C-%c", char)
+		}
+	}
+	
+	// Return as-is
+	return input
 }
 
 // executeExtendedCommand handles M-x style command execution

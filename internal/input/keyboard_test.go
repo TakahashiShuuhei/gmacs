@@ -30,8 +30,7 @@ func TestKeyboardParseInput(t *testing.T) {
 		expected keymap.Key
 	}{
 		{"a", keymap.NewKey('a')},
-		{"C-x", keymap.NewCtrlKey('x')},
-		{"M-x", keymap.NewAltKey('x')},
+		{"M-x", keymap.NewAltKey('x')},    // String format
 		{"return", keymap.NewSpecialKey("return")},
 		{"tab", keymap.NewSpecialKey("tab")},
 	}
@@ -47,6 +46,38 @@ func TestKeyboardParseInput(t *testing.T) {
 			t.Errorf("Parse '%s': expected '%s', got '%s'", 
 				tc.input, tc.expected.String(), key.String())
 		}
+	}
+}
+
+func TestKeyboardParseRawInput(t *testing.T) {
+	input := strings.NewReader("")
+	kb := NewKeyboard(input)
+	
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"Alt+x (ESC+x)", "\x1bx", "M-x"},
+		{"Ctrl+x", "\x18", "C-x"},
+		{"Ctrl+c", "\x03", "C-c"},
+		{"Ctrl+g", "\x07", "C-g"},
+		{"normal char", "a", "a"},
+	}
+	
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			key, err := kb.parseInput(tc.input)
+			if err != nil {
+				t.Errorf("Failed to parse raw input %q: %v", tc.input, err)
+				return
+			}
+			
+			if key.String() != tc.expected {
+				t.Errorf("Parse raw input %q: expected '%s', got '%s'", 
+					tc.input, tc.expected, key.String())
+			}
+		})
 	}
 }
 

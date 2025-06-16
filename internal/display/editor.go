@@ -15,6 +15,7 @@ import (
 type Editor struct {
 	terminal    *Terminal
 	keyboard    *input.Keyboard
+	rawKeyboard *input.RawKeyboard
 	minibuffer  *Minibuffer
 	currentWin  *window.Window
 	keymap      *keymap.Keymap
@@ -26,6 +27,7 @@ type Editor struct {
 func NewEditor() *Editor {
 	terminal := NewStandardTerminal()
 	keyboard := input.CreateStandardKeyboard()
+	rawKeyboard, _ := input.NewRawKeyboard() // Ignore error for now
 	minibuffer := NewMinibuffer(terminal, keyboard)
 	
 	// Create a default buffer and window
@@ -39,13 +41,14 @@ func NewEditor() *Editor {
 	km := keymap.New("global")
 	
 	editor := &Editor{
-		terminal:   terminal,
-		keyboard:   keyboard,
-		minibuffer: minibuffer,
-		currentWin: win,
-		keymap:     km,
-		running:    true,
-		registry:   command.GetGlobalRegistry(),
+		terminal:    terminal,
+		keyboard:    keyboard,
+		rawKeyboard: rawKeyboard,
+		minibuffer:  minibuffer,
+		currentWin:  win,
+		keymap:      km,
+		running:     true,
+		registry:    command.GetGlobalRegistry(),
 	}
 	
 	// Register basic editor commands
@@ -62,55 +65,229 @@ func (e *Editor) Run() error {
 	e.terminal.Clear()
 	e.showWelcomeMessage()
 	
+	// Try to enable raw mode for proper key detection
+	rawModeEnabled := false
+	if err := e.rawKeyboard.EnableRawMode(); err != nil {
+		// Fallback to line-based input if raw mode fails
+		e.minibuffer.ShowMessage("Raw mode unavailable, using fallback mode")
+		rawModeEnabled = false
+	} else {
+		rawModeEnabled = true
+		defer e.rawKeyboard.DisableRawMode()
+	}
+	
 	for e.running {
 		e.redraw()
 		
-		// Read key input
-		line, err := e.keyboard.ReadLine()
-		if err != nil {
-			return err
-		}
-		
-		// Handle the input
-		if err := e.handleInput(line); err != nil {
-			e.minibuffer.ShowError(err)
+		if rawModeEnabled {
+			// Read key input in raw mode
+			keyEvent, err := e.rawKeyboard.ReadKey()
+			if err != nil {
+				return err
+			}
+			
+			// Handle the key event
+			if err := e.handleKeyEvent(keyEvent); err != nil {
+				e.minibuffer.ShowError(err)
+			}
+		} else {
+			// Fallback to line-based input
+			line, err := e.keyboard.ReadLine()
+			if err != nil {
+				return err
+			}
+			
+			// Handle the input using old method
+			if err := e.handleInput(line); err != nil {
+				e.minibuffer.ShowError(err)
+			}
 		}
 	}
 	
 	return nil
 }
 
-// handleInput processes user input
-func (e *Editor) handleInput(input string) error {
-	// Handle special key combinations
-	switch input {
-	case "M-x", "\\M-x":
+// handleKeyEvent processes a key event from raw keyboard input
+func (e *Editor) handleKeyEvent(keyEvent *input.KeyEvent) error {
+	// Handle special key combinations directly
+	keyStr := keyEvent.Key.String()
+	switch keyStr {
+	case "M-x":
 		return e.executeExtendedCommand()
-	case "C-x C-c", "\\C-x \\C-c":
-		return e.quit()
-	case "C-g", "\\C-g":
+	case "C-x":
+		// Start multi-key sequence (for now, just show message)
+		e.minibuffer.ShowMessage("C-x-")
+		return nil
+	case "C-g":
 		e.minibuffer.ShowMessage("Quit")
 		return nil
-	case "":
-		// Just redraw on empty input
+	case "C-c":
+		// C-c prefix key (like Emacs)
+		e.minibuffer.ShowMessage("C-c-")
 		return nil
 	default:
-		// Try to parse as key sequence and look up binding
-		seq, err := keymap.ParseKeySequence(input)
-		if err == nil {
-			if binding, exists := e.keymap.Lookup(seq); exists {
-				return e.registry.Execute(binding.Command, binding.Args...)
-			}
+		// Try to look up binding
+		seq := keymap.KeySequence{keyEvent.Key}
+		if binding, exists := e.keymap.Lookup(seq); exists {
+			return e.registry.Execute(binding.Command, binding.Args...)
 		}
 		
-		// If not a key binding, show message
-		e.minibuffer.ShowMessage(fmt.Sprintf("Unknown command: %s", input))
+		// If it's a printable character, just show it was pressed
+		if keyEvent.Printable {
+			e.minibuffer.ShowMessage(fmt.Sprintf("Key: %c", keyEvent.Key.Char))
+		} else {
+			e.minibuffer.ShowMessage(fmt.Sprintf("'%s' is undefined", keyStr))
+		}
 		return nil
 	}
 }
 
+// handleInput processes user input (fallback for non-raw mode)
+func (e *Editor) handleInput(input string) error {
+	if input == "" {
+		// Just redraw on empty input
+		return nil
+	}
+	
+	// First, convert input using the same logic as simple mode
+	processedInput := e.preprocessInput(input)
+	
+	// Parse the processed input as a key event
+	keyEvent, err := e.parseKeyInput(processedInput)
+	if err != nil {
+		e.minibuffer.ShowMessage(fmt.Sprintf("Invalid key input: %s", input))
+		return nil
+	}
+	
+	// Handle special key combinations directly
+	keyStr := keyEvent.String()
+	switch keyStr {
+	case "M-x":
+		return e.executeExtendedCommand()
+	case "C-x":
+		// Start multi-key sequence (for now, just show message)
+		e.minibuffer.ShowMessage("C-x-")
+		return nil
+	case "C-g":
+		e.minibuffer.ShowMessage("Quit")
+		return nil
+	default:
+		// Try to look up binding
+		seq := keymap.KeySequence{keyEvent}
+		if binding, exists := e.keymap.Lookup(seq); exists {
+			return e.registry.Execute(binding.Command, binding.Args...)
+		}
+		
+		// If not a key binding, show message
+		e.minibuffer.ShowMessage(fmt.Sprintf("'%s' is undefined", keyStr))
+		return nil
+	}
+}
+
+// parseKeyInput parses raw input string into a Key
+func (e *Editor) parseKeyInput(input string) (keymap.Key, error) {
+	// Handle escape sequences (like ESC+x for M-x)
+	if len(input) >= 2 && input[0] == 0x1b { // ESC character (27)
+		if len(input) == 2 {
+			// Alt+key combination: ESC + key
+			char := rune(input[1])
+			return keymap.NewAltKey(char), nil
+		}
+	}
+	
+	// Handle Ctrl+key combinations (single byte control characters)
+	if len(input) == 1 {
+		b := input[0]
+		switch b {
+		case 0x18: // Ctrl+X
+			return keymap.NewCtrlKey('x'), nil
+		case 0x03: // Ctrl+C
+			return keymap.NewCtrlKey('c'), nil
+		case 0x07: // Ctrl+G
+			return keymap.NewCtrlKey('g'), nil
+		case 0x06: // Ctrl+F
+			return keymap.NewCtrlKey('f'), nil
+		case 0x13: // Ctrl+S
+			return keymap.NewCtrlKey('s'), nil
+		}
+		
+		// Handle other control characters (0x01-0x1F)
+		if b >= 0x01 && b <= 0x1F && b != 0x09 && b != 0x0A && b != 0x0D {
+			// Convert control character back to letter
+			char := rune('a' + b - 1)
+			return keymap.NewCtrlKey(char), nil
+		}
+	}
+	
+	// Single printable character
+	if len(input) == 1 && input[0] >= 32 && input[0] <= 126 {
+		return keymap.NewKey(rune(input[0])), nil
+	}
+	
+	// Try parsing as key sequence string (fallback)
+	seq, err := keymap.ParseKeySequence(input)
+	if err == nil && len(seq) == 1 {
+		return seq[0], nil
+	}
+	
+	return keymap.Key{}, fmt.Errorf("unable to parse key input: %s", input)
+}
+
+// preprocessInput processes raw input the same way as SimpleEditor
+func (e *Editor) preprocessInput(input string) string {
+	// Handle escape sequences (like ^[x for M-x)
+	if len(input) >= 2 && input[0] == 0x1b { // ESC character (27)
+		if len(input) == 2 {
+			// Alt+key combination: ESC + key
+			char := input[1]
+			return fmt.Sprintf("M-%c", char)
+		}
+	}
+	
+	// Handle ^[x format (display format)
+	if strings.HasPrefix(input, "^[") && len(input) == 3 {
+		char := input[2]
+		return fmt.Sprintf("M-%c", char)
+	}
+	
+	// Handle the case where ^[x is literally displayed in terminal
+	if input == "^[x" {
+		return "M-x"
+	}
+	
+	// Handle Ctrl+key combinations (single byte control characters)
+	if len(input) == 1 {
+		b := input[0]
+		switch b {
+		case 0x18: // Ctrl+X
+			return "C-x"
+		case 0x03: // Ctrl+C
+			return "C-c"
+		case 0x07: // Ctrl+G
+			return "C-g"
+		}
+		
+		// Handle other control characters (0x01-0x1F)
+		if b >= 0x01 && b <= 0x1F && b != 0x09 && b != 0x0A && b != 0x0D {
+			// Convert control character back to letter
+			char := 'a' + b - 1
+			return fmt.Sprintf("C-%c", char)
+		}
+	}
+	
+	// Return as-is
+	return input
+}
+
+
 // executeExtendedCommand handles M-x command execution
 func (e *Editor) executeExtendedCommand() error {
+	// Temporarily disable raw mode to read line input
+	if e.rawKeyboard.IsRawMode() {
+		e.rawKeyboard.DisableRawMode()
+		defer e.rawKeyboard.EnableRawMode()
+	}
+	
 	commandName, err := e.minibuffer.ReadCommand()
 	if err != nil {
 		if err.Error() == "quit" {
@@ -228,7 +405,7 @@ func (e *Editor) quit() error {
 
 // showWelcomeMessage shows a welcome message
 func (e *Editor) showWelcomeMessage() {
-	e.minibuffer.ShowMessage("Welcome to gmacs! Press M-x for commands, C-x C-c to quit")
+	e.minibuffer.ShowMessage("Welcome to gmacs! Type M-x and press Enter for commands. For better key support, use: gmacs --simple")
 }
 
 // registerEditorCommands registers basic editor commands
