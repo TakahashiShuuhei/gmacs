@@ -1,6 +1,7 @@
 package buffer
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
@@ -75,6 +76,69 @@ func (b *Buffer) SetLine(lineNum int, text string) {
 	}
 	b.content[lineNum] = text
 	b.markModified()
+}
+
+// InsertChar inserts a character at the specified position (UTF-8 compatible)
+func (b *Buffer) InsertChar(lineNum, colNum int, char rune) error {
+	// Ensure line exists
+	if lineNum < 0 || lineNum >= len(b.content) {
+		return fmt.Errorf("line %d does not exist", lineNum)
+	}
+	
+	line := b.content[lineNum]
+	runes := []rune(line) // Convert to rune slice for proper UTF-8 handling
+	
+	// Ensure column position is valid
+	if colNum < 0 {
+		colNum = 0
+	}
+	if colNum > len(runes) {
+		colNum = len(runes)
+	}
+	
+	// Insert the character
+	newRunes := make([]rune, len(runes)+1)
+	copy(newRunes[:colNum], runes[:colNum])
+	newRunes[colNum] = char
+	copy(newRunes[colNum+1:], runes[colNum:])
+	
+	// Convert back to string and update the line
+	b.content[lineNum] = string(newRunes)
+	b.markModified()
+	
+	return nil
+}
+
+// InsertString inserts a string at the specified position (UTF-8 compatible)
+func (b *Buffer) InsertString(lineNum, colNum int, text string) error {
+	// Ensure line exists
+	if lineNum < 0 || lineNum >= len(b.content) {
+		return fmt.Errorf("line %d does not exist", lineNum)
+	}
+	
+	line := b.content[lineNum]
+	runes := []rune(line) // Convert to rune slice for proper UTF-8 handling
+	textRunes := []rune(text) // Convert input text to runes
+	
+	// Ensure column position is valid
+	if colNum < 0 {
+		colNum = 0
+	}
+	if colNum > len(runes) {
+		colNum = len(runes)
+	}
+	
+	// Insert the string
+	newRunes := make([]rune, len(runes)+len(textRunes))
+	copy(newRunes[:colNum], runes[:colNum])
+	copy(newRunes[colNum:colNum+len(textRunes)], textRunes)
+	copy(newRunes[colNum+len(textRunes):], runes[colNum:])
+	
+	// Convert back to string and update the line
+	b.content[lineNum] = string(newRunes)
+	b.markModified()
+	
+	return nil
 }
 
 // InsertLine inserts a new line at the specified position

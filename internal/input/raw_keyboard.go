@@ -166,11 +166,84 @@ func (rk *RawKeyboard) ReadKey() (*KeyEvent, error) {
 		}
 	}
 	
-	// Printable character
-	char := rune(b)
+	// Handle UTF-8 multi-byte characters
+	if b >= 0x80 {
+		// This is the start of a UTF-8 multi-byte sequence
+		return rk.readUTF8Character(b)
+	}
+	
+	// Single-byte printable ASCII character
+	if b >= 32 && b <= 126 {
+		char := rune(b)
+		return &KeyEvent{
+			Key:       keymap.NewKey(char),
+			Raw:       []byte{b},
+			Printable: true,
+		}, nil
+	}
+	
+	// Other single-byte characters (not printable)
+	return &KeyEvent{
+		Key:       keymap.NewSpecialKey(fmt.Sprintf("byte-%d", b)),
+		Raw:       []byte{b},
+		Printable: false,
+	}, nil
+}
+
+// readUTF8Character reads a complete UTF-8 character starting with the given byte
+func (rk *RawKeyboard) readUTF8Character(firstByte byte) (*KeyEvent, error) {
+	// Determine the number of bytes needed for this UTF-8 character
+	var numBytes int
+	if firstByte&0x80 == 0 {
+		numBytes = 1 // ASCII (should not reach here)
+	} else if firstByte&0xE0 == 0xC0 {
+		numBytes = 2 // 110xxxxx
+	} else if firstByte&0xF0 == 0xE0 {
+		numBytes = 3 // 1110xxxx
+	} else if firstByte&0xF8 == 0xF0 {
+		numBytes = 4 // 11110xxx
+	} else {
+		// Invalid UTF-8 start byte
+		return &KeyEvent{
+			Key:       keymap.NewSpecialKey(fmt.Sprintf("invalid-utf8-%d", firstByte)),
+			Raw:       []byte{firstByte},
+			Printable: false,
+		}, nil
+	}
+	
+	// Read the remaining bytes
+	utf8Bytes := make([]byte, numBytes)
+	utf8Bytes[0] = firstByte
+	
+	for i := 1; i < numBytes; i++ {
+		buf := make([]byte, 1)
+		n, err := rk.input.Read(buf)
+		if err != nil || n == 0 {
+			// Incomplete UTF-8 sequence
+			return &KeyEvent{
+				Key:       keymap.NewSpecialKey("incomplete-utf8"),
+				Raw:       utf8Bytes[:i],
+				Printable: false,
+			}, nil
+		}
+		utf8Bytes[i] = buf[0]
+	}
+	
+	// Convert to rune
+	runes := []rune(string(utf8Bytes))
+	if len(runes) != 1 {
+		// Invalid UTF-8 sequence
+		return &KeyEvent{
+			Key:       keymap.NewSpecialKey("invalid-utf8"),
+			Raw:       utf8Bytes,
+			Printable: false,
+		}, nil
+	}
+	
+	char := runes[0]
 	return &KeyEvent{
 		Key:       keymap.NewKey(char),
-		Raw:       []byte{b},
+		Raw:       utf8Bytes,
 		Printable: true,
 	}, nil
 }

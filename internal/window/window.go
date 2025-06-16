@@ -171,6 +171,41 @@ func (w *Window) GetVisibleText() []string {
 // CursorScreenPosition returns the cursor position relative to the window
 func (w *Window) CursorScreenPosition() (screenLine, screenCol int) {
 	screenLine = w.cursor.Line() - w.topLine
-	screenCol = w.cursor.Col() + w.leftMargin
+	
+	// Calculate the actual display width up to the cursor position
+	line := w.buffer.GetLine(w.cursor.Line())
+	runes := []rune(line)
+	cursorPos := w.cursor.Col()
+	
+	// Calculate display width up to cursor position
+	displayWidth := 0
+	for i := 0; i < cursorPos && i < len(runes); i++ {
+		char := runes[i]
+		if isFullWidth(char) {
+			displayWidth += 2 // Full-width characters take 2 columns
+		} else {
+			displayWidth += 1 // Half-width characters take 1 column
+		}
+	}
+	
+	screenCol = displayWidth + w.leftMargin
 	return screenLine, screenCol
+}
+
+// isFullWidth checks if a character is full-width (typically CJK characters)
+func isFullWidth(r rune) bool {
+	// Simplified check for common full-width ranges
+	// This covers most CJK characters, but may not be perfect
+	return (r >= 0x1100 && r <= 0x11FF) || // Hangul Jamo
+		   (r >= 0x2E80 && r <= 0x2EFF) || // CJK Radicals Supplement
+		   (r >= 0x2F00 && r <= 0x2FDF) || // Kangxi Radicals
+		   (r >= 0x3000 && r <= 0x303F) || // CJK Symbols and Punctuation
+		   (r >= 0x3040 && r <= 0x309F) || // Hiragana
+		   (r >= 0x30A0 && r <= 0x30FF) || // Katakana
+		   (r >= 0x3100 && r <= 0x312F) || // Bopomofo
+		   (r >= 0x3200 && r <= 0x32FF) || // Enclosed CJK Letters and Months
+		   (r >= 0x3400 && r <= 0x4DBF) || // CJK Unified Ideographs Extension A
+		   (r >= 0x4E00 && r <= 0x9FFF) || // CJK Unified Ideographs
+		   (r >= 0xF900 && r <= 0xFAFF) || // CJK Compatibility Ideographs
+		   (r >= 0xFF00 && r <= 0xFFEF)    // Halfwidth and Fullwidth Forms
 }

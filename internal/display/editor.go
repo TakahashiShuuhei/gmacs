@@ -60,6 +60,23 @@ func NewEditor() *Editor {
 	return editor
 }
 
+// isFullWidth checks if a character is full-width (typically CJK characters)
+func isFullWidth(r rune) bool {
+	// Simplified check for common full-width ranges
+	return (r >= 0x1100 && r <= 0x11FF) || // Hangul Jamo
+		   (r >= 0x2E80 && r <= 0x2EFF) || // CJK Radicals Supplement
+		   (r >= 0x2F00 && r <= 0x2FDF) || // Kangxi Radicals
+		   (r >= 0x3000 && r <= 0x303F) || // CJK Symbols and Punctuation
+		   (r >= 0x3040 && r <= 0x309F) || // Hiragana
+		   (r >= 0x30A0 && r <= 0x30FF) || // Katakana
+		   (r >= 0x3100 && r <= 0x312F) || // Bopomofo
+		   (r >= 0x3200 && r <= 0x32FF) || // Enclosed CJK Letters and Months
+		   (r >= 0x3400 && r <= 0x4DBF) || // CJK Unified Ideographs Extension A
+		   (r >= 0x4E00 && r <= 0x9FFF) || // CJK Unified Ideographs
+		   (r >= 0xF900 && r <= 0xFAFF) || // CJK Compatibility Ideographs
+		   (r >= 0xFF00 && r <= 0xFFEF)    // Halfwidth and Fullwidth Forms
+}
+
 // Run starts the main editor loop
 func (e *Editor) Run() error {
 	e.terminal.Clear()
@@ -132,9 +149,9 @@ func (e *Editor) handleKeyEvent(keyEvent *input.KeyEvent) error {
 			return e.registry.Execute(binding.Command, binding.Args...)
 		}
 		
-		// If it's a printable character, just show it was pressed
+		// If it's a printable character, insert it
 		if keyEvent.Printable {
-			e.minibuffer.ShowMessage(fmt.Sprintf("Key: %c", keyEvent.Key.Char))
+			return e.selfInsertCommand(keyEvent.Key.Char)
 		} else {
 			e.minibuffer.ShowMessage(fmt.Sprintf("'%s' is undefined", keyStr))
 		}
@@ -152,9 +169,22 @@ func (e *Editor) handleInput(input string) error {
 	// First, convert input using the same logic as simple mode
 	processedInput := e.preprocessInput(input)
 	
+	// Check if this is a multi-character string (likely from IME)
+	inputRunes := []rune(input)
+	processedRunes := []rune(processedInput)
+	
+	if len(inputRunes) > 1 && len(processedRunes) > 1 {
+		// This is a multi-character input, insert it as a string
+		return e.selfInsertStringCommand(input)
+	}
+	
 	// Parse the processed input as a key event
 	keyEvent, err := e.parseKeyInput(processedInput)
 	if err != nil {
+		// If parsing fails, try to insert as string if it contains printable characters
+		if len(inputRunes) > 0 {
+			return e.selfInsertStringCommand(input)
+		}
 		e.minibuffer.ShowMessage(fmt.Sprintf("Invalid key input: %s", input))
 		return nil
 	}
@@ -177,6 +207,9 @@ func (e *Editor) handleInput(input string) error {
 		if binding, exists := e.keymap.Lookup(seq); exists {
 			return e.registry.Execute(binding.Command, binding.Args...)
 		}
+		
+		// This part will be handled by the raw input processing
+		// Multi-character strings are handled in handleInput
 		
 		// If not a key binding, show message
 		e.minibuffer.ShowMessage(fmt.Sprintf("'%s' is undefined", keyStr))
@@ -280,6 +313,70 @@ func (e *Editor) preprocessInput(input string) string {
 }
 
 
+// selfInsertCommand inserts a character at the current cursor position
+func (e *Editor) selfInsertCommand(char rune) error {
+	// Get current buffer and cursor
+	buffer := e.currentWin.Buffer()
+	cursor := e.currentWin.Cursor()
+	
+	// Insert the character at cursor position
+	err := buffer.InsertChar(cursor.Line(), cursor.Col(), char)
+	if err != nil {
+		return fmt.Errorf("failed to insert character: %v", err)
+	}
+	
+	// Move cursor forward
+	oldCol := cursor.Col()
+	newCol := oldCol + 1
+	cursor.SetCol(newCol)
+	
+	// Debug: show cursor position
+	line := buffer.GetLine(cursor.Line())
+	lineRunes := []rune(line)
+	e.minibuffer.ShowMessage(fmt.Sprintf("Insert '%c': cursor %d→%d, line: '%s' (%d chars)", 
+		char, oldCol, newCol, line, len(lineRunes)))
+	
+	return nil
+}
+
+// selfInsertStringCommand inserts a string at the current cursor position
+func (e *Editor) selfInsertStringCommand(text string) error {
+	// Get current buffer and cursor
+	buffer := e.currentWin.Buffer()
+	cursor := e.currentWin.Cursor()
+	
+	// Insert the string at cursor position
+	err := buffer.InsertString(cursor.Line(), cursor.Col(), text)
+	if err != nil {
+		return fmt.Errorf("failed to insert string: %v", err)
+	}
+	
+	// Move cursor forward by the number of characters inserted
+	textRunes := []rune(text)
+	oldCol := cursor.Col()
+	newCol := oldCol + len(textRunes)
+	cursor.SetCol(newCol)
+	
+	// Debug: show cursor position and display width
+	line := buffer.GetLine(cursor.Line())
+	lineRunes := []rune(line)
+	
+	// Calculate display width up to cursor
+	displayWidth := 0
+	for i := 0; i < newCol && i < len(lineRunes); i++ {
+		if isFullWidth(lineRunes[i]) {
+			displayWidth += 2
+		} else {
+			displayWidth += 1
+		}
+	}
+	
+	e.minibuffer.ShowMessage(fmt.Sprintf("Insert '%s': cursor %d→%d, display col %d, line: '%s' (%d chars)", 
+		text, oldCol, newCol, displayWidth, line, len(lineRunes)))
+	
+	return nil
+}
+
 // executeExtendedCommand handles M-x command execution
 func (e *Editor) executeExtendedCommand() error {
 	// Temporarily disable raw mode to read line input
@@ -341,9 +438,26 @@ func (e *Editor) drawBuffer() {
 		
 		e.terminal.MoveCursor(i+1, 1)
 		
-		// Truncate line if too long
-		if len(line) > width {
-			line = line[:width-1]
+		// Truncate line if too long (considering full-width characters)
+		runes := []rune(line)
+		displayWidth := 0
+		cutIndex := len(runes)
+		
+		for i, char := range runes {
+			charWidth := 1
+			if isFullWidth(char) {
+				charWidth = 2
+			}
+			
+			if displayWidth + charWidth > width-1 {
+				cutIndex = i
+				break
+			}
+			displayWidth += charWidth
+		}
+		
+		if cutIndex < len(runes) {
+			line = string(runes[:cutIndex])
 		}
 		
 		e.terminal.Print(line)
@@ -372,15 +486,18 @@ func (e *Editor) drawStatusLine() {
 	leftPart := fmt.Sprintf(" %s%s ", bufferName, modified)
 	rightPart := fmt.Sprintf(" %s ", position)
 	
-	// Fill with dashes
-	padding := width - len(leftPart) - len(rightPart)
+	// Fill with dashes (UTF-8 safe)
+	leftRunes := []rune(leftPart)
+	rightRunes := []rune(rightPart)
+	padding := width - len(leftRunes) - len(rightRunes)
 	if padding < 0 {
 		padding = 0
 	}
 	
 	status := leftPart + strings.Repeat("-", padding) + rightPart
-	if len(status) > width {
-		status = status[:width]
+	statusRunes := []rune(status)
+	if len(statusRunes) > width {
+		status = string(statusRunes[:width])
 	}
 	
 	// Draw status line with reverse video
@@ -441,6 +558,29 @@ func (e *Editor) registerEditorCommands() {
 		e.redraw()
 		e.minibuffer.ShowMessage("Display redrawn")
 		return nil
+	})
+	
+	// Text insertion commands
+	e.registry.Register("self-insert-command", "Insert typed character", "", func(args ...interface{}) error {
+		if len(args) == 0 {
+			return fmt.Errorf("self-insert-command requires a character argument")
+		}
+		char, ok := args[0].(rune)
+		if !ok {
+			return fmt.Errorf("self-insert-command argument must be a character")
+		}
+		return e.selfInsertCommand(char)
+	})
+	
+	e.registry.Register("insert-string", "Insert string at cursor", "", func(args ...interface{}) error {
+		if len(args) == 0 {
+			return fmt.Errorf("insert-string requires a string argument")
+		}
+		text, ok := args[0].(string)
+		if !ok {
+			return fmt.Errorf("insert-string argument must be a string")
+		}
+		return e.selfInsertStringCommand(text)
 	})
 }
 
