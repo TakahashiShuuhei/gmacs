@@ -103,10 +103,80 @@ func (rk *RawKeyboard) ReadKey() (*KeyEvent, error) {
 			}, nil
 		}
 		
-		// Alt+key combination
 		nextByte := nextBuf[0]
-		char := rune(nextByte)
 		
+		// Check for ANSI escape sequences like ESC[A (arrow keys)
+		if nextByte == '[' {
+			// Read the final character of the escape sequence
+			finalBuf := make([]byte, 1)
+			n, err := rk.input.Read(finalBuf)
+			if err != nil || n == 0 {
+				// Incomplete sequence, treat as ESC + [
+				return &KeyEvent{
+					Key:       keymap.NewAltKey('['),
+					Raw:       []byte{b, nextByte},
+					Printable: false,
+				}, nil
+			}
+			
+			finalByte := finalBuf[0]
+			
+			// Handle arrow keys and other escape sequences
+			switch finalByte {
+			case 'A': // Up arrow
+				return &KeyEvent{
+					Key:       keymap.NewSpecialKey("up"),
+					Raw:       []byte{b, nextByte, finalByte},
+					Printable: false,
+				}, nil
+			case 'B': // Down arrow
+				return &KeyEvent{
+					Key:       keymap.NewSpecialKey("down"),
+					Raw:       []byte{b, nextByte, finalByte},
+					Printable: false,
+				}, nil
+			case 'C': // Right arrow
+				return &KeyEvent{
+					Key:       keymap.NewSpecialKey("right"),
+					Raw:       []byte{b, nextByte, finalByte},
+					Printable: false,
+				}, nil
+			case 'D': // Left arrow
+				return &KeyEvent{
+					Key:       keymap.NewSpecialKey("left"),
+					Raw:       []byte{b, nextByte, finalByte},
+					Printable: false,
+				}, nil
+			case 'H': // Home key
+				return &KeyEvent{
+					Key:       keymap.NewSpecialKey("home"),
+					Raw:       []byte{b, nextByte, finalByte},
+					Printable: false,
+				}, nil
+			case 'F': // End key
+				return &KeyEvent{
+					Key:       keymap.NewSpecialKey("end"),
+					Raw:       []byte{b, nextByte, finalByte},
+					Printable: false,
+				}, nil
+			default:
+				// Check for extended sequences like ESC[1~ (Home), ESC[4~ (End), etc.
+				if finalByte >= '0' && finalByte <= '9' {
+					// This might be a longer sequence, try to read more
+					return rk.readExtendedEscapeSequence([]byte{b, nextByte, finalByte})
+				}
+				
+				// Unknown escape sequence
+				return &KeyEvent{
+					Key:       keymap.NewSpecialKey(fmt.Sprintf("escape-sequence-%c", finalByte)),
+					Raw:       []byte{b, nextByte, finalByte},
+					Printable: false,
+				}, nil
+			}
+		}
+		
+		// Alt+key combination (ESC + single character)
+		char := rune(nextByte)
 		return &KeyEvent{
 			Key:       keymap.NewAltKey(char),
 			Raw:       []byte{b, nextByte},
@@ -245,6 +315,75 @@ func (rk *RawKeyboard) readUTF8Character(firstByte byte) (*KeyEvent, error) {
 		Key:       keymap.NewKey(char),
 		Raw:       utf8Bytes,
 		Printable: true,
+	}, nil
+}
+
+// readExtendedEscapeSequence reads extended escape sequences like ESC[1~
+func (rk *RawKeyboard) readExtendedEscapeSequence(prefix []byte) (*KeyEvent, error) {
+	// Try to read the rest of the sequence (expecting ~ as terminator)
+	buf := make([]byte, 1)
+	n, err := rk.input.Read(buf)
+	if err != nil || n == 0 {
+		// Incomplete sequence
+		return &KeyEvent{
+			Key:       keymap.NewSpecialKey("incomplete-escape"),
+			Raw:       prefix,
+			Printable: false,
+		}, nil
+	}
+	
+	finalByte := buf[0]
+	fullSequence := append(prefix, finalByte)
+	
+	if finalByte == '~' {
+		// Complete extended sequence
+		sequenceStr := string(prefix[2:len(prefix)]) // Extract the number part
+		
+		switch sequenceStr {
+		case "1": // Home
+			return &KeyEvent{
+				Key:       keymap.NewSpecialKey("home"),
+				Raw:       fullSequence,
+				Printable: false,
+			}, nil
+		case "4": // End
+			return &KeyEvent{
+				Key:       keymap.NewSpecialKey("end"),
+				Raw:       fullSequence,
+				Printable: false,
+			}, nil
+		case "5": // Page Up
+			return &KeyEvent{
+				Key:       keymap.NewSpecialKey("page-up"),
+				Raw:       fullSequence,
+				Printable: false,
+			}, nil
+		case "6": // Page Down
+			return &KeyEvent{
+				Key:       keymap.NewSpecialKey("page-down"),
+				Raw:       fullSequence,
+				Printable: false,
+			}, nil
+		case "3": // Delete key
+			return &KeyEvent{
+				Key:       keymap.NewSpecialKey("delete"),
+				Raw:       fullSequence,
+				Printable: false,
+			}, nil
+		default:
+			return &KeyEvent{
+				Key:       keymap.NewSpecialKey(fmt.Sprintf("extended-escape-%s", sequenceStr)),
+				Raw:       fullSequence,
+				Printable: false,
+			}, nil
+		}
+	}
+	
+	// Not a recognized extended sequence
+	return &KeyEvent{
+		Key:       keymap.NewSpecialKey("unknown-escape"),
+		Raw:       fullSequence,
+		Printable: false,
 	}, nil
 }
 

@@ -21,6 +21,7 @@ type Editor struct {
 	keymap      *keymap.Keymap
 	running     bool
 	registry    *command.Registry
+	keySequence keymap.KeySequence // For multi-key sequences
 }
 
 // NewEditor creates a new editor instance
@@ -330,11 +331,8 @@ func (e *Editor) selfInsertCommand(char rune) error {
 	newCol := oldCol + 1
 	cursor.SetCol(newCol)
 	
-	// Debug: show cursor position
-	line := buffer.GetLine(cursor.Line())
-	lineRunes := []rune(line)
-	e.minibuffer.ShowMessage(fmt.Sprintf("Insert '%c': cursor %d→%d, line: '%s' (%d chars)", 
-		char, oldCol, newCol, line, len(lineRunes)))
+	// Clear any previous message
+	e.minibuffer.ShowMessage("")
 	
 	return nil
 }
@@ -357,22 +355,116 @@ func (e *Editor) selfInsertStringCommand(text string) error {
 	newCol := oldCol + len(textRunes)
 	cursor.SetCol(newCol)
 	
-	// Debug: show cursor position and display width
+	// Clear any previous message
+	e.minibuffer.ShowMessage("")
+	
+	return nil
+}
+
+// forwardChar moves cursor forward one character (C-f)
+func (e *Editor) forwardChar() error {
+	buffer := e.currentWin.Buffer()
+	cursor := e.currentWin.Cursor()
+	
 	line := buffer.GetLine(cursor.Line())
 	lineRunes := []rune(line)
 	
-	// Calculate display width up to cursor
-	displayWidth := 0
-	for i := 0; i < newCol && i < len(lineRunes); i++ {
-		if isFullWidth(lineRunes[i]) {
-			displayWidth += 2
+	// Check if we can move forward
+	if cursor.Col() < len(lineRunes) {
+		cursor.SetCol(cursor.Col() + 1)
+		e.minibuffer.ShowMessage("")
+	} else {
+		// At end of line, try to move to beginning of next line
+		if cursor.Line() < buffer.LineCount()-1 {
+			cursor.SetLine(cursor.Line() + 1)
+			cursor.SetCol(0)
+			e.currentWin.EnsureCursorVisible()
+			e.minibuffer.ShowMessage("")
 		} else {
-			displayWidth += 1
+			e.minibuffer.ShowMessage("End of buffer")
 		}
 	}
 	
-	e.minibuffer.ShowMessage(fmt.Sprintf("Insert '%s': cursor %d→%d, display col %d, line: '%s' (%d chars)", 
-		text, oldCol, newCol, displayWidth, line, len(lineRunes)))
+	return nil
+}
+
+// backwardChar moves cursor backward one character (C-b)
+func (e *Editor) backwardChar() error {
+	cursor := e.currentWin.Cursor()
+	
+	// Check if we can move backward
+	if cursor.Col() > 0 {
+		cursor.SetCol(cursor.Col() - 1)
+		e.minibuffer.ShowMessage("")
+	} else {
+		// At beginning of line, try to move to end of previous line
+		if cursor.Line() > 0 {
+			buffer := e.currentWin.Buffer()
+			prevLine := buffer.GetLine(cursor.Line() - 1)
+			prevLineRunes := []rune(prevLine)
+			
+			cursor.SetLine(cursor.Line() - 1)
+			cursor.SetCol(len(prevLineRunes))
+			e.currentWin.EnsureCursorVisible()
+			e.minibuffer.ShowMessage("")
+		} else {
+			e.minibuffer.ShowMessage("Beginning of buffer")
+		}
+	}
+	
+	return nil
+}
+
+// nextLine moves cursor to next line (C-n)
+func (e *Editor) nextLine() error {
+	buffer := e.currentWin.Buffer()
+	cursor := e.currentWin.Cursor()
+	
+	// Check if there is a next line
+	if cursor.Line() < buffer.LineCount()-1 {
+		nextLineNum := cursor.Line() + 1
+		nextLine := buffer.GetLine(nextLineNum)
+		nextLineRunes := []rune(nextLine)
+		
+		cursor.SetLine(nextLineNum)
+		
+		// Try to maintain column position, but clamp to line length
+		if cursor.Col() > len(nextLineRunes) {
+			cursor.SetCol(len(nextLineRunes))
+		}
+		
+		e.currentWin.EnsureCursorVisible()
+		e.minibuffer.ShowMessage("")
+	} else {
+		e.minibuffer.ShowMessage("End of buffer")
+	}
+	
+	return nil
+}
+
+// previousLine moves cursor to previous line (C-p)
+func (e *Editor) previousLine() error {
+	buffer := e.currentWin.Buffer()
+	cursor := e.currentWin.Cursor()
+	
+	// Check if there is a previous line
+	if cursor.Line() > 0 {
+		prevLineNum := cursor.Line() - 1
+		prevLine := buffer.GetLine(prevLineNum)
+		prevLineRunes := []rune(prevLine)
+		
+		cursor.SetLine(prevLineNum)
+		
+		// Try to maintain column position, but clamp to line length
+		if cursor.Col() > len(prevLineRunes) {
+			cursor.SetCol(len(prevLineRunes))
+		}
+		
+		e.currentWin.EnsureCursorVisible()
+		e.minibuffer.ShowMessage("")
+	} else {
+		e.minibuffer.ShowMessage("Beginning of buffer")
+	}
 	
 	return nil
 }
@@ -513,6 +605,221 @@ func (e *Editor) drawCursor() {
 	e.terminal.MoveCursor(screenLine+1, screenCol+1)
 }
 
+// deleteChar deletes the character at the current cursor position (C-d)
+func (e *Editor) deleteChar() error {
+	buffer := e.currentWin.Buffer()
+	cursor := e.currentWin.Cursor()
+	
+	line := buffer.GetLine(cursor.Line())
+	lineRunes := []rune(line)
+	
+	// Check if cursor is at end of line
+	if cursor.Col() >= len(lineRunes) {
+		// At end of line, try to merge with next line
+		if cursor.Line() < buffer.LineCount()-1 {
+			nextLine := buffer.GetLine(cursor.Line() + 1)
+			
+			// Merge current line with next line
+			newLine := line + nextLine
+			err := buffer.SetLine(cursor.Line(), newLine)
+			if err != nil {
+				return fmt.Errorf("failed to merge lines: %v", err)
+			}
+			
+			// Delete the next line
+			err = buffer.DeleteLine(cursor.Line() + 1)
+			if err != nil {
+				return fmt.Errorf("failed to delete line: %v", err)
+			}
+			
+			e.minibuffer.ShowMessage("")
+		} else {
+			e.minibuffer.ShowMessage("End of buffer")
+		}
+	} else {
+		// Delete character at cursor position
+		newRunes := make([]rune, len(lineRunes)-1)
+		copy(newRunes[:cursor.Col()], lineRunes[:cursor.Col()])
+		copy(newRunes[cursor.Col():], lineRunes[cursor.Col()+1:])
+		
+		newLine := string(newRunes)
+		err := buffer.SetLine(cursor.Line(), newLine)
+		if err != nil {
+			return fmt.Errorf("failed to delete character: %v", err)
+		}
+		
+		e.minibuffer.ShowMessage("")
+	}
+	
+	return nil
+}
+
+// backwardDeleteChar deletes the character before the cursor (backspace)
+func (e *Editor) backwardDeleteChar() error {
+	buffer := e.currentWin.Buffer()
+	cursor := e.currentWin.Cursor()
+	
+	// Check if cursor is at beginning of line
+	if cursor.Col() == 0 {
+		// At beginning of line, try to merge with previous line
+		if cursor.Line() > 0 {
+			prevLine := buffer.GetLine(cursor.Line() - 1)
+			currentLine := buffer.GetLine(cursor.Line())
+			prevLineRunes := []rune(prevLine)
+			
+			// Merge previous line with current line
+			newLine := prevLine + currentLine
+			err := buffer.SetLine(cursor.Line()-1, newLine)
+			if err != nil {
+				return fmt.Errorf("failed to merge lines: %v", err)
+			}
+			
+			// Delete the current line
+			err = buffer.DeleteLine(cursor.Line())
+			if err != nil {
+				return fmt.Errorf("failed to delete line: %v", err)
+			}
+			
+			// Move cursor to end of previous line
+			cursor.SetLine(cursor.Line() - 1)
+			cursor.SetCol(len(prevLineRunes))
+			e.currentWin.EnsureCursorVisible()
+			
+			e.minibuffer.ShowMessage("")
+		} else {
+			e.minibuffer.ShowMessage("Beginning of buffer")
+		}
+	} else {
+		// Delete character before cursor position
+		line := buffer.GetLine(cursor.Line())
+		lineRunes := []rune(line)
+		
+		newRunes := make([]rune, len(lineRunes)-1)
+		copy(newRunes[:cursor.Col()-1], lineRunes[:cursor.Col()-1])
+		copy(newRunes[cursor.Col()-1:], lineRunes[cursor.Col():])
+		
+		newLine := string(newRunes)
+		err := buffer.SetLine(cursor.Line(), newLine)
+		if err != nil {
+			return fmt.Errorf("failed to delete character: %v", err)
+		}
+		
+		// Move cursor backward
+		cursor.SetCol(cursor.Col() - 1)
+		
+		e.minibuffer.ShowMessage("")
+	}
+	
+	return nil
+}
+
+// findFile opens a file for editing (C-x C-f)
+func (e *Editor) findFile() error {
+	// Temporarily disable raw mode to read line input
+	if e.rawKeyboard.IsRawMode() {
+		e.rawKeyboard.DisableRawMode()
+		defer e.rawKeyboard.EnableRawMode()
+	}
+	
+	// Prompt for filename
+	e.minibuffer.ShowMessage("Find file: ")
+	filename, err := e.minibuffer.ReadString("Find file: ")
+	if err != nil {
+		if err.Error() == "quit" {
+			e.minibuffer.ShowMessage("Quit")
+			return nil
+		}
+		return fmt.Errorf("failed to read filename: %v", err)
+	}
+	
+	if filename == "" {
+		e.minibuffer.ShowMessage("No filename specified")
+		return nil
+	}
+	
+	// Create new buffer and load file
+	buf := buffer.NewFromFile(filename)
+	err = buf.LoadFromFile(filename)
+	if err != nil {
+		// If file doesn't exist, create empty buffer with that name
+		e.minibuffer.ShowMessage(fmt.Sprintf("(New file) %s", filename))
+		buf.SetFilename(filename)
+	} else {
+		e.minibuffer.ShowMessage(fmt.Sprintf("Loaded %s", filename))
+	}
+	
+	// Switch to the new buffer
+	width, height := e.terminal.Size()
+	e.currentWin = window.New(buf, height-2, width)
+	
+	return nil
+}
+
+// saveBuffer saves the current buffer to its file (C-x C-s)
+func (e *Editor) saveBuffer() error {
+	buf := e.currentWin.Buffer()
+	
+	if buf.Filename() == "" {
+		// No filename, need to prompt for one
+		return e.writeFile()
+	}
+	
+	err := buf.Save()
+	if err != nil {
+		e.minibuffer.ShowError(fmt.Errorf("failed to save buffer: %v", err))
+		return nil
+	}
+	
+	e.minibuffer.ShowMessage(fmt.Sprintf("Wrote %s", buf.Filename()))
+	return nil
+}
+
+// writeFile saves the buffer to a specified file (C-x C-w)
+func (e *Editor) writeFile() error {
+	// Temporarily disable raw mode to read line input
+	if e.rawKeyboard.IsRawMode() {
+		e.rawKeyboard.DisableRawMode()
+		defer e.rawKeyboard.EnableRawMode()
+	}
+	
+	buf := e.currentWin.Buffer()
+	currentFilename := buf.Filename()
+	
+	// Prompt for filename
+	prompt := "Write file: "
+	if currentFilename != "" {
+		prompt = fmt.Sprintf("Write file (default %s): ", currentFilename)
+	}
+	
+	e.minibuffer.ShowMessage(prompt)
+	filename, err := e.minibuffer.ReadString(prompt)
+	if err != nil {
+		if err.Error() == "quit" {
+			e.minibuffer.ShowMessage("Quit")
+			return nil
+		}
+		return fmt.Errorf("failed to read filename: %v", err)
+	}
+	
+	// Use current filename if none specified
+	if filename == "" {
+		if currentFilename == "" {
+			e.minibuffer.ShowMessage("No filename specified")
+			return nil
+		}
+		filename = currentFilename
+	}
+	
+	err = buf.SaveToFile(filename)
+	if err != nil {
+		e.minibuffer.ShowError(fmt.Errorf("failed to save to %s: %v", filename, err))
+		return nil
+	}
+	
+	e.minibuffer.ShowMessage(fmt.Sprintf("Wrote %s", filename))
+	return nil
+}
+
 // quit quits the editor
 func (e *Editor) quit() error {
 	e.running = false
@@ -582,6 +889,45 @@ func (e *Editor) registerEditorCommands() {
 		}
 		return e.selfInsertStringCommand(text)
 	})
+	
+	// Cursor movement commands
+	e.registry.Register("forward-char", "Move cursor forward one character", "", func(args ...interface{}) error {
+		return e.forwardChar()
+	})
+	
+	e.registry.Register("backward-char", "Move cursor backward one character", "", func(args ...interface{}) error {
+		return e.backwardChar()
+	})
+	
+	e.registry.Register("next-line", "Move cursor to next line", "", func(args ...interface{}) error {
+		return e.nextLine()
+	})
+	
+	e.registry.Register("previous-line", "Move cursor to previous line", "", func(args ...interface{}) error {
+		return e.previousLine()
+	})
+	
+	// Text deletion commands
+	e.registry.Register("delete-char", "Delete character at cursor", "", func(args ...interface{}) error {
+		return e.deleteChar()
+	})
+	
+	e.registry.Register("backward-delete-char", "Delete character before cursor", "", func(args ...interface{}) error {
+		return e.backwardDeleteChar()
+	})
+	
+	// File I/O commands
+	e.registry.Register("find-file", "Open a file", "", func(args ...interface{}) error {
+		return e.findFile()
+	})
+	
+	e.registry.Register("save-buffer", "Save current buffer to file", "", func(args ...interface{}) error {
+		return e.saveBuffer()
+	})
+	
+	e.registry.Register("write-file", "Save buffer to a specified file", "", func(args ...interface{}) error {
+		return e.writeFile()
+	})
 }
 
 // setupKeyBindings sets up basic key bindings
@@ -593,4 +939,47 @@ func (e *Editor) setupKeyBindings() {
 	// Add some basic bindings that call commands
 	quitSeq, _ := keymap.ParseKeySequence("C-x C-c")
 	e.keymap.Bind(quitSeq, "quit")
+	
+	// Basic cursor movement bindings
+	forwardSeq, _ := keymap.ParseKeySequence("C-f")
+	e.keymap.Bind(forwardSeq, "forward-char")
+	
+	backwardSeq, _ := keymap.ParseKeySequence("C-b")
+	e.keymap.Bind(backwardSeq, "backward-char")
+	
+	nextSeq, _ := keymap.ParseKeySequence("C-n")
+	e.keymap.Bind(nextSeq, "next-line")
+	
+	prevSeq, _ := keymap.ParseKeySequence("C-p")
+	e.keymap.Bind(prevSeq, "previous-line")
+	
+	// Arrow key bindings (if supported)
+	rightSeq, _ := keymap.ParseKeySequence("right")
+	e.keymap.Bind(rightSeq, "forward-char")
+	
+	leftSeq, _ := keymap.ParseKeySequence("left")
+	e.keymap.Bind(leftSeq, "backward-char")
+	
+	downSeq, _ := keymap.ParseKeySequence("down")
+	e.keymap.Bind(downSeq, "next-line")
+	
+	upSeq, _ := keymap.ParseKeySequence("up")
+	e.keymap.Bind(upSeq, "previous-line")
+	
+	// Text deletion bindings
+	deleteSeq, _ := keymap.ParseKeySequence("C-d")
+	e.keymap.Bind(deleteSeq, "delete-char")
+	
+	backspaceSeq, _ := keymap.ParseKeySequence("backspace")
+	e.keymap.Bind(backspaceSeq, "backward-delete-char")
+	
+	// File I/O bindings
+	findFileSeq, _ := keymap.ParseKeySequence("C-x C-f")
+	e.keymap.Bind(findFileSeq, "find-file")
+	
+	saveBufferSeq, _ := keymap.ParseKeySequence("C-x C-s")
+	e.keymap.Bind(saveBufferSeq, "save-buffer")
+	
+	writeFileSeq, _ := keymap.ParseKeySequence("C-x C-w")
+	e.keymap.Bind(writeFileSeq, "write-file")
 }

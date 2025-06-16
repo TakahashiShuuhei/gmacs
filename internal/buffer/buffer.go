@@ -2,6 +2,8 @@ package buffer
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 )
@@ -70,12 +72,13 @@ func (b *Buffer) GetLine(lineNum int) string {
 }
 
 // SetLine sets the content of the specified line
-func (b *Buffer) SetLine(lineNum int, text string) {
+func (b *Buffer) SetLine(lineNum int, text string) error {
 	if lineNum < 0 || lineNum >= len(b.content) {
-		return
+		return fmt.Errorf("line %d does not exist", lineNum)
 	}
 	b.content[lineNum] = text
 	b.markModified()
+	return nil
 }
 
 // InsertChar inserts a character at the specified position (UTF-8 compatible)
@@ -160,16 +163,16 @@ func (b *Buffer) InsertLine(lineNum int, text string) {
 }
 
 // DeleteLine deletes the specified line
-func (b *Buffer) DeleteLine(lineNum int) {
+func (b *Buffer) DeleteLine(lineNum int) error {
 	if lineNum < 0 || lineNum >= len(b.content) {
-		return
+		return fmt.Errorf("line %d does not exist", lineNum)
 	}
 	
 	// Don't delete the last line if it's the only one
 	if len(b.content) == 1 {
 		b.content[0] = ""
 		b.markModified()
-		return
+		return nil
 	}
 	
 	newContent := make([]string, len(b.content)-1)
@@ -177,6 +180,7 @@ func (b *Buffer) DeleteLine(lineNum int) {
 	copy(newContent[lineNum:], b.content[lineNum+1:])
 	b.content = newContent
 	b.markModified()
+	return nil
 }
 
 // GetText returns all text in the buffer
@@ -223,4 +227,57 @@ func (b *Buffer) markModified() {
 		b.modified = true
 		b.lastMod = time.Now()
 	}
+}
+
+// LoadFromFile loads the buffer content from a file
+func (b *Buffer) LoadFromFile(filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %v", filename, err)
+	}
+	defer file.Close()
+	
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return fmt.Errorf("failed to read file %s: %v", filename, err)
+	}
+	
+	// Set the buffer content and metadata
+	b.SetText(string(content))
+	b.filename = filename
+	b.name = filename
+	b.modified = false // File just loaded, not modified
+	
+	return nil
+}
+
+// SaveToFile saves the buffer content to a file
+func (b *Buffer) SaveToFile(filename string) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %v", filename, err)
+	}
+	defer file.Close()
+	
+	content := b.GetText()
+	_, err = file.WriteString(content)
+	if err != nil {
+		return fmt.Errorf("failed to write to file %s: %v", filename, err)
+	}
+	
+	// Update metadata
+	b.filename = filename
+	b.name = filename
+	b.modified = false // File just saved, not modified
+	
+	return nil
+}
+
+// Save saves the buffer to its associated file
+func (b *Buffer) Save() error {
+	if b.filename == "" {
+		return fmt.Errorf("no filename associated with buffer %s", b.name)
+	}
+	
+	return b.SaveToFile(b.filename)
 }
