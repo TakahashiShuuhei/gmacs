@@ -1,0 +1,162 @@
+package buffer
+
+import (
+	"strings"
+	"time"
+)
+
+// Buffer represents a text buffer (similar to Emacs buffer)
+type Buffer struct {
+	name     string
+	filename string
+	content  []string // lines of text
+	modified bool
+	readOnly bool
+	created  time.Time
+	lastMod  time.Time
+}
+
+// New creates a new buffer with the given name
+func New(name string) *Buffer {
+	now := time.Now()
+	return &Buffer{
+		name:    name,
+		content: []string{""},
+		created: now,
+		lastMod: now,
+	}
+}
+
+// NewFromFile creates a new buffer from a file
+func NewFromFile(filename string) *Buffer {
+	now := time.Now()
+	return &Buffer{
+		name:     filename,
+		filename: filename,
+		content:  []string{""},
+		created:  now,
+		lastMod:  now,
+	}
+}
+
+// Name returns the buffer name
+func (b *Buffer) Name() string {
+	return b.name
+}
+
+// Filename returns the associated filename
+func (b *Buffer) Filename() string {
+	return b.filename
+}
+
+// SetFilename sets the associated filename
+func (b *Buffer) SetFilename(filename string) {
+	b.filename = filename
+	b.markModified()
+}
+
+// LineCount returns the number of lines in the buffer
+func (b *Buffer) LineCount() int {
+	return len(b.content)
+}
+
+// GetLine returns the content of the specified line (0-indexed)
+func (b *Buffer) GetLine(lineNum int) string {
+	if lineNum < 0 || lineNum >= len(b.content) {
+		return ""
+	}
+	return b.content[lineNum]
+}
+
+// SetLine sets the content of the specified line
+func (b *Buffer) SetLine(lineNum int, text string) {
+	if lineNum < 0 || lineNum >= len(b.content) {
+		return
+	}
+	b.content[lineNum] = text
+	b.markModified()
+}
+
+// InsertLine inserts a new line at the specified position
+func (b *Buffer) InsertLine(lineNum int, text string) {
+	if lineNum < 0 {
+		lineNum = 0
+	}
+	if lineNum > len(b.content) {
+		lineNum = len(b.content)
+	}
+	
+	// Insert new line
+	newContent := make([]string, len(b.content)+1)
+	copy(newContent[:lineNum], b.content[:lineNum])
+	newContent[lineNum] = text
+	copy(newContent[lineNum+1:], b.content[lineNum:])
+	b.content = newContent
+	b.markModified()
+}
+
+// DeleteLine deletes the specified line
+func (b *Buffer) DeleteLine(lineNum int) {
+	if lineNum < 0 || lineNum >= len(b.content) {
+		return
+	}
+	
+	// Don't delete the last line if it's the only one
+	if len(b.content) == 1 {
+		b.content[0] = ""
+		b.markModified()
+		return
+	}
+	
+	newContent := make([]string, len(b.content)-1)
+	copy(newContent[:lineNum], b.content[:lineNum])
+	copy(newContent[lineNum:], b.content[lineNum+1:])
+	b.content = newContent
+	b.markModified()
+}
+
+// GetText returns all text in the buffer
+func (b *Buffer) GetText() string {
+	return strings.Join(b.content, "\n")
+}
+
+// SetText sets the entire buffer conten
+func (b *Buffer) SetText(text string) {
+	if text == "" {
+		b.content = []string{""}
+	} else {
+		b.content = strings.Split(text, "\n")
+	}
+	b.markModified()
+}
+
+// IsModified returns whether the buffer has been modified
+func (b *Buffer) IsModified() bool {
+	return b.modified
+}
+
+// SetModified sets the modified flag
+func (b *Buffer) SetModified(modified bool) {
+	b.modified = modified
+	if modified {
+		b.lastMod = time.Now()
+	}
+}
+
+// IsReadOnly returns whether the buffer is read-only
+func (b *Buffer) IsReadOnly() bool {
+	return b.readOnly
+}
+
+// SetReadOnly sets the read-only flag
+func (b *Buffer) SetReadOnly(readOnly bool) {
+	b.readOnly = readOnly
+}
+
+// markModified marks the buffer as modified
+func (b *Buffer) markModified() {
+	if !b.readOnly {
+		b.modified = true
+		b.lastMod = time.Now()
+	}
+}
