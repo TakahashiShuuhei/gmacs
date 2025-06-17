@@ -8,6 +8,7 @@ import (
 
 	"github.com/yuin/gopher-lua"
 	"github.com/TakahashiShuuhei/gmacs/internal/command"
+	"github.com/TakahashiShuuhei/gmacs/internal/logging"
 	pkg "github.com/TakahashiShuuhei/gmacs/internal/package"
 )
 
@@ -234,7 +235,7 @@ func (lc *LuaConfig) exposeGmacsAPI() {
 		nsTable := lc.vm.NewTable()
 		err := ext.ExtendLuaAPI(nsTable, lc.vm)
 		if err != nil {
-			fmt.Printf("Warning: Failed to extend Lua API for %s: %v\n", namespace, err)
+			logging.Debug("Warning: Failed to extend Lua API for %s: %v", namespace, err)
 			continue
 		}
 		gmacsTable.RawSetString(namespace, nsTable)
@@ -251,7 +252,7 @@ func (lc *LuaConfig) luaSetVariable(L *lua.LState) int {
 	value := L.CheckAny(2)
 	
 	// TODO: Implement variable storage
-	fmt.Printf("Setting variable %s = %v\n", key, value)
+	logging.Debug("Setting variable %s = %v", key, value)
 	return 0
 }
 
@@ -259,7 +260,7 @@ func (lc *LuaConfig) luaGetVariable(L *lua.LState) int {
 	key := L.CheckString(1)
 	
 	// TODO: Implement variable retrieval
-	fmt.Printf("Getting variable %s\n", key)
+	logging.Debug("Getting variable %s", key)
 	L.Push(lua.LNil)
 	return 1
 }
@@ -282,7 +283,7 @@ func (lc *LuaConfig) luaLocalSetKey(L *lua.LState) int {
 	command := L.CheckString(2)
 	
 	// TODO: Implement local key binding
-	fmt.Printf("Local binding key %s to command %s\n", keySeq, command)
+	logging.Debug("Local binding key %s to command %s", keySeq, command)
 	return 0
 }
 
@@ -357,7 +358,7 @@ func (lc *LuaConfig) luaMessage(L *lua.LState) int {
 		minibuffer.ShowMessage(message)
 	} else {
 		// Fallback to stdout if no editor is set
-		fmt.Printf("Message: %s\n", message)
+		logging.Debug("Message: %s", message)
 	}
 	return 0
 }
@@ -370,7 +371,7 @@ func (lc *LuaConfig) luaError(L *lua.LState) int {
 		minibuffer.ShowMessage("Error: " + message)
 	} else {
 		// Fallback to stdout if no editor is set
-		fmt.Printf("Error: %s\n", message)
+		logging.Debug("Error: %s", message)
 	}
 	return 0
 }
@@ -403,7 +404,7 @@ func (lc *LuaConfig) luaAddHook(L *lua.LState) int {
 	luaFunc := L.CheckFunction(2)
 	
 	// TODO: Implement hook system
-	fmt.Printf("Adding hook %s\n", hookName)
+	logging.Debug("Adding hook %s", hookName)
 	_ = luaFunc // Use the function parameter
 	return 0
 }
@@ -419,7 +420,7 @@ func (lc *LuaConfig) luaUsePackage(L *lua.LState) int {
 	
 	// TODO: Implement package management integration
 	// This will be connected to PackageManager
-	fmt.Printf("Using package %s@%s\n", packageName, version)
+	logging.Debug("Using package %s@%s", packageName, version)
 	return 0
 }
 
@@ -474,9 +475,9 @@ func (lc *LuaConfig) reportValidationErrors(result *ValidationResult) {
 	if lc.editor == nil {
 		// Fallback to stdout
 		for _, err := range result.Errors {
-			fmt.Printf("Config validation %s: %s\n", err.Severity, err.Error())
+			logging.Debug("Config validation %s: %s", err.Severity, err.Error())
 			for _, suggestion := range err.Suggestions {
-				fmt.Printf("  Suggestion: %s\n", suggestion)
+				logging.Debug("  Suggestion: %s", suggestion)
 			}
 		}
 		return

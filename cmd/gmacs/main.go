@@ -6,9 +6,16 @@ import (
 	"os"
 
 	"github.com/TakahashiShuuhei/gmacs/internal/display"
+	"github.com/TakahashiShuuhei/gmacs/internal/logging"
 )
 
 func main() {
+	// Initialize logging system
+	if err := logging.Init("."); err != nil {
+		log.Printf("Warning: Failed to initialize logging: %v", err)
+	}
+	defer logging.Close()
+
 	// Check for help flag
 	if len(os.Args) > 1 && (os.Args[1] == "-h" || os.Args[1] == "--help") {
 		showHelp()

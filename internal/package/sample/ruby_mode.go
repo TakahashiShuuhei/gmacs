@@ -5,6 +5,7 @@ import (
 	"strings"
 	
 	"github.com/yuin/gopher-lua"
+	"github.com/TakahashiShuuhei/gmacs/internal/logging"
 	pkg "github.com/TakahashiShuuhei/gmacs/internal/package"
 )
 
@@ -38,12 +39,12 @@ func (rm *RubyMode) GetInfo() pkg.PackageInfo {
 }
 
 func (rm *RubyMode) Initialize() error {
-	fmt.Printf("Initializing Ruby mode...\n")
+	logging.Debug("Initializing Ruby mode...")
 	return nil
 }
 
 func (rm *RubyMode) Cleanup() error {
-	fmt.Printf("Cleaning up Ruby mode...\n")
+	logging.Debug("Cleaning up Ruby mode...")
 	return nil
 }
 
@@ -53,13 +54,13 @@ func (rm *RubyMode) IsEnabled() bool {
 
 func (rm *RubyMode) Enable() error {
 	rm.enabled = true
-	fmt.Printf("Ruby mode enabled\n")
+	logging.Debug("Ruby mode enabled")
 	return nil
 }
 
 func (rm *RubyMode) Disable() error {
 	rm.enabled = false
-	fmt.Printf("Ruby mode disabled\n")
+	logging.Debug("Ruby mode disabled")
 	return nil
 }
 

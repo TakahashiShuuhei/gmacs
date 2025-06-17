@@ -12,6 +12,7 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/internal/config"
 	"github.com/TakahashiShuuhei/gmacs/internal/input"
 	"github.com/TakahashiShuuhei/gmacs/internal/keymap"
+	"github.com/TakahashiShuuhei/gmacs/internal/logging"
 	"github.com/TakahashiShuuhei/gmacs/internal/window"
 )
 
@@ -55,8 +56,8 @@ func NewEditor() *Editor {
 	scratchBuf.SetText("Welcome to gmacs!\n\nThis is the scratch buffer.\nType M-x to execute commands.")
 
 	width, height := terminal.Size()
-	fmt.Printf("DEBUG: Initial terminal size: %dx%d\n", width, height) // DEBUG
-	win := window.New(scratchBuf, height-2, width)                     // Reserve space for minibuffer
+	logging.Debug("Initial terminal size: %dx%d", width, height)
+	win := window.New(scratchBuf, height-2, width) // Reserve space for minibuffer
 
 	// Create global keymap
 	km := keymap.New("global")
@@ -230,21 +231,21 @@ func (e *Editor) Run() error {
 
 // handleWindowResize handles terminal window resize events
 func (e *Editor) handleWindowResize() {
-	fmt.Printf("DEBUG: SIGWINCH signal received\n") // DEBUG
+	logging.Debug("SIGWINCH signal received")
 
 	// Update terminal size
 	e.terminal.UpdateSize()
 
 	// Get new terminal size
 	newWidth, newHeight := e.terminal.Size()
-	fmt.Printf("DEBUG: New terminal size: %dx%d\n", newWidth, newHeight) // DEBUG
+	logging.Debug("New terminal size: %dx%d", newWidth, newHeight)
 
 	// Update window size (reserve space for minibuffer)
 	if e.currentWin != nil {
 		oldHeight := e.currentWin.Height()
 		oldWidth := e.currentWin.Width()
 		e.currentWin.SetSize(newHeight-2, newWidth)
-		fmt.Printf("DEBUG: Window size changed from %dx%d to %dx%d\n", oldWidth, oldHeight, newWidth, newHeight-2) // DEBUG
+		logging.Debug("Window size changed from %dx%d to %dx%d", oldWidth, oldHeight, newWidth, newHeight-2)
 	}
 
 	// Clear screen to avoid artifacts
