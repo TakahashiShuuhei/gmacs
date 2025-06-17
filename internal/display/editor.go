@@ -339,6 +339,11 @@ func (e *Editor) selfInsertCommand(char rune) error {
 	buffer := e.currentWin.Buffer()
 	cursor := e.currentWin.Cursor()
 	
+	// Special handling for newline character
+	if char == '\n' {
+		return e.insertNewline()
+	}
+	
 	// Insert the character at cursor position
 	err := buffer.InsertChar(cursor.Line(), cursor.Col(), char)
 	if err != nil {
@@ -349,6 +354,52 @@ func (e *Editor) selfInsertCommand(char rune) error {
 	oldCol := cursor.Col()
 	newCol := oldCol + 1
 	cursor.SetCol(newCol)
+	
+	// Clear any previous message
+	e.minibuffer.ShowMessage("")
+	
+	return nil
+}
+
+// insertNewline inserts a newline and moves cursor to next line
+func (e *Editor) insertNewline() error {
+	buffer := e.currentWin.Buffer()
+	cursor := e.currentWin.Cursor()
+	
+	currentLine := cursor.Line()
+	currentCol := cursor.Col()
+	
+	// Get the current line content
+	if currentLine >= buffer.LineCount() {
+		// Add a new empty line
+		buffer.InsertLine(currentLine, "")
+		cursor.SetLine(currentLine + 1)
+		cursor.SetCol(0)
+		return nil
+	}
+	
+	lineContent := buffer.GetLine(currentLine)
+	lineRunes := []rune(lineContent)
+	
+	// Split the line at cursor position
+	if currentCol >= len(lineRunes) {
+		// Cursor is at end of line, just add new line
+		buffer.InsertLine(currentLine + 1, "")
+	} else {
+		// Split the line
+		leftPart := string(lineRunes[:currentCol])
+		rightPart := string(lineRunes[currentCol:])
+		
+		// Update current line with left part
+		buffer.SetLine(currentLine, leftPart)
+		
+		// Insert new line with right part
+		buffer.InsertLine(currentLine + 1, rightPart)
+	}
+	
+	// Move cursor to next line, column 0
+	cursor.SetLine(currentLine + 1)
+	cursor.SetCol(0)
 	
 	// Clear any previous message
 	e.minibuffer.ShowMessage("")
