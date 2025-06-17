@@ -2,11 +2,13 @@ package pkg
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"plugin"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 	
@@ -24,6 +26,15 @@ type LuaAPIExtension interface {
 	GetNamespace() string
 }
 
+// DownloaderInterface defines interface for package downloader
+type DownloaderInterface interface {
+	DownloadPackage(url, version string) error
+	GetPackagePath(url string) (string, error)
+	GetDownloadedPackages() ([]PackageInfo, error)
+	InitializeWorkspace() error
+	validatePackageURL(url string) error
+}
+
 // Manager manages gmacs packages
 type Manager struct {
 	mu               sync.RWMutex
@@ -31,7 +42,7 @@ type Manager struct {
 	loadedPackages   map[string]*LoadedPackage
 	luaConfig        LuaConfigInterface
 	downloadDir      string
-	downloader       *Downloader
+	downloader       DownloaderInterface
 }
 
 // NewManager creates a new package manager
@@ -46,6 +57,11 @@ func NewManager(downloadDir string) *Manager {
 // SetLuaConfig sets the Lua configuration manager
 func (pm *Manager) SetLuaConfig(luaConfig LuaConfigInterface) {
 	pm.luaConfig = luaConfig
+}
+
+// SetDownloader sets the package downloader (for testing)
+func (pm *Manager) SetDownloader(downloader DownloaderInterface) {
+	pm.downloader = downloader
 }
 
 // DeclarePackage adds a package to the declaration list (doesn't load it yet)
@@ -217,29 +233,59 @@ func (pm *Manager) buildPlugin(packagePath, url string) (string, error) {
 	pluginName := filepath.Base(url) + ".so"
 	pluginPath := filepath.Join(pluginsDir, pluginName)
 
-	// Find the plugin source file
-	pluginSourcePath := filepath.Join(packagePath, "ruby_mode_plugin.go")
-	if _, err := os.Stat(pluginSourcePath); os.IsNotExist(err) {
-		return "", fmt.Errorf("plugin source not found at %s", pluginSourcePath)
+	// Find the plugin source file (look for common plugin file patterns)
+	pluginSourcePath, err := pm.findPluginSourceFile(packagePath)
+	if err != nil {
+		return "", fmt.Errorf("plugin source not found: %v", err)
 	}
 
-	// Create or update go.mod in package directory for plugin building
-	err = pm.ensurePluginGoMod(packagePath)
+	// Check if plugin already exists and is up-to-date
+	if pm.isPluginUpToDate(pluginPath, pluginSourcePath) {
+		return pluginPath, nil
+	}
+
+	// Create temporary build directory
+	tempBuildDir, err := os.MkdirTemp("", "gmacs-plugin-build-")
 	if err != nil {
-		return "", fmt.Errorf("failed to setup go.mod for plugin: %v", err)
+		return "", fmt.Errorf("failed to create temp build directory: %v", err)
+	}
+	defer os.RemoveAll(tempBuildDir)
+
+	// Copy source files to temp directory
+	tempSourcePath := filepath.Join(tempBuildDir, filepath.Base(pluginSourcePath))
+	err = pm.copyFile(pluginSourcePath, tempSourcePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to copy plugin source: %v", err)
+	}
+
+	// Create compatible go.mod in temp directory with main project versions
+	tempGoModPath := filepath.Join(tempBuildDir, "go.mod")
+	err = pm.createCompatibleGoMod(tempGoModPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create compatible go.mod: %v", err)
+	}
+
+	// Initialize dependencies in temp directory
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = tempBuildDir
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("go mod tidy failed: %v\nOutput: %s", err, string(output))
 	}
 
 	// Build plugin using go build -buildmode=plugin
-	cmd := exec.Command("go", "build", "-buildmode=plugin", "-o", pluginPath, pluginSourcePath)
-	cmd.Dir = packagePath
+	cmd = exec.Command("go", "build", "-buildmode=plugin", "-o", pluginPath, tempSourcePath)
+	cmd.Dir = tempBuildDir
 	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 
-	output, err := cmd.CombinedOutput()
+	output, err = cmd.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("plugin build failed: %v\nOutput: %s", err, string(output))
 	}
 
-	fmt.Printf("Successfully built plugin: %s\n", pluginPath)
+	// Plugin built successfully
 	return pluginPath, nil
 }
 
@@ -307,6 +353,11 @@ func (pm *Manager) getProjectRoot() string {
 
 // loadPlugin loads a .so plugin file
 func (pm *Manager) loadPlugin(pluginPath string) (Package, error) {
+	// Check if plugin file exists
+	if _, err := os.Stat(pluginPath); os.IsNotExist(err) {
+		return nil, fmt.Errorf("plugin file does not exist: %s", pluginPath)
+	}
+	
 	// Open the plugin
 	plug, err := plugin.Open(pluginPath)
 	if err != nil {
@@ -320,7 +371,6 @@ func (pm *Manager) loadPlugin(pluginPath string) (Package, error) {
 	}
 
 	// Convert to function and call it
-	// Use interface{} first then type assert to avoid version conflicts
 	newPackageFunc, ok := newPackageSymbol.(func() interface{})
 	if !ok {
 		return nil, fmt.Errorf("NewPackage symbol is not a function returning interface{}")
@@ -330,10 +380,10 @@ func (pm *Manager) loadPlugin(pluginPath string) (Package, error) {
 	pluginInstance := newPackageFunc()
 	pkg, ok := pluginInstance.(Package)
 	if !ok {
-		return nil, fmt.Errorf("plugin instance does not implement Package interface")
+		return nil, fmt.Errorf("plugin instance does not implement Package interface, got: %T", pluginInstance)
 	}
 
-	fmt.Printf("Successfully loaded plugin package: %s\n", pkg.GetInfo().Name)
+	// Plugin package loaded successfully
 	return pkg, nil
 }
 
@@ -479,4 +529,135 @@ func (mp *mockPackage) Enable() error {
 func (mp *mockPackage) Disable() error {
 	mp.enabled = false
 	return nil
+}
+
+// copyFile copies a file from src to dst
+func (pm *Manager) copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// createCompatibleGoMod creates a go.mod with versions compatible with main project
+func (pm *Manager) createCompatibleGoMod(goModPath string) error {
+	// Read main project's go.mod to get compatible versions
+	mainGoModPath := filepath.Join(pm.getProjectRoot(), "go.mod")
+	mainGoModContent, err := os.ReadFile(mainGoModPath)
+	if err != nil {
+		return fmt.Errorf("failed to read main go.mod: %v", err)
+	}
+
+	// Extract gopher-lua version from main go.mod
+	gopherLuaVersion := "v0.0.0-20220504180219-658193537a64" // default fallback
+	lines := strings.Split(string(mainGoModContent), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if strings.Contains(line, "github.com/yuin/gopher-lua") {
+			parts := strings.Fields(line)
+			if len(parts) >= 2 {
+				gopherLuaVersion = parts[1]
+			}
+			break
+		}
+	}
+
+	// Create compatible go.mod content with replace directive to use local gmacs
+	projectRoot := pm.getProjectRoot()
+	goModContent := fmt.Sprintf(`module gmacs-plugin-build
+
+go 1.21
+
+require (
+	github.com/yuin/gopher-lua %s
+	github.com/TakahashiShuuhei/gmacs v0.1.0
+)
+
+replace github.com/TakahashiShuuhei/gmacs => %s
+`, gopherLuaVersion, projectRoot)
+
+	err = os.WriteFile(goModPath, []byte(goModContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write go.mod: %v", err)
+	}
+
+	return nil
+}
+
+// isPluginUpToDate checks if the plugin file is newer than the source file and dependencies
+func (pm *Manager) isPluginUpToDate(pluginPath, sourcePath string) bool {
+	// Check if plugin file exists
+	pluginStat, err := os.Stat(pluginPath)
+	if os.IsNotExist(err) {
+		return false
+	}
+	if err != nil {
+		return false // If we can't stat the plugin file, rebuild it
+	}
+
+	// Check source file modification time
+	sourceStat, err := os.Stat(sourcePath)
+	if err != nil {
+		return false // If we can't stat the source file, something's wrong
+	}
+
+	// Plugin must be newer than source file
+	if pluginStat.ModTime().Before(sourceStat.ModTime()) {
+		return false
+	}
+
+	// Check if main project's go.mod is newer (dependency changes)
+	mainGoModPath := filepath.Join(pm.getProjectRoot(), "go.mod")
+	if mainGoModStat, err := os.Stat(mainGoModPath); err == nil {
+		if pluginStat.ModTime().Before(mainGoModStat.ModTime()) {
+			return false
+		}
+	}
+
+	// Check package's go.mod if it exists
+	packageDir := filepath.Dir(sourcePath)
+	packageGoModPath := filepath.Join(packageDir, "go.mod")
+	if packageGoModStat, err := os.Stat(packageGoModPath); err == nil {
+		if pluginStat.ModTime().Before(packageGoModStat.ModTime()) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// findPluginSourceFile finds the plugin source file in the package directory
+func (pm *Manager) findPluginSourceFile(packagePath string) (string, error) {
+	// Common plugin file patterns to look for
+	patterns := []string{
+		"*_plugin.go",
+		"plugin.go", 
+		"main.go",
+	}
+	
+	for _, pattern := range patterns {
+		matches, err := filepath.Glob(filepath.Join(packagePath, pattern))
+		if err != nil {
+			continue
+		}
+		if len(matches) > 0 {
+			return matches[0], nil
+		}
+	}
+	
+	return "", fmt.Errorf("no plugin source file found in %s", packagePath)
 }

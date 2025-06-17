@@ -85,7 +85,7 @@ func (r *TestPlugin) ExtendLuaAPI(luaTable *lua.LTable, vm *lua.LState) error {
 
 func (r *TestPlugin) GetNamespace() string { return "test" }
 
-var NewPackage = func() interface{} {
+func NewPackage() interface{} {
 	return &TestPlugin{}
 }
 `

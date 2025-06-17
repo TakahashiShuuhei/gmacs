@@ -85,7 +85,7 @@ func (d *Downloader) DownloadPackage(url, version string) error {
 		packageRef = fmt.Sprintf("%s@%s", url, version)
 	}
 	
-	fmt.Printf("Downloading package: %s\n", packageRef)
+	// Downloading package
 	
 	// Execute go get command
 	cmd := exec.Command("go", "get", packageRef)
@@ -113,7 +113,7 @@ func (d *Downloader) DownloadPackage(url, version string) error {
 		return fmt.Errorf("download timeout for package %s", packageRef)
 	}
 	
-	fmt.Printf("Successfully downloaded: %s\n", packageRef)
+	// Package downloaded successfully
 	return nil
 }
 
@@ -212,7 +212,7 @@ func (d *Downloader) RemovePackage(url string) error {
 		return fmt.Errorf("failed to tidy modules: %v\nOutput: %s", err, string(output))
 	}
 	
-	fmt.Printf("Successfully removed package: %s\n", url)
+	// Package removed successfully
 	return nil
 }
 

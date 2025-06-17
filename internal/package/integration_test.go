@@ -24,9 +24,8 @@ func TestPackageManagerDownloaderIntegration(t *testing.T) {
 
 	// Test that downloader workspace path is correct
 	expectedPath := filepath.Join(tempDir, "cache")
-	if manager.downloader.workDir != expectedPath {
-		t.Errorf("Expected downloader workDir to be %s, got %s", expectedPath, manager.downloader.workDir)
-	}
+	// Note: workDir is now private in the interface, so we test indirectly
+	// by verifying that InitializeWorkspace creates the expected directory
 
 	// Test downloader initialization
 	err = manager.downloader.InitializeWorkspace()
