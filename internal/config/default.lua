@@ -36,6 +36,10 @@ gmacs.global_set_key("C-c C-c", "compile")
 gmacs.global_set_key("C-c C-k", "kill-compilation")
 gmacs.global_set_key("C-c C-l", "list-commands")
 
+-- Buffer management
+gmacs.global_set_key("C-x C-b", "list-buffers")
+gmacs.global_set_key("C-x b", "switch-to-buffer")
+
 -- Custom commands defined in Lua
 function version_command()
     gmacs.message("gmacs version 0.0.1 - Go Emacs-like Editor")
