@@ -163,7 +163,11 @@ func (lc *LuaConfig) loadDefaultConfig() error {
 	}
 
 	// Execute the default configuration
-	return lc.vm.DoString(string(content))
+	err = lc.vm.DoString(string(content))
+	if err != nil {
+		return fmt.Errorf("failed to execute default config: %v", err)
+	}
+	return nil
 }
 
 // exposeGmacsAPI exposes gmacs functionality to Lua
@@ -245,9 +249,6 @@ func (lc *LuaConfig) luaGlobalSetKey(L *lua.LState) int {
 		if err != nil {
 			L.RaiseError("Failed to bind key '%s' to command '%s': %v", keySeq, command, err)
 		}
-	} else {
-		// Fallback logging for testing
-		fmt.Printf("Binding key %s to command %s\n", keySeq, command)
 	}
 	return 0
 }

@@ -38,9 +38,33 @@ func (p *LuaParser) ParsePackageDeclarations(configPath string) ([]PackageDeclar
 	return p.parsePackageDeclarationsFromContent(string(content))
 }
 
+// ParsePackageDeclarationsFromContent parses package declarations from Lua content (exported for testing)
+func (p *LuaParser) ParsePackageDeclarationsFromContent(content string) ([]PackageDeclaration, error) {
+	return p.parsePackageDeclarationsFromContent(content)
+}
+
 // parsePackageDeclarationsFromContent parses package declarations from Lua content
 func (p *LuaParser) parsePackageDeclarationsFromContent(content string) ([]PackageDeclaration, error) {
 	var declarations []PackageDeclaration
+
+	// Process line by line to exclude comments
+	lines := strings.Split(content, "\n")
+	var activeLines []string
+	
+	for _, line := range lines {
+		// Remove comments (everything after --)
+		if commentIndex := strings.Index(line, "--"); commentIndex >= 0 {
+			line = line[:commentIndex]
+		}
+		// Only add non-empty lines
+		line = strings.TrimSpace(line)
+		if line != "" {
+			activeLines = append(activeLines, line)
+		}
+	}
+	
+	// Join active lines back for pattern matching
+	activeContent := strings.Join(activeLines, "\n")
 
 	// Regular expression to match use_package calls
 	// Matches both:
@@ -49,7 +73,7 @@ func (p *LuaParser) parsePackageDeclarationsFromContent(content string) ([]Packa
 	// gmacs.use_package("url")
 	usePackageRegex := regexp.MustCompile(`gmacs\.use_package\s*\(\s*"([^"]+)"(?:\s*,\s*([^)]+))?\s*\)`)
 
-	matches := usePackageRegex.FindAllStringSubmatch(content, -1)
+	matches := usePackageRegex.FindAllStringSubmatch(activeContent, -1)
 
 	for _, match := range matches {
 		url := match[1]

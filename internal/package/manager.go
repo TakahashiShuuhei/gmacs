@@ -2,7 +2,11 @@ package pkg
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
+	"plugin"
+	"runtime"
 	"sync"
 	"time"
 	
@@ -164,15 +168,183 @@ func (pm *Manager) downloadPackage(url, version string) error {
 
 // loadPackageBinary loads the package binary/plugin
 func (pm *Manager) loadPackageBinary(url string) (Package, error) {
-	// TODO: Implement actual plugin loading
-	// This would involve Go plugin system or other dynamic loading mechanism
-	// For now, return a mock package
+	// Check if plugin loading is supported on this platform
+	if !pm.isPluginSupported() {
+		return pm.loadMockPackage(url)
+	}
+
+	// Get package path
+	packagePath, err := pm.downloader.GetPackagePath(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get package path: %v", err)
+	}
+
+	// Build plugin
+	pluginPath, err := pm.buildPlugin(packagePath, url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build plugin: %v", err)
+	}
+
+	// Load plugin
+	pkg, err := pm.loadPlugin(pluginPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load plugin: %v", err)
+	}
+
+	return pkg, nil
+}
+
+// isPluginSupported checks if plugin loading is supported on current platform
+func (pm *Manager) isPluginSupported() bool {
+	switch runtime.GOOS {
+	case "linux", "freebsd", "darwin": // darwin = macOS
+		return true
+	default:
+		return false
+	}
+}
+
+// buildPlugin builds a package as a plugin (.so file)
+func (pm *Manager) buildPlugin(packagePath, url string) (string, error) {
+	// Create plugins directory
+	pluginsDir := filepath.Join(pm.downloadDir, "plugins")
+	err := os.MkdirAll(pluginsDir, 0755)
+	if err != nil {
+		return "", fmt.Errorf("failed to create plugins directory: %v", err)
+	}
+
+	// Generate plugin filename
+	pluginName := filepath.Base(url) + ".so"
+	pluginPath := filepath.Join(pluginsDir, pluginName)
+
+	// Find the plugin source file
+	pluginSourcePath := filepath.Join(packagePath, "ruby_mode_plugin.go")
+	if _, err := os.Stat(pluginSourcePath); os.IsNotExist(err) {
+		return "", fmt.Errorf("plugin source not found at %s", pluginSourcePath)
+	}
+
+	// Create or update go.mod in package directory for plugin building
+	err = pm.ensurePluginGoMod(packagePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to setup go.mod for plugin: %v", err)
+	}
+
+	// Build plugin using go build -buildmode=plugin
+	cmd := exec.Command("go", "build", "-buildmode=plugin", "-o", pluginPath, pluginSourcePath)
+	cmd.Dir = packagePath
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("plugin build failed: %v\nOutput: %s", err, string(output))
+	}
+
+	fmt.Printf("Successfully built plugin: %s\n", pluginPath)
+	return pluginPath, nil
+}
+
+// ensurePluginGoMod creates or updates go.mod in plugin directory
+func (pm *Manager) ensurePluginGoMod(packagePath string) error {
+	goModPath := filepath.Join(packagePath, "go.mod")
+	
+	// Check if main project go.mod exists
+	mainGoModPath := filepath.Join(pm.getProjectRoot(), "go.mod")
+	if _, err := os.Stat(mainGoModPath); err != nil {
+		return fmt.Errorf("main go.mod not found: %v", err)
+	}
+
+	// Create go.mod for plugin (simplified version)
+	pluginGoModContent := `module gmacs-plugin
+
+go 1.21
+
+require (
+	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64
+	github.com/TakahashiShuuhei/gmacs v0.0.0
+)
+
+replace github.com/TakahashiShuuhei/gmacs => ` + pm.getProjectRoot() + `
+`
+
+	err := os.WriteFile(goModPath, []byte(pluginGoModContent), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to create plugin go.mod: %v", err)
+	}
+
+	// Run go mod tidy to resolve dependencies
+	cmd := exec.Command("go", "mod", "tidy")
+	cmd.Dir = packagePath
+	cmd.Env = append(os.Environ(), "GO111MODULE=on")
+	
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("go mod tidy failed: %v\nOutput: %s", err, string(output))
+	}
+
+	return nil
+}
+
+// getProjectRoot returns the root directory of the gmacs project
+func (pm *Manager) getProjectRoot() string {
+	// Find the directory containing go.mod
+	currentDir, _ := os.Getwd()
+	for {
+		goModPath := filepath.Join(currentDir, "go.mod")
+		if _, err := os.Stat(goModPath); err == nil {
+			return currentDir
+		}
+		
+		parent := filepath.Dir(currentDir)
+		if parent == currentDir {
+			break
+		}
+		currentDir = parent
+	}
+	
+	// Fallback: assume we're in the project somewhere
+	return filepath.Join(currentDir, "../../../")
+}
+
+// loadPlugin loads a .so plugin file
+func (pm *Manager) loadPlugin(pluginPath string) (Package, error) {
+	// Open the plugin
+	plug, err := plugin.Open(pluginPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open plugin %s: %v", pluginPath, err)
+	}
+
+	// Look for NewPackage symbol
+	newPackageSymbol, err := plug.Lookup("NewPackage")
+	if err != nil {
+		return nil, fmt.Errorf("NewPackage symbol not found in plugin: %v", err)
+	}
+
+	// Convert to function and call it
+	// Use interface{} first then type assert to avoid version conflicts
+	newPackageFunc, ok := newPackageSymbol.(func() interface{})
+	if !ok {
+		return nil, fmt.Errorf("NewPackage symbol is not a function returning interface{}")
+	}
+	
+	// Call the function and type assert to our Package interface
+	pluginInstance := newPackageFunc()
+	pkg, ok := pluginInstance.(Package)
+	if !ok {
+		return nil, fmt.Errorf("plugin instance does not implement Package interface")
+	}
+
+	fmt.Printf("Successfully loaded plugin package: %s\n", pkg.GetInfo().Name)
+	return pkg, nil
+}
+
+// loadMockPackage returns a mock package for unsupported platforms
+func (pm *Manager) loadMockPackage(url string) (Package, error) {
 	return &mockPackage{
 		info: PackageInfo{
 			Name:        "mock-package",
 			URL:         url,
 			Version:     "1.0.0",
-			Description: "Mock package for testing",
+			Description: "Mock package (plugin loading not supported on this platform)",
 		},
 	}, nil
 }

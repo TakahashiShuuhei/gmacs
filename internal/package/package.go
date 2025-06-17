@@ -1,51 +1,17 @@
 package pkg
 
 import (
-	"github.com/yuin/gopher-lua"
+	"github.com/TakahashiShuuhei/gmacs/pkg/gmacs"
 )
 
-// Package represents a gmacs extension package
-type Package interface {
-	// GetInfo returns basic package information
-	GetInfo() PackageInfo
-	
-	// Initialize initializes the package (called after loading)
-	Initialize() error
-	
-	// Cleanup cleans up package resources
-	Cleanup() error
-	
-	// IsEnabled returns whether the package is currently enabled
-	IsEnabled() bool
-	
-	// Enable enables the package
-	Enable() error
-	
-	// Disable disables the package
-	Disable() error
-}
+// Package is an alias for the public interface
+type Package = gmacs.Package
 
-// PackageInfo contains metadata about a package
-type PackageInfo struct {
-	Name        string   `json:"name"`
-	Version     string   `json:"version"`
-	Description string   `json:"description"`
-	Author      string   `json:"author"`
-	URL         string   `json:"url"`
-	Dependencies []string `json:"dependencies"`
-	Keywords    []string `json:"keywords"`
-}
+// PackageInfo is an alias for the public type
+type PackageInfo = gmacs.PackageInfo
 
-// LuaAPIExtender represents a package that can extend Lua API
-type LuaAPIExtender interface {
-	Package
-	
-	// ExtendLuaAPI adds package-specific functions to Lua environment
-	ExtendLuaAPI(luaTable *lua.LTable, vm *lua.LState) error
-	
-	// GetNamespace returns the Lua namespace for this package (e.g., "ruby", "git")
-	GetNamespace() string
-}
+// LuaAPIExtender is an alias for the public interface
+type LuaAPIExtender = gmacs.LuaAPIExtender
 
 // ConfigurablePackage represents a package that can be configured
 type ConfigurablePackage interface {
