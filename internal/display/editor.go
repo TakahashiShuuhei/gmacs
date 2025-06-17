@@ -210,37 +210,72 @@ func (e *Editor) handleKeyEvent(keyEvent *input.KeyEvent) error {
 		return nil
 	}
 	
-	// Handle special key combinations directly
-	keyStr := keyEvent.Key.String()
-	switch keyStr {
-	case "M-x":
-		return e.executeExtendedCommand()
-	case "C-x":
-		// Start multi-key sequence (for now, just show message)
-		e.minibuffer.ShowMessage("C-x-")
-		return nil
-	case "C-g":
+	// Handle key sequence building
+	return e.handleKeySequence(keyEvent.Key)
+}
+
+// handleKeySequence handles multi-key sequences (prefix keys)
+func (e *Editor) handleKeySequence(key keymap.Key) error {
+	// Add the key to current sequence
+	e.keySequence = append(e.keySequence, key)
+	
+	// Check for C-g (quit/cancel sequence)
+	keyStr := key.String()
+	if keyStr == "C-g" {
+		e.keySequence = nil
 		e.minibuffer.ShowMessage("Quit")
 		return nil
-	case "C-c":
-		// C-c prefix key (like Emacs)
-		e.minibuffer.ShowMessage("C-c-")
-		return nil
-	default:
-		// Try to look up binding
-		seq := keymap.KeySequence{keyEvent.Key}
-		if binding, exists := e.keymap.Lookup(seq); exists {
+	}
+	
+	// Try to look up current sequence
+	if binding, exists := e.keymap.Lookup(e.keySequence); exists {
+		// Found a complete binding
+		e.keySequence = nil // Reset sequence
+		
+		// Handle special commands
+		switch binding.Command {
+		case "execute-extended-command":
+			return e.executeExtendedCommand()
+		default:
 			return e.registry.Execute(binding.Command, binding.Args...)
 		}
-		
-		// If it's a printable character, insert it
-		if keyEvent.Printable {
-			return e.selfInsertCommand(keyEvent.Key.Char)
-		} else {
-			e.minibuffer.ShowMessage(fmt.Sprintf("'%s' is undefined", keyStr))
-		}
+	}
+	
+	// Check if this could be a prefix for a longer sequence
+	if e.isPrefixSequence(e.keySequence) {
+		// Show current sequence in minibuffer
+		seqStr := e.keySequence.String()
+		e.minibuffer.ShowMessage(seqStr + "-")
 		return nil
 	}
+	
+	// No binding found and not a prefix
+	if len(e.keySequence) == 1 {
+		// Single key - check if it's printable
+		if key.Special == "" && key.Char >= 32 && key.Char <= 126 && !key.Ctrl && !key.Alt {
+			e.keySequence = nil
+			return e.selfInsertCommand(key.Char)
+		}
+	}
+	
+	// Unknown sequence
+	seqStr := e.keySequence.String()
+	e.keySequence = nil // Reset sequence
+	e.minibuffer.ShowMessage(fmt.Sprintf("'%s' is undefined", seqStr))
+	return nil
+}
+
+// isPrefixSequence checks if the current sequence could be a prefix for a longer binding
+func (e *Editor) isPrefixSequence(seq keymap.KeySequence) bool {
+	seqStr := seq.String()
+	allBindings := e.keymap.GetAllBindings()
+	
+	for bindingStr := range allBindings {
+		if len(bindingStr) > len(seqStr) && strings.HasPrefix(bindingStr, seqStr+" ") {
+			return true
+		}
+	}
+	return false
 }
 
 // handleInput processes user input (fallback for non-raw mode)
@@ -1076,6 +1111,17 @@ func (e *Editor) registerEditorCommands() {
 		return nil
 	})
 	
+	// Compile commands
+	e.registry.Register("compile", "Compile current project", "", func(args ...interface{}) error {
+		e.minibuffer.ShowMessage("Compilation started... (not implemented yet)")
+		return nil
+	})
+	
+	e.registry.Register("kill-compilation", "Kill running compilation", "", func(args ...interface{}) error {
+		e.minibuffer.ShowMessage("Compilation killed (not implemented yet)")
+		return nil
+	})
+	
 	// List commands
 	e.registry.Register("list-commands", "List all available commands", "", func(args ...interface{}) error {
 		commands := e.registry.List()
@@ -1175,10 +1221,19 @@ func (e *Editor) setupBasicKeyBindings() {
 	e.keymap.Bind([]keymap.Key{{Special: "backspace"}}, "backward-delete-char")
 	e.keymap.Bind([]keymap.Key{{Special: "DEL"}}, "backward-delete-char")
 	
-	// ファイル操作
+	// M-x binding
+	e.keymap.Bind([]keymap.Key{{Char: 'x', Alt: true}}, "execute-extended-command")
+	
+	// C-x prefix キーバインド（ファイル操作）
 	e.keymap.Bind([]keymap.Key{{Char: 'x', Ctrl: true}, {Char: 'f', Ctrl: true}}, "find-file")
 	e.keymap.Bind([]keymap.Key{{Char: 'x', Ctrl: true}, {Char: 's', Ctrl: true}}, "save-buffer")
 	e.keymap.Bind([]keymap.Key{{Char: 'x', Ctrl: true}, {Char: 'c', Ctrl: true}}, "quit")
+	e.keymap.Bind([]keymap.Key{{Char: 'x', Ctrl: true}, {Char: 'w', Ctrl: true}}, "write-file")
+	
+	// C-c prefix キーバインド（コンパイル・実行）
+	e.keymap.Bind([]keymap.Key{{Char: 'c', Ctrl: true}, {Char: 'c', Ctrl: true}}, "compile")
+	e.keymap.Bind([]keymap.Key{{Char: 'c', Ctrl: true}, {Char: 'k', Ctrl: true}}, "kill-compilation")
+	e.keymap.Bind([]keymap.Key{{Char: 'c', Ctrl: true}, {Char: 'l', Ctrl: true}}, "list-commands")
 	
 	// newlineコマンドを登録（Enterキー用）
 	e.registry.Register("newline", "Insert newline or complete input", "", func(args ...interface{}) error {
