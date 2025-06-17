@@ -2,7 +2,10 @@ package display
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"github.com/TakahashiShuuhei/gmacs/internal/buffer"
 	"github.com/TakahashiShuuhei/gmacs/internal/command"
@@ -29,6 +32,8 @@ type Editor struct {
 	lastCursorCol      int         // 前回のカーソル列
 	lastStatusLine     string      // 前回のステータスライン
 	needsFullRedraw    bool        // 全画面再描画が必要かどうか
+	// ウィンドウサイズ変更検知用
+	resizeSignal       chan os.Signal // SIGWINCHシグナル受信用チャンネル
 }
 
 // NewEditor creates a new editor instance
@@ -43,6 +48,7 @@ func NewEditor() *Editor {
 	buf.SetText("Welcome to gmacs!\n\nThis is the scratch buffer.\nType M-x to execute commands.")
 	
 	width, height := terminal.Size()
+	fmt.Printf("DEBUG: Initial terminal size: %dx%d\n", width, height) // DEBUG
 	win := window.New(buf, height-2, width) // Reserve space for minibuffer
 	
 	// Create global keymap
@@ -58,7 +64,11 @@ func NewEditor() *Editor {
 		running:          true,
 		registry:         command.GetGlobalRegistry(),
 		needsFullRedraw:  true, // 初回は全画面描画
+		resizeSignal:     make(chan os.Signal, 1), // ウィンドウサイズ変更検知用
 	}
+	
+	// SIGWINCHシグナル（ウィンドウサイズ変更）を監視
+	signal.Notify(editor.resizeSignal, syscall.SIGWINCH)
 	
 	// Register basic editor commands
 	editor.registerEditorCommands()
@@ -102,35 +112,94 @@ func (e *Editor) Run() error {
 		defer e.rawKeyboard.DisableRawMode()
 	}
 	
+	// Use channels for concurrent input handling
+	keyEventChan := make(chan *input.KeyEvent, 1)
+	lineChan := make(chan string, 1)
+	errorChan := make(chan error, 1)
+	
+	// Start input goroutine
+	go func() {
+		for e.running {
+			if rawModeEnabled {
+				keyEvent, err := e.rawKeyboard.ReadKey()
+				if err != nil {
+					errorChan <- err
+					return
+				}
+				keyEventChan <- keyEvent
+			} else {
+				line, err := e.keyboard.ReadLine()
+				if err != nil {
+					errorChan <- err
+					return
+				}
+				lineChan <- line
+			}
+		}
+	}()
+	
 	for e.running {
 		e.redraw()
 		
-		if rawModeEnabled {
-			// Read key input in raw mode
-			keyEvent, err := e.rawKeyboard.ReadKey()
-			if err != nil {
-				return err
-			}
+		// Handle resize signals and input concurrently
+		select {
+		case <-e.resizeSignal:
+			e.handleWindowResize()
+			// Continue immediately to redraw with new size
+			continue
 			
-			// Handle the key event
+		case keyEvent := <-keyEventChan:
+			// Handle key event from raw mode
 			if err := e.handleKeyEvent(keyEvent); err != nil {
 				e.minibuffer.ShowError(err)
 			}
-		} else {
-			// Fallback to line-based input
-			line, err := e.keyboard.ReadLine()
-			if err != nil {
-				return err
-			}
 			
-			// Handle the input using old method
+		case line := <-lineChan:
+			// Handle line input from fallback mode
 			if err := e.handleInput(line); err != nil {
 				e.minibuffer.ShowError(err)
 			}
+			
+		case err := <-errorChan:
+			// Handle input errors
+			return err
 		}
 	}
 	
+	// Stop signal monitoring
+	signal.Stop(e.resizeSignal)
+	close(e.resizeSignal)
+	
 	return nil
+}
+
+// handleWindowResize handles terminal window resize events
+func (e *Editor) handleWindowResize() {
+	fmt.Printf("DEBUG: SIGWINCH signal received\n") // DEBUG
+	
+	// Update terminal size
+	e.terminal.UpdateSize()
+	
+	// Get new terminal size
+	newWidth, newHeight := e.terminal.Size()
+	fmt.Printf("DEBUG: New terminal size: %dx%d\n", newWidth, newHeight) // DEBUG
+	
+	// Update window size (reserve space for minibuffer)
+	if e.currentWin != nil {
+		oldHeight := e.currentWin.Height()
+		oldWidth := e.currentWin.Width()
+		e.currentWin.SetSize(newHeight-2, newWidth)
+		fmt.Printf("DEBUG: Window size changed from %dx%d to %dx%d\n", oldWidth, oldHeight, newWidth, newHeight-2) // DEBUG
+	}
+	
+	// Force full redraw after resize
+	e.needsFullRedraw = true
+	
+	// Clear screen to avoid artifacts
+	e.terminal.Clear()
+	
+	// Show resize notification in minibuffer (with debug info)
+	e.minibuffer.ShowMessage(fmt.Sprintf("Terminal resized to %dx%d (W=%d H=%d)", newWidth, newHeight, newWidth, newHeight))
 }
 
 // handleKeyEvent processes a key event from raw keyboard input
@@ -664,7 +733,7 @@ func (e *Editor) drawBuffer() {
 // drawStatusLine draws the status line
 func (e *Editor) drawStatusLine() {
 	width, height := e.terminal.Size()
-	statusLine := height - 1
+	statusLine := height - 1 // Status line is second from bottom (minibuffer is at bottom)
 	
 	e.terminal.MoveCursor(statusLine, 1)
 	e.terminal.ClearLine()
@@ -991,6 +1060,19 @@ func (e *Editor) registerEditorCommands() {
 	// Version command
 	e.registry.Register("version", "Show gmacs version", "", func(args ...interface{}) error {
 		e.minibuffer.ShowMessage("gmacs version 0.0.1 - Go Emacs-like Editor")
+		return nil
+	})
+	
+	// Terminal size command (debug)
+	e.registry.Register("terminal-size", "Show current terminal size", "", func(args ...interface{}) error {
+		width, height := e.terminal.Size()
+		e.minibuffer.ShowMessage(fmt.Sprintf("Terminal size: %dx%d (width x height)", width, height))
+		return nil
+	})
+	
+	// Manual resize command (debug)
+	e.registry.Register("force-resize", "Force terminal resize handling", "", func(args ...interface{}) error {
+		e.handleWindowResize()
 		return nil
 	})
 	

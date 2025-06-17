@@ -35,14 +35,23 @@ func NewTerminal(input io.Reader, output io.Writer) *Terminal {
 	}
 	
 	// Get terminal size
-	t.updateSize()
+	t.UpdateSize()
 	
 	return t
 }
 
-// updateSize updates the terminal size
-func (t *Terminal) updateSize() {
-	// Try to get terminal size using stty
+// UpdateSize updates the terminal size (public method for resize handling)
+func (t *Terminal) UpdateSize() {
+	// Try to get terminal size using ioctl syscall
+	width, height := getTerminalSize()
+	
+	if width > 0 && height > 0 {
+		t.width = width
+		t.height = height
+		return
+	}
+	
+	// Try to get terminal size using stty as fallback
 	if cmd := exec.Command("stty", "size"); cmd != nil {
 		if output, err := cmd.Output(); err == nil {
 			parts := strings.Fields(string(output))
@@ -69,6 +78,51 @@ func (t *Terminal) updateSize() {
 // Size returns the terminal size
 func (t *Terminal) Size() (width, height int) {
 	return t.width, t.height
+}
+
+// getTerminalSize gets terminal size using ioctl syscall
+func getTerminalSize() (width, height int) {
+	// Try to get size from stdout file descriptor
+	type winsize struct {
+		Row    uint16
+		Col    uint16
+		Xpixel uint16
+		Ypixel uint16
+	}
+	
+	ws := &winsize{}
+	retCode, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
+		uintptr(syscall.Stdout),
+		uintptr(0x5413), // TIOCGWINSZ
+		uintptr(unsafe.Pointer(ws)))
+	
+	if retCode == 0 {
+		return int(ws.Col), int(ws.Row)
+	}
+	
+	// If stdout fails, try stderr
+	retCode, _, errno = syscall.Syscall(syscall.SYS_IOCTL,
+		uintptr(syscall.Stderr),
+		uintptr(0x5413), // TIOCGWINSZ
+		uintptr(unsafe.Pointer(ws)))
+	
+	if retCode == 0 {
+		return int(ws.Col), int(ws.Row)
+	}
+	
+	// If both fail, try stdin
+	retCode, _, errno = syscall.Syscall(syscall.SYS_IOCTL,
+		uintptr(syscall.Stdin),
+		uintptr(0x5413), // TIOCGWINSZ
+		uintptr(unsafe.Pointer(ws)))
+	
+	if retCode == 0 {
+		return int(ws.Col), int(ws.Row)
+	}
+	
+	// All failed
+	_ = errno // suppress unused variable warning
+	return 0, 0
 }
 
 // Clear clears the terminal screen (with buffering support)
