@@ -798,35 +798,6 @@ func (e *Editor) registerEditorCommands() {
 		return e.selfInsertCommand('\n')
 	})
 
-	// Buffer management commands
-	e.registry.Register("list-buffers", "List all buffers", "", func(args ...interface{}) error {
-		currentBuf := e.currentWin.Buffer()
-		bufferNames := make([]string, len(e.buffers))
-		for i, buf := range e.buffers {
-			mark := " "
-			if buf == currentBuf {
-				mark = "*"
-			}
-			bufferNames[i] = fmt.Sprintf("%s %s", mark, buf.Name())
-		}
-		message := fmt.Sprintf("Buffers (%d): %s", len(e.buffers), strings.Join(bufferNames, ", "))
-		e.minibuffer.ShowMessage(message)
-		return nil
-	})
-
-	e.registry.Register("switch-to-buffer", "Switch to a buffer", "", func(args ...interface{}) error {
-		// This would normally prompt for buffer name, but for now just cycle through buffers
-		currentBuf := e.currentWin.Buffer()
-		currentIndex := -1
-		for i, buf := range e.buffers {
-			if buf == currentBuf {
-				currentIndex = i
-				break
-			}
-		}
-		nextBuffer := (currentIndex + 1) % len(e.buffers)
-		return e.SwitchToBuffer(nextBuffer)
-	})
 }
 
 // registerPlugins registers all registered plugins
