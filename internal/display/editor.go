@@ -895,41 +895,6 @@ func (e *Editor) registerEditorCommands() {
 		return e.writeFile()
 	})
 	
-	// 基本的なキーバインドを設定
-	e.setupBasicKeyBindings()
-}
-
-// setupBasicKeyBindings sets up basic key bindings
-func (e *Editor) setupBasicKeyBindings() {
-	// Enterキーを何もしないコマンドにバインド（ただし、ミニバッファでは動作が異なる）
-	e.keymap.Bind([]keymap.Key{{Special: "RET"}}, "newline")
-	e.keymap.Bind([]keymap.Key{{Special: "return"}}, "newline")
-	
-	// 基本的な移動キー
-	e.keymap.Bind([]keymap.Key{{Char: 'f', Ctrl: true}}, "forward-char")
-	e.keymap.Bind([]keymap.Key{{Char: 'b', Ctrl: true}}, "backward-char")
-	e.keymap.Bind([]keymap.Key{{Char: 'n', Ctrl: true}}, "next-line")
-	e.keymap.Bind([]keymap.Key{{Char: 'p', Ctrl: true}}, "previous-line")
-	
-	// 削除キー
-	e.keymap.Bind([]keymap.Key{{Char: 'd', Ctrl: true}}, "delete-char")
-	e.keymap.Bind([]keymap.Key{{Special: "backspace"}}, "backward-delete-char")
-	e.keymap.Bind([]keymap.Key{{Special: "DEL"}}, "backward-delete-char")
-	
-	// M-x binding
-	e.keymap.Bind([]keymap.Key{{Char: 'x', Alt: true}}, "execute-extended-command")
-	
-	// C-x prefix キーバインド（ファイル操作）
-	e.keymap.Bind([]keymap.Key{{Char: 'x', Ctrl: true}, {Char: 'f', Ctrl: true}}, "find-file")
-	e.keymap.Bind([]keymap.Key{{Char: 'x', Ctrl: true}, {Char: 's', Ctrl: true}}, "save-buffer")
-	e.keymap.Bind([]keymap.Key{{Char: 'x', Ctrl: true}, {Char: 'c', Ctrl: true}}, "quit")
-	e.keymap.Bind([]keymap.Key{{Char: 'x', Ctrl: true}, {Char: 'w', Ctrl: true}}, "write-file")
-	
-	// C-c prefix キーバインド（コンパイル・実行）
-	e.keymap.Bind([]keymap.Key{{Char: 'c', Ctrl: true}, {Char: 'c', Ctrl: true}}, "compile")
-	e.keymap.Bind([]keymap.Key{{Char: 'c', Ctrl: true}, {Char: 'k', Ctrl: true}}, "kill-compilation")
-	e.keymap.Bind([]keymap.Key{{Char: 'c', Ctrl: true}, {Char: 'l', Ctrl: true}}, "list-commands")
-	
 	// newlineコマンドを登録（Enterキー用）
 	e.registry.Register("newline", "Insert newline or complete input", "", func(args ...interface{}) error {
 		// ミニバッファがアクティブな場合は何もしない（ミニバッファが処理する）
@@ -948,6 +913,7 @@ func (e *Editor) setupBasicKeyBindings() {
 		return e.selfInsertCommand('\n')
 	})
 }
+
 
 // 効率的な描画のためのヘルパーメソッド
 

@@ -22,6 +22,19 @@ gmacs.global_set_key("up", "previous-line")
 -- Text deletion
 gmacs.global_set_key("C-d", "delete-char")
 gmacs.global_set_key("backspace", "backward-delete-char")
+gmacs.global_set_key("DEL", "backward-delete-char")
+
+-- Extended command system
+gmacs.global_set_key("M-x", "execute-extended-command")
+
+-- Enter key for newline
+gmacs.global_set_key("RET", "newline")
+gmacs.global_set_key("return", "newline")
+
+-- Compile commands
+gmacs.global_set_key("C-c C-c", "compile")
+gmacs.global_set_key("C-c C-k", "kill-compilation")
+gmacs.global_set_key("C-c C-l", "list-commands")
 
 -- Custom commands defined in Lua
 function version_command()
