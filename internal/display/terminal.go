@@ -13,14 +13,17 @@ import (
 
 // Terminal represents a terminal interface
 type Terminal struct {
-	input       io.Reader
-	output      io.Writer
-	width       int
-	height      int
-	cursorLine  int
-	cursorCol   int
-	inRawMode   bool
+	input         io.Reader
+	output        io.Writer
+	width         int
+	height        int
+	cursorLine    int
+	cursorCol     int
+	inRawMode     bool
 	originalState []byte
+	// ダブルバッファリング用
+	buffer        *strings.Builder
+	isBuffering   bool
 }
 
 // NewTerminal creates a new terminal instance
@@ -28,6 +31,7 @@ func NewTerminal(input io.Reader, output io.Writer) *Terminal {
 	t := &Terminal{
 		input:  input,
 		output: output,
+		buffer: &strings.Builder{},
 	}
 	
 	// Get terminal size
@@ -67,14 +71,23 @@ func (t *Terminal) Size() (width, height int) {
 	return t.width, t.height
 }
 
-// Clear clears the terminal screen
+// Clear clears the terminal screen (with buffering support)
 func (t *Terminal) Clear() {
-	fmt.Fprint(t.output, "\033[2J\033[H")
+	if t.isBuffering {
+		t.buffer.WriteString("\033[2J\033[H")
+	} else {
+		fmt.Fprint(t.output, "\033[2J\033[H")
+	}
 }
 
-// MoveCursor moves the cursor to the specified position (1-based)
+// MoveCursor moves the cursor to the specified position (1-based) (with buffering support)
 func (t *Terminal) MoveCursor(line, col int) {
-	fmt.Fprintf(t.output, "\033[%d;%dH", line, col)
+	text := fmt.Sprintf("\033[%d;%dH", line, col)
+	if t.isBuffering {
+		t.buffer.WriteString(text)
+	} else {
+		fmt.Fprint(t.output, text)
+	}
 	t.cursorLine = line
 	t.cursorCol = col
 }
@@ -84,14 +97,23 @@ func (t *Terminal) GetCursorPos() (line, col int) {
 	return t.cursorLine, t.cursorCol
 }
 
-// Print prints text at the current cursor position
+// Print prints text at the current cursor position (with buffering support)
 func (t *Terminal) Print(text string) {
-	fmt.Fprint(t.output, text)
+	if t.isBuffering {
+		t.buffer.WriteString(text)
+	} else {
+		fmt.Fprint(t.output, text)
+	}
 }
 
-// Printf prints formatted text at the current cursor position
+// Printf prints formatted text at the current cursor position (with buffering support)
 func (t *Terminal) Printf(format string, args ...interface{}) {
-	fmt.Fprintf(t.output, format, args...)
+	text := fmt.Sprintf(format, args...)
+	if t.isBuffering {
+		t.buffer.WriteString(text)
+	} else {
+		fmt.Fprint(t.output, text)
+	}
 }
 
 // PrintAt prints text at the specified position
@@ -100,54 +122,96 @@ func (t *Terminal) PrintAt(line, col int, text string) {
 	t.Print(text)
 }
 
-// ClearLine clears the current line
+// ClearLine clears the current line (with buffering support)
 func (t *Terminal) ClearLine() {
-	fmt.Fprint(t.output, "\033[2K")
+	if t.isBuffering {
+		t.buffer.WriteString("\033[2K")
+	} else {
+		fmt.Fprint(t.output, "\033[2K")
+	}
 }
 
-// ClearToEndOfLine clears from cursor to end of line
+// ClearToEndOfLine clears from cursor to end of line (with buffering support)
 func (t *Terminal) ClearToEndOfLine() {
-	fmt.Fprint(t.output, "\033[K")
+	if t.isBuffering {
+		t.buffer.WriteString("\033[K")
+	} else {
+		fmt.Fprint(t.output, "\033[K")
+	}
 }
 
-// ShowCursor shows the cursor
+// ShowCursor shows the cursor (with buffering support)
 func (t *Terminal) ShowCursor() {
-	fmt.Fprint(t.output, "\033[?25h")
+	if t.isBuffering {
+		t.buffer.WriteString("\033[?25h")
+	} else {
+		fmt.Fprint(t.output, "\033[?25h")
+	}
 }
 
-// HideCursor hides the cursor
+// HideCursor hides the cursor (with buffering support)
 func (t *Terminal) HideCursor() {
-	fmt.Fprint(t.output, "\033[?25l")
+	if t.isBuffering {
+		t.buffer.WriteString("\033[?25l")
+	} else {
+		fmt.Fprint(t.output, "\033[?25l")
+	}
 }
 
-// Flush flushes the output
+// Flush flushes the output (handles buffering)
 func (t *Terminal) Flush() {
+	if t.isBuffering && t.buffer.Len() > 0 {
+		// Write buffered content to output
+		fmt.Fprint(t.output, t.buffer.String())
+		t.buffer.Reset()
+	}
+	
 	if f, ok := t.output.(*os.File); ok {
 		f.Sync()
 	}
 }
 
-// SetColor sets the text color (basic 8 colors)
+// SetColor sets the text color (basic 8 colors) (with buffering support)
 func (t *Terminal) SetColor(fg, bg int) {
+	var colorCode string
 	if fg >= 0 && fg <= 7 {
-		fmt.Fprintf(t.output, "\033[3%dm", fg)
+		colorCode += fmt.Sprintf("\033[3%dm", fg)
 	}
 	if bg >= 0 && bg <= 7 {
-		fmt.Fprintf(t.output, "\033[4%dm", bg)
+		colorCode += fmt.Sprintf("\033[4%dm", bg)
+	}
+	
+	if colorCode != "" {
+		if t.isBuffering {
+			t.buffer.WriteString(colorCode)
+		} else {
+			fmt.Fprint(t.output, colorCode)
+		}
 	}
 }
 
-// ResetColor resets colors to default
+// ResetColor resets colors to default (with buffering support)
 func (t *Terminal) ResetColor() {
-	fmt.Fprint(t.output, "\033[0m")
+	if t.isBuffering {
+		t.buffer.WriteString("\033[0m")
+	} else {
+		fmt.Fprint(t.output, "\033[0m")
+	}
 }
 
-// SetBold sets bold text
+// SetBold sets bold text (with buffering support)
 func (t *Terminal) SetBold(bold bool) {
+	var code string
 	if bold {
-		fmt.Fprint(t.output, "\033[1m")
+		code = "\033[1m"
 	} else {
-		fmt.Fprint(t.output, "\033[22m")
+		code = "\033[22m"
+	}
+	
+	if t.isBuffering {
+		t.buffer.WriteString(code)
+	} else {
+		fmt.Fprint(t.output, code)
 	}
 }
 
@@ -235,4 +299,25 @@ const (
 // Alternative terminal creation for standard streams
 func NewStandardTerminal() *Terminal {
 	return NewTerminal(os.Stdin, os.Stdout)
+}
+
+// バッファリング制御メソッド
+
+// StartBuffering starts buffering terminal output
+func (t *Terminal) StartBuffering() {
+	t.isBuffering = true
+	t.buffer.Reset()
+}
+
+// StopBuffering stops buffering and flushes any buffered output
+func (t *Terminal) StopBuffering() {
+	if t.isBuffering {
+		t.Flush()
+		t.isBuffering = false
+	}
+}
+
+// IsBuffering returns whether terminal output is being buffered
+func (t *Terminal) IsBuffering() bool {
+	return t.isBuffering
 }

@@ -14,15 +14,21 @@ import (
 
 // Editor represents the main editor interface
 type Editor struct {
-	terminal    *Terminal
-	keyboard    *input.Keyboard
-	rawKeyboard *input.RawKeyboard
-	minibuffer  *Minibuffer
-	currentWin  *window.Window
-	keymap      *keymap.Keymap
-	running     bool
-	registry    *command.Registry
-	keySequence keymap.KeySequence // For multi-key sequences
+	terminal     *Terminal
+	keyboard     *input.Keyboard
+	rawKeyboard  *input.RawKeyboard
+	minibuffer   *Minibuffer
+	currentWin   *window.Window
+	keymap       *keymap.Keymap
+	running      bool
+	registry     *command.Registry
+	keySequence  keymap.KeySequence // For multi-key sequences
+	// 効率的な描画のための状態管理
+	lastBufferContent  []string    // 前回描画したバッファ内容
+	lastCursorLine     int         // 前回のカーソル行
+	lastCursorCol      int         // 前回のカーソル列
+	lastStatusLine     string      // 前回のステータスライン
+	needsFullRedraw    bool        // 全画面再描画が必要かどうか
 }
 
 // NewEditor creates a new editor instance
@@ -43,14 +49,15 @@ func NewEditor() *Editor {
 	km := keymap.New("global")
 	
 	editor := &Editor{
-		terminal:    terminal,
-		keyboard:    keyboard,
-		rawKeyboard: rawKeyboard,
-		minibuffer:  minibuffer,
-		currentWin:  win,
-		keymap:      km,
-		running:     true,
-		registry:    command.GetGlobalRegistry(),
+		terminal:     terminal,
+		keyboard:     keyboard,
+		rawKeyboard:  rawKeyboard,
+		minibuffer:   minibuffer,
+		currentWin:   win,
+		keymap:           km,
+		running:          true,
+		registry:         command.GetGlobalRegistry(),
+		needsFullRedraw:  true, // 初回は全画面描画
 	}
 	
 	// Register basic editor commands
@@ -502,12 +509,61 @@ func (e *Editor) executeExtendedCommand() error {
 	return nil
 }
 
-// redraw redraws the entire editor interface
+// redraw efficiently redraws only changed parts of the editor interface
 func (e *Editor) redraw() {
+	if e.needsFullRedraw {
+		e.fullRedraw()
+		e.needsFullRedraw = false
+		return
+	}
+	
+	// 部分的な更新処理
+	e.partialRedraw()
+}
+
+// fullRedraw performs a complete redraw of the interface
+func (e *Editor) fullRedraw() {
+	e.terminal.StartBuffering()
+	e.terminal.HideCursor() // チラツキを防ぐためカーソルを隠す
+	
+	e.terminal.Clear()
 	e.drawBuffer()
 	e.drawStatusLine()
 	e.drawCursor()
-	e.terminal.Flush()
+	
+	e.terminal.ShowCursor() // カーソルを再表示
+	e.terminal.StopBuffering() // バッファを一括出力
+	
+	// 状態を更新
+	e.updateLastState()
+}
+
+// partialRedraw performs efficient partial updates
+func (e *Editor) partialRedraw() {
+	needsBufferUpdate := e.checkBufferChanges()
+	needsStatusUpdate := e.checkStatusChanges()
+	needsCursorUpdate := e.checkCursorChanges()
+	
+	if needsBufferUpdate || needsStatusUpdate || needsCursorUpdate {
+		e.terminal.StartBuffering()
+		e.terminal.HideCursor() // チラツキを防ぐためカーソルを隠す
+		
+		if needsBufferUpdate {
+			e.drawBufferDiff()
+		}
+		
+		if needsStatusUpdate {
+			e.drawStatusLine()
+		}
+		
+		if needsCursorUpdate {
+			e.drawCursor()
+		}
+		
+		e.terminal.ShowCursor() // カーソルを再表示
+		e.terminal.StopBuffering() // バッファを一括出力
+		e.updateLastState()
+	}
 }
 
 // drawBuffer draws the current buffer content
@@ -961,5 +1017,128 @@ func (e *Editor) registerEditorCommands() {
 	e.registry.Register("write-file", "Save buffer to a specified file", "", func(args ...interface{}) error {
 		return e.writeFile()
 	})
+}
+
+// 効率的な描画のためのヘルパーメソッド
+
+// updateLastState updates the cached state for diff rendering
+func (e *Editor) updateLastState() {
+	// バッファ内容をキャッシュ
+	e.lastBufferContent = e.currentWin.GetVisibleText()
+	
+	// カーソル位置をキャッシュ
+	cursor := e.currentWin.Cursor()
+	e.lastCursorLine = cursor.Line()
+	e.lastCursorCol = cursor.Col()
+	
+	// ステータスラインをキャッシュ
+	e.lastStatusLine = e.getStatusLineContent()
+}
+
+// checkBufferChanges checks if buffer content has changed
+func (e *Editor) checkBufferChanges() bool {
+	currentContent := e.currentWin.GetVisibleText()
+	
+	// 長さが違う場合は変更あり
+	if len(currentContent) != len(e.lastBufferContent) {
+		return true
+	}
+	
+	// 行ごとに比較
+	for i, line := range currentContent {
+		if i >= len(e.lastBufferContent) || line != e.lastBufferContent[i] {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// checkStatusChanges checks if status line has changed
+func (e *Editor) checkStatusChanges() bool {
+	currentStatus := e.getStatusLineContent()
+	return currentStatus != e.lastStatusLine
+}
+
+// checkCursorChanges checks if cursor position has changed
+func (e *Editor) checkCursorChanges() bool {
+	cursor := e.currentWin.Cursor()
+	return cursor.Line() != e.lastCursorLine || cursor.Col() != e.lastCursorCol
+}
+
+// getStatusLineContent returns the current status line content
+func (e *Editor) getStatusLineContent() string {
+	bufferName := e.currentWin.Buffer().Name()
+	modified := ""
+	if e.currentWin.Buffer().IsModified() {
+		modified = " *"
+	}
+	
+	cursor := e.currentWin.Cursor()
+	position := fmt.Sprintf("L%d C%d", cursor.Line()+1, cursor.Col()+1)
+	
+	return fmt.Sprintf("%s%s - %s", bufferName, modified, position)
+}
+
+// drawBufferDiff performs efficient diff-based buffer drawing
+func (e *Editor) drawBufferDiff() {
+	width, height := e.terminal.Size()
+	bufferHeight := height - 2
+	
+	currentContent := e.currentWin.GetVisibleText()
+	
+	// 行ごとに差分を描画
+	maxLines := len(currentContent)
+	if len(e.lastBufferContent) > maxLines {
+		maxLines = len(e.lastBufferContent)
+	}
+	
+	for i := 0; i < maxLines && i < bufferHeight; i++ {
+		var currentLine, lastLine string
+		
+		if i < len(currentContent) {
+			currentLine = currentContent[i]
+		}
+		if i < len(e.lastBufferContent) {
+			lastLine = e.lastBufferContent[i]
+		}
+		
+		// 行が変更されている場合のみ再描画
+		if currentLine != lastLine {
+			e.terminal.MoveCursor(i+1, 1)
+			e.terminal.ClearLine()
+			
+			if currentLine != "" {
+				// 行の長さを制限
+				runes := []rune(currentLine)
+				displayWidth := 0
+				cutIndex := len(runes)
+				
+				for j, char := range runes {
+					charWidth := 1
+					if isFullWidth(char) {
+						charWidth = 2
+					}
+					
+					if displayWidth + charWidth > width-1 {
+						cutIndex = j
+						break
+					}
+					displayWidth += charWidth
+				}
+				
+				if cutIndex < len(runes) {
+					currentLine = string(runes[:cutIndex])
+				}
+				
+				e.terminal.Print(currentLine)
+			}
+		}
+	}
+}
+
+// markNeedsFullRedraw marks that a full redraw is needed
+func (e *Editor) markNeedsFullRedraw() {
+	e.needsFullRedraw = true
 }
 
