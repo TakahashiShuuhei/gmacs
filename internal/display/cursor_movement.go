@@ -2,7 +2,16 @@ package display
 
 import (
 	"fmt"
+
+	"github.com/TakahashiShuuhei/gmacs/internal/command"
 )
+
+// init registers the cursor movement plugin
+func init() {
+	RegisterPlugin(func(editor *Editor, registry *command.Registry) {
+		editor.registerCursorMovementCommands(registry)
+	})
+}
 
 // forwardChar moves cursor forward one character (C-f)
 func (e *Editor) forwardChar() error {
@@ -316,4 +325,56 @@ func (e *Editor) backwardDeleteChar() error {
 	}
 	
 	return nil
+}
+
+// registerCursorMovementCommands registers cursor movement and text editing commands
+func (e *Editor) registerCursorMovementCommands(registry *command.Registry) {
+	// Text insertion commands
+	registry.Register("self-insert-command", "Insert typed character", "", func(args ...interface{}) error {
+		if len(args) == 0 {
+			return fmt.Errorf("self-insert-command requires a character argument")
+		}
+		char, ok := args[0].(rune)
+		if !ok {
+			return fmt.Errorf("self-insert-command argument must be a character")
+		}
+		return e.selfInsertCommand(char)
+	})
+
+	registry.Register("insert-string", "Insert string at cursor", "", func(args ...interface{}) error {
+		if len(args) == 0 {
+			return fmt.Errorf("insert-string requires a string argument")
+		}
+		text, ok := args[0].(string)
+		if !ok {
+			return fmt.Errorf("insert-string argument must be a string")
+		}
+		return e.selfInsertStringCommand(text)
+	})
+
+	// Cursor movement commands
+	registry.Register("forward-char", "Move cursor forward one character", "", func(args ...interface{}) error {
+		return e.forwardChar()
+	})
+
+	registry.Register("backward-char", "Move cursor backward one character", "", func(args ...interface{}) error {
+		return e.backwardChar()
+	})
+
+	registry.Register("next-line", "Move cursor to next line", "", func(args ...interface{}) error {
+		return e.nextLine()
+	})
+
+	registry.Register("previous-line", "Move cursor to previous line", "", func(args ...interface{}) error {
+		return e.previousLine()
+	})
+
+	// Text deletion commands
+	registry.Register("delete-char", "Delete character at cursor", "", func(args ...interface{}) error {
+		return e.deleteChar()
+	})
+
+	registry.Register("backward-delete-char", "Delete character before cursor", "", func(args ...interface{}) error {
+		return e.backwardDeleteChar()
+	})
 }

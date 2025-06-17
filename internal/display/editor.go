@@ -15,6 +15,17 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/internal/window"
 )
 
+// PluginRegistrar is a function type for registering plugin commands
+type PluginRegistrar func(editor *Editor, registry *command.Registry)
+
+// Global registry for plugin registrars
+var pluginRegistrars []PluginRegistrar
+
+// RegisterPlugin registers a plugin command registrar
+func RegisterPlugin(registrar PluginRegistrar) {
+	pluginRegistrars = append(pluginRegistrars, registrar)
+}
+
 // Editor represents the main editor interface
 type Editor struct {
 	terminal    *Terminal
@@ -75,6 +86,9 @@ func NewEditor() *Editor {
 
 	// Register basic editor commands
 	editor.registerEditorCommands()
+	
+	// Register all plugins
+	editor.registerPlugins()
 
 	// Load Lua configuration (includes default key bindings)
 	editor.loadLuaConfig()
@@ -885,54 +899,6 @@ func (e *Editor) registerEditorCommands() {
 		return nil
 	})
 
-	// Text insertion commands
-	e.registry.Register("self-insert-command", "Insert typed character", "", func(args ...interface{}) error {
-		if len(args) == 0 {
-			return fmt.Errorf("self-insert-command requires a character argument")
-		}
-		char, ok := args[0].(rune)
-		if !ok {
-			return fmt.Errorf("self-insert-command argument must be a character")
-		}
-		return e.selfInsertCommand(char)
-	})
-
-	e.registry.Register("insert-string", "Insert string at cursor", "", func(args ...interface{}) error {
-		if len(args) == 0 {
-			return fmt.Errorf("insert-string requires a string argument")
-		}
-		text, ok := args[0].(string)
-		if !ok {
-			return fmt.Errorf("insert-string argument must be a string")
-		}
-		return e.selfInsertStringCommand(text)
-	})
-
-	// Cursor movement commands
-	e.registry.Register("forward-char", "Move cursor forward one character", "", func(args ...interface{}) error {
-		return e.forwardChar()
-	})
-
-	e.registry.Register("backward-char", "Move cursor backward one character", "", func(args ...interface{}) error {
-		return e.backwardChar()
-	})
-
-	e.registry.Register("next-line", "Move cursor to next line", "", func(args ...interface{}) error {
-		return e.nextLine()
-	})
-
-	e.registry.Register("previous-line", "Move cursor to previous line", "", func(args ...interface{}) error {
-		return e.previousLine()
-	})
-
-	// Text deletion commands
-	e.registry.Register("delete-char", "Delete character at cursor", "", func(args ...interface{}) error {
-		return e.deleteChar()
-	})
-
-	e.registry.Register("backward-delete-char", "Delete character before cursor", "", func(args ...interface{}) error {
-		return e.backwardDeleteChar()
-	})
 
 	// File I/O commands
 	e.registry.Register("find-file", "Open a file", "", func(args ...interface{}) error {
@@ -994,6 +960,13 @@ func (e *Editor) registerEditorCommands() {
 		nextBuffer := (currentIndex + 1) % len(e.buffers)
 		return e.SwitchToBuffer(nextBuffer)
 	})
+}
+
+// registerPlugins registers all registered plugins
+func (e *Editor) registerPlugins() {
+	for _, registrar := range pluginRegistrars {
+		registrar(e, e.registry)
+	}
 }
 
 // 効率的な描画のためのヘルパーメソッド
