@@ -40,6 +40,7 @@ type LuaConfig struct {
 	packageLoadedCallbacks  []*lua.LFunction
 	packageManager          *pkg.Manager
 	parser                  *LuaParser
+	validator               *ConfigValidator
 }
 
 // NewLuaConfig creates a new Lua configuration manager
@@ -54,6 +55,7 @@ func NewLuaConfig(editor EditorInterface) *LuaConfig {
 		editor:         editor,
 		packageManager: packageManager,
 		parser:         NewLuaParser(),
+		validator:      NewConfigValidator(),
 	}
 	
 	// Set up package manager to use this config for Lua API extensions
@@ -88,7 +90,29 @@ func (lc *LuaConfig) LoadConfig() error {
 		}
 	}
 
-	// Step 1: Parse package declarations from config file (without executing)
+	// Step 1: Validate configuration file
+	validationResult, err := lc.validator.ValidateFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to validate config file: %v", err)
+	}
+	
+	// Report validation errors
+	if len(validationResult.Errors) > 0 {
+		lc.reportValidationErrors(validationResult)
+		
+		// Stop if there are critical errors
+		if validationResult.HasErrors() {
+			errorCount := 0
+			for _, err := range validationResult.Errors {
+				if err.Severity == "error" {
+					errorCount++
+				}
+			}
+			return fmt.Errorf("configuration validation failed with %d errors", errorCount)
+		}
+	}
+
+	// Step 2: Parse package declarations from config file (without executing)
 	packageDeclarations, err := lc.parser.ParsePackageDeclarations(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to parse package declarations: %v", err)
@@ -433,4 +457,51 @@ func (lc *LuaConfig) ExecuteCode(code string) error {
 		return fmt.Errorf("Lua VM not initialized")
 	}
 	return lc.vm.DoString(code)
+}
+
+// ValidateConfig validates configuration content and returns validation result
+func (lc *LuaConfig) ValidateConfig(content string) *ValidationResult {
+	return lc.validator.ValidateConfig(content)
+}
+
+// ValidateConfigFile validates a configuration file and returns validation result
+func (lc *LuaConfig) ValidateConfigFile(filePath string) (*ValidationResult, error) {
+	return lc.validator.ValidateFile(filePath)
+}
+
+// reportValidationErrors reports validation errors to the user
+func (lc *LuaConfig) reportValidationErrors(result *ValidationResult) {
+	if lc.editor == nil {
+		// Fallback to stdout
+		for _, err := range result.Errors {
+			fmt.Printf("Config validation %s: %s\n", err.Severity, err.Error())
+			for _, suggestion := range err.Suggestions {
+				fmt.Printf("  Suggestion: %s\n", suggestion)
+			}
+		}
+		return
+	}
+
+	minibuffer := lc.editor.GetMinibuffer()
+	
+	// Report errors by severity
+	errorCount := 0
+	warningCount := 0
+	
+	for _, err := range result.Errors {
+		if err.Severity == "error" {
+			errorCount++
+		} else if err.Severity == "warning" {
+			warningCount++
+		}
+		
+		// Show the error
+		minibuffer.ShowMessage(fmt.Sprintf("Config %s: %s", err.Severity, err.Message))
+	}
+	
+	// Show summary
+	if errorCount > 0 || warningCount > 0 {
+		summary := fmt.Sprintf("Configuration validation: %d errors, %d warnings", errorCount, warningCount)
+		minibuffer.ShowMessage(summary)
+	}
 }
