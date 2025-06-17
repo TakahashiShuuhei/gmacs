@@ -7,6 +7,7 @@ import (
 
 	"golang.org/x/term"
 	"github.com/TakahashiShuuhei/gmacs/internal/keymap"
+	"github.com/TakahashiShuuhei/gmacs/internal/logging"
 )
 
 // RawKeyboard handles raw terminal input for proper key detection
@@ -75,19 +76,24 @@ func (rk *RawKeyboard) ReadKey() (*KeyEvent, error) {
 	
 	// Read one byte at a time
 	buf := make([]byte, 1)
+	logging.Debug("RawKeyboard: about to read byte")
 	n, err := rk.input.Read(buf)
 	if err != nil {
 		if err == io.EOF {
+			logging.Debug("RawKeyboard: EOF received")
 			return nil, err
 		}
+		logging.LogError("RawKeyboard Read", err)
 		return nil, fmt.Errorf("failed to read from input: %v", err)
 	}
 	
 	if n == 0 {
+		logging.Debug("RawKeyboard: no data read")
 		return nil, fmt.Errorf("no data read")
 	}
 	
 	b := buf[0]
+	logging.Debug("RawKeyboard: read byte 0x%02x ('%c')", b, b)
 	
 	// Handle escape sequences (multi-byte)
 	if b == 0x1b { // ESC

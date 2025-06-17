@@ -6,46 +6,64 @@ import (
 
 	"github.com/TakahashiShuuhei/gmacs/internal/command"
 	"github.com/TakahashiShuuhei/gmacs/internal/input"
+	"github.com/TakahashiShuuhei/gmacs/internal/logging"
 )
 
 // Minibuffer represents the minibuffer (like Emacs minibuffer)
 type Minibuffer struct {
-	terminal    *Terminal
-	keyboard    *input.Keyboard
-	prompt      string
-	input       string
-	cursorPos   int
-	completions []string
-	history     []string
-	historyPos  int
-	active      bool
+	terminal      *Terminal
+	keyboard      *input.Keyboard
+	rawKeyboard   *input.RawKeyboard
+	keyEventChan  chan *input.KeyEvent
+	prompt        string
+	input         string
+	cursorPos     int
+	completions   []string
+	history       []string
+	historyPos    int
+	active        bool
 }
 
 // NewMinibuffer creates a new minibuffer
-func NewMinibuffer(terminal *Terminal, keyboard *input.Keyboard) *Minibuffer {
+func NewMinibuffer(terminal *Terminal, keyboard *input.Keyboard, rawKeyboard *input.RawKeyboard, keyEventChan chan *input.KeyEvent) *Minibuffer {
 	return &Minibuffer{
-		terminal:   terminal,
-		keyboard:   keyboard,
-		historyPos: -1,
+		terminal:     terminal,
+		keyboard:     keyboard,
+		rawKeyboard:  rawKeyboard,
+		keyEventChan: keyEventChan,
+		historyPos:   -1,
 	}
 }
 
 // ReadCommand reads a command from the user with M-x prompt
 func (mb *Minibuffer) ReadCommand() (string, error) {
+	logging.Debug("ReadCommand started")
+	
 	mb.prompt = "M-x "
 	mb.input = ""
 	mb.cursorPos = 0
-	mb.active = true
+	// Don't set active here if it's already active (to avoid overriding)
+	if !mb.active {
+		mb.active = true
+		logging.Debug("Minibuffer set to active in ReadCommand")
+	} else {
+		logging.Debug("Minibuffer already active, continuing")
+	}
 	
+	logging.Debug("Displaying prompt")
 	// Initial display
 	mb.displayMinibuffer()
 	
-	line, err := mb.keyboard.ReadLine()
+	logging.Debug("Starting raw input collection for minibuffer")
+	line, err := mb.readRawInput()
+	logging.Debug("Raw input collection returned: %q, err: %v", line, err)
 	
 	// 入力完了後、必ずミニバッファの状態をクリア
 	mb.clearData()
+	logging.Debug("Minibuffer cleared and deactivated")
 	
 	if err != nil {
+		logging.LogError("ReadCommand", err)
 		return "", err
 	}
 	
@@ -121,6 +139,7 @@ func (mb *Minibuffer) displayMinibuffer() {
 
 // clearData clears the minibuffer internal state
 func (mb *Minibuffer) clearData() {
+	logging.Debug("clearData called - deactivating minibuffer")
 	mb.prompt = ""
 	mb.input = ""
 	mb.cursorPos = 0
@@ -243,6 +262,12 @@ func (mb *Minibuffer) IsActive() bool {
 	return mb.active
 }
 
+// SetActive sets the minibuffer active state
+func (mb *Minibuffer) SetActive(active bool) {
+	logging.Debug("SetActive called with: %v", active)
+	mb.active = active
+}
+
 // HasMessage returns whether the minibuffer is currently displaying a message
 func (mb *Minibuffer) HasMessage() bool {
 	// ミニバッファが非アクティブで、最後に何かメッセージが表示されている状態
@@ -252,4 +277,44 @@ func (mb *Minibuffer) HasMessage() bool {
 // Clear clears the minibuffer
 func (mb *Minibuffer) Clear() {
 	mb.clearData()
+}
+
+// readRawInput reads input character by character from the key event channel
+func (mb *Minibuffer) readRawInput() (string, error) {
+	logging.Debug("readRawInput started - using channel-based input")
+	inputBuffer := ""
+	
+	for {
+		logging.Debug("Waiting for key event from channel")
+		keyEvent := <-mb.keyEventChan
+		logging.Debug("Received key event: %s", keyEvent.Key.String())
+		
+		switch keyEvent.Key.String() {
+		case "return", "enter":
+			logging.Debug("Return key pressed, finishing input: %q", inputBuffer)
+			return inputBuffer, nil
+		case "C-g":
+			logging.Debug("C-g pressed, canceling input")
+			return "", fmt.Errorf("quit")
+		case "backspace":
+			if len(inputBuffer) > 0 {
+				inputBuffer = inputBuffer[:len(inputBuffer)-1]
+				mb.input = inputBuffer
+				mb.cursorPos = len(inputBuffer)
+				mb.displayMinibuffer()
+				logging.Debug("Backspace pressed, new input: %q", inputBuffer)
+			}
+		default:
+			// Handle printable characters
+			if keyEvent.Key.Char != 0 && keyEvent.Key.Char >= 32 && keyEvent.Key.Char <= 126 {
+				inputBuffer += string(keyEvent.Key.Char)
+				mb.input = inputBuffer
+				mb.cursorPos = len(inputBuffer)
+				mb.displayMinibuffer()
+				logging.Debug("Character added: %c, new input: %q", keyEvent.Key.Char, inputBuffer)
+			} else {
+				logging.Debug("Non-printable key ignored: %s", keyEvent.Key.String())
+			}
+		}
+	}
 }

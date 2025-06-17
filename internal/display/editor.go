@@ -42,6 +42,9 @@ type Editor struct {
 	buffers []*buffer.Buffer // バッファリスト
 	// ウィンドウサイズ変更検知用
 	resizeSignal chan os.Signal // SIGWINCHシグナル受信用チャンネル
+	// Input channels for draining
+	keyEventChan chan *input.KeyEvent
+	lineChan     chan string
 }
 
 // NewEditor creates a new editor instance
@@ -49,7 +52,11 @@ func NewEditor() *Editor {
 	terminal := NewStandardTerminal()
 	keyboard := input.CreateStandardKeyboard()
 	rawKeyboard, _ := input.NewRawKeyboard() // Ignore error for now
-	minibuffer := NewMinibuffer(terminal, keyboard)
+	// Initialize channels first
+	keyEventChan := make(chan *input.KeyEvent, 1)
+	lineChan := make(chan string, 1)
+	
+	minibuffer := NewMinibuffer(terminal, keyboard, rawKeyboard, keyEventChan)
 
 	// Create a default scratch buffer
 	scratchBuf := buffer.New("*scratch*")
@@ -73,6 +80,8 @@ func NewEditor() *Editor {
 		registry:     command.GetGlobalRegistry(),
 		buffers:      []*buffer.Buffer{scratchBuf}, // バッファリストに追加
 		resizeSignal: make(chan os.Signal, 1),      // ウィンドウサイズ変更検知用
+		keyEventChan: keyEventChan,
+		lineChan:     lineChan,
 	}
 
 	// SIGWINCHシグナル（ウィンドウサイズ変更）を監視
@@ -169,8 +178,6 @@ func (e *Editor) Run() error {
 	}
 
 	// Use channels for concurrent input handling
-	keyEventChan := make(chan *input.KeyEvent, 1)
-	lineChan := make(chan string, 1)
 	errorChan := make(chan error, 1)
 
 	// Start input goroutine
@@ -182,14 +189,15 @@ func (e *Editor) Run() error {
 					errorChan <- err
 					return
 				}
-				keyEventChan <- keyEvent
+				logging.Debug("Input goroutine: sending key event to channel: %s", keyEvent.Key.String())
+				e.keyEventChan <- keyEvent
 			} else {
 				line, err := e.keyboard.ReadLine()
 				if err != nil {
 					errorChan <- err
 					return
 				}
-				lineChan <- line
+				e.lineChan <- line
 			}
 		}
 	}()
@@ -204,13 +212,20 @@ func (e *Editor) Run() error {
 			// Continue immediately to redraw with new size
 			continue
 
-		case keyEvent := <-keyEventChan:
-			// Handle key event from raw mode
+		case keyEvent := <-e.keyEventChan:
+			// Check if minibuffer is active and should handle this key event
+			if e.minibuffer.IsActive() {
+				// Minibuffer will handle this key event directly
+				// The keyEvent is already sent to the minibuffer's channel
+				continue
+			}
+			
+			// Handle key event from raw mode for main editor
 			if err := e.handleKeyEvent(keyEvent); err != nil {
 				e.minibuffer.ShowError(err)
 			}
 
-		case line := <-lineChan:
+		case line := <-e.lineChan:
 			// Handle line input from fallback mode
 			if err := e.handleInput(line); err != nil {
 				e.minibuffer.ShowError(err)
@@ -257,12 +272,16 @@ func (e *Editor) handleWindowResize() {
 
 // handleKeyEvent processes a key event from raw keyboard input
 func (e *Editor) handleKeyEvent(keyEvent *input.KeyEvent) error {
+	logging.LogKeyEvent("handleKeyEvent", keyEvent.Key.String(), "minibuffer_active", e.minibuffer.IsActive())
+	
 	// ミニバッファがアクティブな場合はキーイベントを処理しない
 	// ミニバッファが独自に入力を処理する
 	if e.minibuffer.IsActive() {
+		logging.Debug("Key event ignored - minibuffer is active")
 		return nil
 	}
 
+	logging.Debug("Passing key event to handleKeySequence: %s", keyEvent.Key.String())
 	// Handle key sequence building
 	return e.handleKeySequence(keyEvent.Key)
 }
@@ -491,26 +510,35 @@ func (e *Editor) preprocessInput(input string) string {
 
 // executeExtendedCommand handles M-x command execution
 func (e *Editor) executeExtendedCommand() error {
-	// Temporarily disable raw mode to read line input
-	if e.rawKeyboard.IsRawMode() {
-		e.rawKeyboard.DisableRawMode()
-		defer e.rawKeyboard.EnableRawMode()
-	}
+	logging.LogCommand("START", "execute-extended-command")
+	
+	// Set minibuffer active first to stop input goroutine from reading more keys
+	logging.Debug("Setting minibuffer active to prevent input goroutine interference")
+	e.minibuffer.SetActive(true)
+	
+	// No need to drain - minibuffer will handle key events directly
 
+	logging.Debug("Reading command from minibuffer")
 	commandName, err := e.minibuffer.ReadCommand()
+	logging.Debug("Minibuffer returned command: %q, err: %v", commandName, err)
+	
 	if err != nil {
 		if err.Error() == "quit" {
+			logging.Debug("Command input cancelled")
 			e.minibuffer.ShowMessage("Quit")
 			return nil
 		}
+		logging.LogError("executeExtendedCommand", err)
 		return err
 	}
 
 	if commandName == "" {
+		logging.Debug("Empty command name received")
 		return nil
 	}
 
 	// Execute the command
+	logging.LogCommand("EXECUTE", commandName)
 	err = e.registry.Execute(commandName)
 	if err != nil {
 		e.minibuffer.ShowError(err)
