@@ -37,15 +37,14 @@ func (mb *Minibuffer) ReadCommand() (string, error) {
 	mb.cursorPos = 0
 	mb.active = true
 	
-	defer func() {
-		mb.active = false
-		mb.clearMinibuffer()
-	}()
-	
 	// Initial display
 	mb.displayMinibuffer()
 	
 	line, err := mb.keyboard.ReadLine()
+	
+	// 入力完了後、必ずミニバッファの状態をクリア
+	mb.clearData()
+	
 	if err != nil {
 		return "", err
 	}
@@ -76,8 +75,7 @@ func (mb *Minibuffer) ReadString(prompt string) (string, error) {
 	mb.active = true
 	
 	defer func() {
-		mb.active = false
-		mb.clearMinibuffer()
+		mb.clearData()
 	}()
 	
 	mb.displayMinibuffer()
@@ -121,8 +119,16 @@ func (mb *Minibuffer) displayMinibuffer() {
 	mb.terminal.Flush()
 }
 
-// clearMinibuffer clears the minibuffer line
-func (mb *Minibuffer) clearMinibuffer() {
+// clearData clears the minibuffer internal state
+func (mb *Minibuffer) clearData() {
+	mb.prompt = ""
+	mb.input = ""
+	mb.cursorPos = 0
+	mb.active = false
+}
+
+// clearDisplay clears the minibuffer line on screen
+func (mb *Minibuffer) clearDisplay() {
 	_, height := mb.terminal.Size()
 	mb.terminal.MoveCursor(height, 1)
 	mb.terminal.ClearLine()
@@ -200,8 +206,17 @@ func (mb *Minibuffer) addToHistory(cmd string) {
 func (mb *Minibuffer) ShowMessage(message string) {
 	width, height := mb.terminal.Size()
 	
+	// 確実にミニバッファ行をクリア
 	mb.terminal.MoveCursor(height, 1)
 	mb.terminal.ClearLine()
+	
+	// 空の場合は表示しない
+	if message == "" {
+		mb.prompt = ""
+		mb.input = ""
+		mb.terminal.Flush()
+		return
+	}
 	
 	// Truncate message if too long
 	if len(message) > width-1 {
@@ -210,6 +225,10 @@ func (mb *Minibuffer) ShowMessage(message string) {
 	
 	mb.terminal.Print(message)
 	mb.terminal.Flush()
+	
+	// メッセージ表示状態を記録（HasMessageで使用）
+	mb.prompt = message
+	mb.input = ""
 }
 
 // ShowError displays an error message in the minibuffer
@@ -224,7 +243,13 @@ func (mb *Minibuffer) IsActive() bool {
 	return mb.active
 }
 
+// HasMessage returns whether the minibuffer is currently displaying a message
+func (mb *Minibuffer) HasMessage() bool {
+	// ミニバッファが非アクティブで、最後に何かメッセージが表示されている状態
+	return !mb.active && (mb.prompt != "" || mb.input != "")
+}
+
 // Clear clears the minibuffer
 func (mb *Minibuffer) Clear() {
-	mb.clearMinibuffer()
+	mb.clearData()
 }

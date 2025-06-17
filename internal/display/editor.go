@@ -40,7 +40,7 @@ func NewEditor() *Editor {
 	
 	// Create a default buffer and window
 	buf := buffer.New("*scratch*")
-	buf.SetText("Welcome to gmacs!\n\nThis is the scratch buffer.\nType M-x to execute commands.\n\nAvailable commands:\n- version: Show version\n- hello: Say hello\n- list-commands: List all commands\n- quit: Exit the editor")
+	buf.SetText("Welcome to gmacs!\n\nThis is the scratch buffer.\nType M-x to execute commands.")
 	
 	width, height := terminal.Size()
 	win := window.New(buf, height-2, width) // Reserve space for minibuffer
@@ -135,6 +135,12 @@ func (e *Editor) Run() error {
 
 // handleKeyEvent processes a key event from raw keyboard input
 func (e *Editor) handleKeyEvent(keyEvent *input.KeyEvent) error {
+	// ミニバッファがアクティブな場合はキーイベントを処理しない
+	// ミニバッファが独自に入力を処理する
+	if e.minibuffer.IsActive() {
+		return nil
+	}
+	
 	// Handle special key combinations directly
 	keyStr := keyEvent.Key.String()
 	switch keyStr {
@@ -170,6 +176,11 @@ func (e *Editor) handleKeyEvent(keyEvent *input.KeyEvent) error {
 
 // handleInput processes user input (fallback for non-raw mode)
 func (e *Editor) handleInput(input string) error {
+	// ミニバッファがアクティブな場合はキーイベントを処理しない
+	if e.minibuffer.IsActive() {
+		return nil
+	}
+	
 	if input == "" {
 		// Just redraw on empty input
 		return nil
@@ -505,34 +516,24 @@ func (e *Editor) executeExtendedCommand() error {
 		return nil
 	}
 	
-	e.minibuffer.ShowMessage(fmt.Sprintf("Executed: %s", commandName))
+	// コマンドが正常に実行された場合、コマンド自身がメッセージを表示する
 	return nil
 }
 
-// redraw efficiently redraws only changed parts of the editor interface
+// redraw redraws the editor interface
 func (e *Editor) redraw() {
-	if e.needsFullRedraw {
-		e.fullRedraw()
-		e.needsFullRedraw = false
-		return
-	}
-	
-	// 部分的な更新処理
-	e.partialRedraw()
+	// 常に全画面再描画を使用（差分描画は一旦無効）
+	e.fullRedraw()
 }
 
 // fullRedraw performs a complete redraw of the interface
 func (e *Editor) fullRedraw() {
-	e.terminal.StartBuffering()
-	e.terminal.HideCursor() // チラツキを防ぐためカーソルを隠す
-	
 	e.terminal.Clear()
 	e.drawBuffer()
 	e.drawStatusLine()
+	e.drawMinibuffer()
 	e.drawCursor()
-	
-	e.terminal.ShowCursor() // カーソルを再表示
-	e.terminal.StopBuffering() // バッファを一括出力
+	e.terminal.Flush()
 	
 	// 状態を更新
 	e.updateLastState()
@@ -545,9 +546,6 @@ func (e *Editor) partialRedraw() {
 	needsCursorUpdate := e.checkCursorChanges()
 	
 	if needsBufferUpdate || needsStatusUpdate || needsCursorUpdate {
-		e.terminal.StartBuffering()
-		e.terminal.HideCursor() // チラツキを防ぐためカーソルを隠す
-		
 		if needsBufferUpdate {
 			e.drawBufferDiff()
 		}
@@ -560,8 +558,7 @@ func (e *Editor) partialRedraw() {
 			e.drawCursor()
 		}
 		
-		e.terminal.ShowCursor() // カーソルを再表示
-		e.terminal.StopBuffering() // バッファを一括出力
+		e.terminal.Flush()
 		e.updateLastState()
 	}
 }
@@ -940,6 +937,12 @@ func (e *Editor) registerEditorCommands() {
 		return nil
 	})
 	
+	// Version command
+	e.registry.Register("version", "Show gmacs version", "", func(args ...interface{}) error {
+		e.minibuffer.ShowMessage("gmacs version 0.0.1 - Go Emacs-like Editor")
+		return nil
+	})
+	
 	// List commands
 	e.registry.Register("list-commands", "List all available commands", "", func(args ...interface{}) error {
 		commands := e.registry.List()
@@ -1016,6 +1019,50 @@ func (e *Editor) registerEditorCommands() {
 	
 	e.registry.Register("write-file", "Save buffer to a specified file", "", func(args ...interface{}) error {
 		return e.writeFile()
+	})
+	
+	// 基本的なキーバインドを設定
+	e.setupBasicKeyBindings()
+}
+
+// setupBasicKeyBindings sets up basic key bindings
+func (e *Editor) setupBasicKeyBindings() {
+	// Enterキーを何もしないコマンドにバインド（ただし、ミニバッファでは動作が異なる）
+	e.keymap.Bind([]keymap.Key{{Special: "RET"}}, "newline")
+	e.keymap.Bind([]keymap.Key{{Special: "return"}}, "newline")
+	
+	// 基本的な移動キー
+	e.keymap.Bind([]keymap.Key{{Char: 'f', Ctrl: true}}, "forward-char")
+	e.keymap.Bind([]keymap.Key{{Char: 'b', Ctrl: true}}, "backward-char")
+	e.keymap.Bind([]keymap.Key{{Char: 'n', Ctrl: true}}, "next-line")
+	e.keymap.Bind([]keymap.Key{{Char: 'p', Ctrl: true}}, "previous-line")
+	
+	// 削除キー
+	e.keymap.Bind([]keymap.Key{{Char: 'd', Ctrl: true}}, "delete-char")
+	e.keymap.Bind([]keymap.Key{{Special: "backspace"}}, "backward-delete-char")
+	e.keymap.Bind([]keymap.Key{{Special: "DEL"}}, "backward-delete-char")
+	
+	// ファイル操作
+	e.keymap.Bind([]keymap.Key{{Char: 'x', Ctrl: true}, {Char: 'f', Ctrl: true}}, "find-file")
+	e.keymap.Bind([]keymap.Key{{Char: 'x', Ctrl: true}, {Char: 's', Ctrl: true}}, "save-buffer")
+	e.keymap.Bind([]keymap.Key{{Char: 'x', Ctrl: true}, {Char: 'c', Ctrl: true}}, "quit")
+	
+	// newlineコマンドを登録（Enterキー用）
+	e.registry.Register("newline", "Insert newline or complete input", "", func(args ...interface{}) error {
+		// ミニバッファがアクティブな場合は何もしない（ミニバッファが処理する）
+		if e.minibuffer.IsActive() {
+			return nil
+		}
+		
+		// 通常モードでは改行を挿入
+		// ただし、ミニバッファにメッセージが表示されている場合はクリアする
+		if e.minibuffer.HasMessage() {
+			e.minibuffer.Clear()
+			return nil
+		}
+		
+		// バッファに改行を挿入
+		return e.selfInsertCommand('\n')
 	})
 }
 
@@ -1133,6 +1180,26 @@ func (e *Editor) drawBufferDiff() {
 				
 				e.terminal.Print(currentLine)
 			}
+		}
+	}
+}
+
+// drawMinibuffer draws the minibuffer based on its current state
+func (e *Editor) drawMinibuffer() {
+	// ミニバッファがメッセージを持っている場合のみ描画
+	if e.minibuffer.HasMessage() {
+		// ShowMessage("") を呼んで現在のメッセージを再描画
+		// これにより一貫した描画処理を使用
+		currentMessage := e.minibuffer.prompt
+		if currentMessage != "" {
+			width, height := e.terminal.Size()
+			e.terminal.MoveCursor(height, 1)
+			e.terminal.ClearLine()
+			
+			if len(currentMessage) > width-1 {
+				currentMessage = currentMessage[:width-4] + "..."
+			}
+			e.terminal.Print(currentMessage)
 		}
 	}
 }
