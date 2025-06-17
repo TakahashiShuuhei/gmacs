@@ -44,6 +44,9 @@ func NewSimpleEditor() *SimpleEditor {
 	// Register basic commands
 	editor.registerCommands()
 	
+	// Register all plugins
+	editor.registerPlugins()
+	
 	return editor
 }
 
@@ -283,4 +286,11 @@ func (e *SimpleEditor) registerCommands() {
 		fmt.Fprintf(e.output, "Echo: %s\n", strings.Join(parts, " "))
 		return nil
 	})
+}
+
+// registerPlugins registers all registered plugins
+func (e *SimpleEditor) registerPlugins() {
+	for _, registrar := range pluginRegistrars {
+		registrar(nil, e.registry) // SimpleEditor doesn't have an Editor instance, so pass nil
+	}
 }
