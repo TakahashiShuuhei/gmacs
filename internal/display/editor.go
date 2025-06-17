@@ -39,12 +39,6 @@ type Editor struct {
 	keySequence keymap.KeySequence // For multi-key sequences
 	// バッファ管理
 	buffers []*buffer.Buffer // バッファリスト
-	// 効率的な描画のための状態管理
-	lastBufferContent []string // 前回描画したバッファ内容
-	lastCursorLine    int      // 前回のカーソル行
-	lastCursorCol     int      // 前回のカーソル列
-	lastStatusLine    string   // 前回のステータスライン
-	needsFullRedraw   bool     // 全画面再描画が必要かどうか
 	// ウィンドウサイズ変更検知用
 	resizeSignal chan os.Signal // SIGWINCHシグナル受信用チャンネル
 }
@@ -68,17 +62,16 @@ func NewEditor() *Editor {
 	km := keymap.New("global")
 
 	editor := &Editor{
-		terminal:        terminal,
-		keyboard:        keyboard,
-		rawKeyboard:     rawKeyboard,
-		minibuffer:      minibuffer,
-		currentWin:      win,
-		keymap:          km,
-		running:         true,
-		registry:        command.GetGlobalRegistry(),
-		buffers: []*buffer.Buffer{scratchBuf}, // バッファリストに追加
-		needsFullRedraw: true,                          // 初回は全画面描画
-		resizeSignal:    make(chan os.Signal, 1),       // ウィンドウサイズ変更検知用
+		terminal:     terminal,
+		keyboard:     keyboard,
+		rawKeyboard:  rawKeyboard,
+		minibuffer:   minibuffer,
+		currentWin:   win,
+		keymap:       km,
+		running:      true,
+		registry:     command.GetGlobalRegistry(),
+		buffers:      []*buffer.Buffer{scratchBuf}, // バッファリストに追加
+		resizeSignal: make(chan os.Signal, 1),      // ウィンドウサイズ変更検知用
 	}
 
 	// SIGWINCHシグナル（ウィンドウサイズ変更）を監視
@@ -86,7 +79,7 @@ func NewEditor() *Editor {
 
 	// Register basic editor commands
 	editor.registerEditorCommands()
-	
+
 	// Register all plugins
 	editor.registerPlugins()
 
@@ -122,10 +115,10 @@ func (e *Editor) SwitchToBuffer(index int) error {
 	if index < 0 || index >= len(e.buffers) {
 		return fmt.Errorf("buffer index %d out of range", index)
 	}
-	
+
 	buf := e.buffers[index]
 	e.currentWin.SetBuffer(buf)
-	
+
 	return nil
 }
 
@@ -137,7 +130,7 @@ func (e *Editor) SwitchToBufferByName(name string) error {
 		buf := buffer.New(name)
 		index = e.AddBuffer(buf)
 	}
-	
+
 	return e.SwitchToBuffer(index)
 }
 
@@ -253,9 +246,6 @@ func (e *Editor) handleWindowResize() {
 		e.currentWin.SetSize(newHeight-2, newWidth)
 		fmt.Printf("DEBUG: Window size changed from %dx%d to %dx%d\n", oldWidth, oldHeight, newWidth, newHeight-2) // DEBUG
 	}
-
-	// Force full redraw after resize
-	e.needsFullRedraw = true
 
 	// Clear screen to avoid artifacts
 	e.terminal.Clear()
@@ -544,33 +534,6 @@ func (e *Editor) fullRedraw() {
 	e.drawMinibuffer()
 	e.drawCursor()
 	e.terminal.Flush()
-
-	// 状態を更新
-	e.updateLastState()
-}
-
-// partialRedraw performs efficient partial updates
-func (e *Editor) partialRedraw() {
-	needsBufferUpdate := e.checkBufferChanges()
-	needsStatusUpdate := e.checkStatusChanges()
-	needsCursorUpdate := e.checkCursorChanges()
-
-	if needsBufferUpdate || needsStatusUpdate || needsCursorUpdate {
-		if needsBufferUpdate {
-			e.drawBufferDiff()
-		}
-
-		if needsStatusUpdate {
-			e.drawStatusLine()
-		}
-
-		if needsCursorUpdate {
-			e.drawCursor()
-		}
-
-		e.terminal.Flush()
-		e.updateLastState()
-	}
 }
 
 // drawBuffer draws the current buffer content
@@ -668,7 +631,6 @@ func (e *Editor) drawCursor() {
 	// Adjust for 1-based terminal coordinates
 	e.terminal.MoveCursor(screenLine+1, screenCol+1)
 }
-
 
 // quit quits the editor
 func (e *Editor) quit() error {
@@ -778,8 +740,6 @@ func (e *Editor) registerEditorCommands() {
 		return nil
 	})
 
-
-
 	// newlineコマンドを登録（Enterキー用）
 	e.registry.Register("newline", "Insert newline or complete input", "", func(args ...interface{}) error {
 		// ミニバッファがアクティブな場合は何もしない（ミニバッファが処理する）
@@ -807,124 +767,6 @@ func (e *Editor) registerPlugins() {
 	}
 }
 
-// 効率的な描画のためのヘルパーメソッド
-
-// updateLastState updates the cached state for diff rendering
-func (e *Editor) updateLastState() {
-	// バッファ内容をキャッシュ
-	e.lastBufferContent = e.currentWin.GetVisibleText()
-
-	// カーソル位置をキャッシュ
-	cursor := e.currentWin.Cursor()
-	e.lastCursorLine = cursor.Line()
-	e.lastCursorCol = cursor.Col()
-
-	// ステータスラインをキャッシュ
-	e.lastStatusLine = e.getStatusLineContent()
-}
-
-// checkBufferChanges checks if buffer content has changed
-func (e *Editor) checkBufferChanges() bool {
-	currentContent := e.currentWin.GetVisibleText()
-
-	// 長さが違う場合は変更あり
-	if len(currentContent) != len(e.lastBufferContent) {
-		return true
-	}
-
-	// 行ごとに比較
-	for i, line := range currentContent {
-		if i >= len(e.lastBufferContent) || line != e.lastBufferContent[i] {
-			return true
-		}
-	}
-
-	return false
-}
-
-// checkStatusChanges checks if status line has changed
-func (e *Editor) checkStatusChanges() bool {
-	currentStatus := e.getStatusLineContent()
-	return currentStatus != e.lastStatusLine
-}
-
-// checkCursorChanges checks if cursor position has changed
-func (e *Editor) checkCursorChanges() bool {
-	cursor := e.currentWin.Cursor()
-	return cursor.Line() != e.lastCursorLine || cursor.Col() != e.lastCursorCol
-}
-
-// getStatusLineContent returns the current status line content
-func (e *Editor) getStatusLineContent() string {
-	bufferName := e.currentWin.Buffer().Name()
-	modified := ""
-	if e.currentWin.Buffer().IsModified() {
-		modified = " *"
-	}
-
-	cursor := e.currentWin.Cursor()
-	position := fmt.Sprintf("L%d C%d", cursor.Line()+1, cursor.Col()+1)
-
-	return fmt.Sprintf("%s%s - %s", bufferName, modified, position)
-}
-
-// drawBufferDiff performs efficient diff-based buffer drawing
-func (e *Editor) drawBufferDiff() {
-	width, height := e.terminal.Size()
-	bufferHeight := height - 2
-
-	currentContent := e.currentWin.GetVisibleText()
-
-	// 行ごとに差分を描画
-	maxLines := len(currentContent)
-	if len(e.lastBufferContent) > maxLines {
-		maxLines = len(e.lastBufferContent)
-	}
-
-	for i := 0; i < maxLines && i < bufferHeight; i++ {
-		var currentLine, lastLine string
-
-		if i < len(currentContent) {
-			currentLine = currentContent[i]
-		}
-		if i < len(e.lastBufferContent) {
-			lastLine = e.lastBufferContent[i]
-		}
-
-		// 行が変更されている場合のみ再描画
-		if currentLine != lastLine {
-			e.terminal.MoveCursor(i+1, 1)
-			e.terminal.ClearLine()
-
-			if currentLine != "" {
-				// 行の長さを制限
-				runes := []rune(currentLine)
-				displayWidth := 0
-				cutIndex := len(runes)
-
-				for j, char := range runes {
-					charWidth := 1
-					if isFullWidth(char) {
-						charWidth = 2
-					}
-
-					if displayWidth+charWidth > width-1 {
-						cutIndex = j
-						break
-					}
-					displayWidth += charWidth
-				}
-
-				if cutIndex < len(runes) {
-					currentLine = string(runes[:cutIndex])
-				}
-
-				e.terminal.Print(currentLine)
-			}
-		}
-	}
-}
-
 // drawMinibuffer draws the minibuffer based on its current state
 func (e *Editor) drawMinibuffer() {
 	// ミニバッファがメッセージを持っている場合のみ描画
@@ -943,9 +785,4 @@ func (e *Editor) drawMinibuffer() {
 			e.terminal.Print(currentMessage)
 		}
 	}
-}
-
-// markNeedsFullRedraw marks that a full redraw is needed
-func (e *Editor) markNeedsFullRedraw() {
-	e.needsFullRedraw = true
 }
