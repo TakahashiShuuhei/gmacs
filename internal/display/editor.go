@@ -6,6 +6,7 @@ import (
 
 	"github.com/TakahashiShuuhei/gmacs/internal/buffer"
 	"github.com/TakahashiShuuhei/gmacs/internal/command"
+	"github.com/TakahashiShuuhei/gmacs/internal/config"
 	"github.com/TakahashiShuuhei/gmacs/internal/input"
 	"github.com/TakahashiShuuhei/gmacs/internal/keymap"
 	"github.com/TakahashiShuuhei/gmacs/internal/window"
@@ -55,8 +56,8 @@ func NewEditor() *Editor {
 	// Register basic editor commands
 	editor.registerEditorCommands()
 	
-	// Set up basic key bindings
-	editor.setupKeyBindings()
+	// Load Lua configuration (includes default key bindings)
+	editor.loadLuaConfig()
 	
 	return editor
 }
@@ -827,6 +828,43 @@ func (e *Editor) quit() error {
 	return nil
 }
 
+// BindKey binds a key sequence to a command
+func (e *Editor) BindKey(keySeq string, command string) error {
+	// Parse the key sequence
+	keys, err := keymap.ParseKeySequence(keySeq)
+	if err != nil {
+		return fmt.Errorf("failed to parse key sequence '%s': %v", keySeq, err)
+	}
+	
+	// Bind to keymap
+	err = e.keymap.Bind(keys, command)
+	if err != nil {
+		return fmt.Errorf("failed to bind key sequence '%s': %v", keySeq, err)
+	}
+	
+	return nil
+}
+
+// GetMinibuffer returns the minibuffer (implements EditorInterface)
+func (e *Editor) GetMinibuffer() config.MinibufferInterface {
+	return e.minibuffer
+}
+
+// GetCommandRegistry returns the command registry (implements EditorInterface)
+func (e *Editor) GetCommandRegistry() *command.Registry {
+	return e.registry
+}
+
+// loadLuaConfig loads the Lua configuration
+func (e *Editor) loadLuaConfig() {
+	luaConfig := config.NewLuaConfig(e)
+	
+	err := luaConfig.LoadConfig()
+	if err != nil {
+		e.minibuffer.ShowError(fmt.Errorf("failed to load Lua config: %v", err))
+	}
+}
+
 // showWelcomeMessage shows a welcome message
 func (e *Editor) showWelcomeMessage() {
 	e.minibuffer.ShowMessage("Welcome to gmacs! Type M-x and press Enter for commands. For better key support, use: gmacs --simple")
@@ -839,11 +877,6 @@ func (e *Editor) registerEditorCommands() {
 		return e.quit()
 	})
 	
-	// Version command
-	e.registry.Register("version", "Show gmacs version", "", func(args ...interface{}) error {
-		e.minibuffer.ShowMessage("gmacs version 0.0.1 - Go Emacs-like Editor")
-		return nil
-	})
 	
 	// Hello command
 	e.registry.Register("hello", "Say hello", "", func(args ...interface{}) error {
@@ -930,56 +963,3 @@ func (e *Editor) registerEditorCommands() {
 	})
 }
 
-// setupKeyBindings sets up basic key bindings
-func (e *Editor) setupKeyBindings() {
-	// M-x -> execute-extended-command (handled specially in handleInput)
-	// C-x C-c -> quit (handled specially in handleInput)
-	// C-g -> cancel (handled specially in handleInput)
-	
-	// Add some basic bindings that call commands
-	quitSeq, _ := keymap.ParseKeySequence("C-x C-c")
-	e.keymap.Bind(quitSeq, "quit")
-	
-	// Basic cursor movement bindings
-	forwardSeq, _ := keymap.ParseKeySequence("C-f")
-	e.keymap.Bind(forwardSeq, "forward-char")
-	
-	backwardSeq, _ := keymap.ParseKeySequence("C-b")
-	e.keymap.Bind(backwardSeq, "backward-char")
-	
-	nextSeq, _ := keymap.ParseKeySequence("C-n")
-	e.keymap.Bind(nextSeq, "next-line")
-	
-	prevSeq, _ := keymap.ParseKeySequence("C-p")
-	e.keymap.Bind(prevSeq, "previous-line")
-	
-	// Arrow key bindings (if supported)
-	rightSeq, _ := keymap.ParseKeySequence("right")
-	e.keymap.Bind(rightSeq, "forward-char")
-	
-	leftSeq, _ := keymap.ParseKeySequence("left")
-	e.keymap.Bind(leftSeq, "backward-char")
-	
-	downSeq, _ := keymap.ParseKeySequence("down")
-	e.keymap.Bind(downSeq, "next-line")
-	
-	upSeq, _ := keymap.ParseKeySequence("up")
-	e.keymap.Bind(upSeq, "previous-line")
-	
-	// Text deletion bindings
-	deleteSeq, _ := keymap.ParseKeySequence("C-d")
-	e.keymap.Bind(deleteSeq, "delete-char")
-	
-	backspaceSeq, _ := keymap.ParseKeySequence("backspace")
-	e.keymap.Bind(backspaceSeq, "backward-delete-char")
-	
-	// File I/O bindings
-	findFileSeq, _ := keymap.ParseKeySequence("C-x C-f")
-	e.keymap.Bind(findFileSeq, "find-file")
-	
-	saveBufferSeq, _ := keymap.ParseKeySequence("C-x C-s")
-	e.keymap.Bind(saveBufferSeq, "save-buffer")
-	
-	writeFileSeq, _ := keymap.ParseKeySequence("C-x C-w")
-	e.keymap.Bind(writeFileSeq, "write-file")
-}

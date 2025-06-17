@@ -1,0 +1,97 @@
+-- gmacs Configuration Example
+-- Copy this file to ~/.config/gmacs/init.lua and customize as needed
+
+-- Basic Settings
+gmacs.set_variable("theme", "dark")            -- Theme: "dark" or "light"
+gmacs.set_variable("tab-width", 4)             -- Tab width for indentation
+gmacs.set_variable("auto-save", true)          -- Auto-save files
+gmacs.set_variable("backup-directory", "~/.gmacs/backups")  -- Backup location
+
+-- Key Bindings
+gmacs.global_set_key("C-x C-f", "find-file")   -- Open file
+gmacs.global_set_key("C-x C-s", "save-buffer") -- Save file
+gmacs.global_set_key("C-x C-c", "quit")        -- Quit editor
+
+-- Custom Commands
+function smart_delete_word()
+    local word = gmacs.current_word()
+    if word and word ~= "" then
+        gmacs.message("Deleting word: " .. word)
+        gmacs.execute_command("backward-word")
+        -- gmacs.execute_command("kill-word")  -- Will be implemented later
+    else
+        gmacs.execute_command("delete-char")
+    end
+end
+
+gmacs.register_command("smart-delete-word", smart_delete_word, "Smart word deletion")
+gmacs.global_set_key("M-d", "smart-delete-word")
+
+-- File Type Hooks
+function go_mode_setup()
+    gmacs.set_variable("indent-tabs-mode", false, "local")
+    gmacs.set_variable("compile-command", "go build", "local")
+    gmacs.local_set_key("C-c C-c", "compile")
+    gmacs.local_set_key("C-c C-r", "go-run")
+end
+
+-- gmacs.add_hook("go-mode-hook", go_mode_setup)  -- Will be implemented later
+
+-- Custom Key Sequences
+gmacs.global_set_key("C-c h", "hello")         -- Say hello
+gmacs.global_set_key("C-c l", "list-commands") -- List all commands
+
+-- Package Management
+gmacs.packages = {
+    {"github.com/gmacs-dev/gmacs-ruby-mode", "v1.0.0"},
+    {"github.com/gmacs-dev/gmacs-lsp-client", "v2.1.0"},
+    {"github.com/gmacs-dev/gmacs-git-integration", "latest"},
+}
+
+-- Configuration after packages are loaded
+gmacs.after_packages_loaded(function()
+    -- Package-specific key bindings
+    if gmacs.ruby then
+        gmacs.global_set_key("C-c C-d", "ruby-show-doc")
+        gmacs.global_set_key("C-c C-g", "ruby-goto-definition")
+        gmacs.global_set_key("C-c C-r", "ruby-run-script")
+        gmacs.global_set_key("C-c C-f", "ruby-format-code")
+    end
+    
+    if gmacs.git then
+        gmacs.global_set_key("C-x g s", "git-status")
+        gmacs.global_set_key("C-x g l", "git-log")
+        gmacs.global_set_key("C-x g b", "git-blame")
+    end
+
+    -- Advanced package integration
+    function smart_documentation()
+        local mode = gmacs.current_buffer_mode()
+        local word = gmacs.current_word()
+        
+        if mode == "ruby" and gmacs.ruby then
+            local doc = gmacs.ruby.show_doc(word)
+            gmacs.message(doc)
+        elseif mode == "python" and gmacs.python then
+            local help = gmacs.python.show_help(word)
+            gmacs.message(help)
+        else
+            gmacs.message("No documentation available for " .. mode .. " mode")
+        end
+    end
+
+    gmacs.register_command("smart-doc", smart_documentation, "Show documentation for current context")
+    gmacs.global_set_key("F1", "smart-doc")
+    
+    gmacs.message("Package extensions loaded!")
+end)
+
+-- Conditional Settings
+local system = os.getenv("OS") or "unix"
+if system:match("Windows") then
+    gmacs.set_variable("shell", "cmd.exe")
+else
+    gmacs.set_variable("shell", "/bin/bash")
+end
+
+gmacs.message("Configuration loaded successfully!")
