@@ -42,8 +42,8 @@ func TestResizeEvent(t *testing.T) {
 	window := editor.CurrentWindow()
 	width, height := window.Size()
 	
-	if width != 100 || height != 30 {
-		t.Errorf("Expected size 100x30, got %dx%d", width, height)
+	if width != 100 || height != 28 { // 30-2 for mode line and minibuffer
+		t.Errorf("Expected size 100x28, got %dx%d", width, height)
 	}
 }
 

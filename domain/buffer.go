@@ -3,7 +3,6 @@ package domain
 import (
 	"strings"
 	"unicode/utf8"
-	"github.com/TakahashiShuuhei/gmacs/core/log"
 )
 
 type Buffer struct {
@@ -61,7 +60,6 @@ func (b *Buffer) InsertChar(ch rune) {
 	}
 	
 	line := b.content[b.cursor.Row]
-	log.Debug("Inserting rune %c into line %q at byte pos %d", ch, line, b.cursor.Col)
 	
 	// Insert at byte position (cursor.Col is in bytes)
 	newLine := line[:b.cursor.Col] + string(ch) + line[b.cursor.Col:]
@@ -71,7 +69,6 @@ func (b *Buffer) InsertChar(ch rune) {
 	b.cursor.Col += utf8.RuneLen(ch)
 	b.modified = true
 	
-	log.Debug("After insert: line=%q, cursor byte pos=%d", newLine, b.cursor.Col)
 }
 
 func (b *Buffer) insertNewline() {

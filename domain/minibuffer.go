@@ -1,8 +1,5 @@
 package domain
 
-import (
-	"github.com/TakahashiShuuhei/gmacs/core/log"
-)
 
 // MinibufferMode represents the current mode of the minibuffer
 type MinibufferMode int
@@ -58,7 +55,6 @@ func (mb *Minibuffer) CursorPosition() int {
 
 // StartCommandInput starts M-x command input mode
 func (mb *Minibuffer) StartCommandInput() {
-	log.Debug("Starting minibuffer command input")
 	mb.mode = MinibufferCommand
 	mb.content = ""
 	mb.prompt = "M-x "
@@ -68,7 +64,6 @@ func (mb *Minibuffer) StartCommandInput() {
 
 // SetMessage displays a message in the minibuffer
 func (mb *Minibuffer) SetMessage(message string) {
-	log.Debug("Setting minibuffer message: %s", message)
 	mb.mode = MinibufferMessage
 	mb.content = ""
 	mb.prompt = ""
@@ -78,7 +73,6 @@ func (mb *Minibuffer) SetMessage(message string) {
 
 // Clear clears the minibuffer
 func (mb *Minibuffer) Clear() {
-	log.Debug("Clearing minibuffer")
 	mb.mode = MinibufferInactive
 	mb.content = ""
 	mb.prompt = ""
@@ -102,7 +96,6 @@ func (mb *Minibuffer) InsertChar(ch rune) {
 	mb.content = string(newRunes)
 	mb.cursor++
 	
-	log.Debug("Minibuffer content: %s, cursor: %d", mb.content, mb.cursor)
 }
 
 // DeleteBackward deletes the character before the cursor
@@ -118,7 +111,6 @@ func (mb *Minibuffer) DeleteBackward() {
 	mb.content = string(append(before, after...))
 	mb.cursor--
 	
-	log.Debug("Minibuffer content after backspace: %s, cursor: %d", mb.content, mb.cursor)
 }
 
 // GetDisplayText returns the text to display in the minibuffer

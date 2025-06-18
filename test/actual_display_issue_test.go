@@ -7,6 +7,16 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec display/terminal_layout
+ * @scenario 余分な空行の回避
+ * @description 余分な空行が表示されたユーザー報告シナリオの正確なテスト
+ * @given 12行のターミナル（ユーザーの報告環境）
+ * @when 文字a〜dをそれぞれEnterで区切って入力する
+ * @then 余分な空白なしで実際のコンテンツ行のみがレンダリングされる
+ * @implementation cli/display.go, test/mock_display.go
+ * @bug_fix height-2 vs height-3の不整合と無条件改行出力を修正
+ */
 func TestActualDisplayIssue(t *testing.T) {
 	// Test the exact scenario user reported: a, enter, b, enter, c, enter, d, enter
 	editor := domain.NewEditor()
@@ -118,16 +128,23 @@ func TestDisplayConsistency(t *testing.T) {
 	t.Logf("Window.VisibleLines(): %v", visible)
 	t.Logf("MockDisplay.GetContent(): %v", mockContent)
 	
-	// These should be consistent
-	if len(visible) != len(mockContent) {
-		t.Errorf("Inconsistency: VisibleLines has %d items, MockDisplay has %d", 
-			len(visible), len(mockContent))
+	// Compare content lines (MockDisplay has fixed size array, VisibleLines has actual content)
+	// Check that the actual content matches
+	for i := 0; i < len(visible); i++ {
+		if i < len(mockContent) {
+			if visible[i] != mockContent[i] {
+				t.Errorf("Line %d inconsistency: VisibleLines='%s', MockDisplay='%s'", 
+					i, visible[i], mockContent[i])
+			}
+		} else {
+			t.Errorf("MockDisplay content array too small: need %d lines, got %d", len(visible), len(mockContent))
+		}
 	}
 	
-	for i := 0; i < len(visible) && i < len(mockContent); i++ {
-		if visible[i] != mockContent[i] {
-			t.Errorf("Line %d inconsistency: VisibleLines='%s', MockDisplay='%s'", 
-				i, visible[i], mockContent[i])
+	// Check that remaining MockDisplay content is empty
+	for i := len(visible); i < len(mockContent); i++ {
+		if mockContent[i] != "" {
+			t.Errorf("MockDisplay line %d should be empty but contains: '%s'", i, mockContent[i])
 		}
 	}
 }

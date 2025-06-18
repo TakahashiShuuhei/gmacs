@@ -71,7 +71,6 @@ func NewCommandRegistry() *CommandRegistry {
 
 func (cr *CommandRegistry) Register(cmd *Command) {
 	cr.commands[cmd.Name()] = cmd
-	log.Debug("Registered command: %s", cmd.Name())
 }
 
 func (cr *CommandRegistry) RegisterFunc(name string, fn CommandFunc) {

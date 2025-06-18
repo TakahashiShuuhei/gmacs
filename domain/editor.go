@@ -18,9 +18,8 @@ type Editor struct {
 }
 
 func NewEditor() *Editor {
-	log.Debug("Creating new editor")
 	buffer := NewBuffer("*scratch*")
-	window := NewWindow(buffer, 80, 24)
+	window := NewWindow(buffer, 80, 22) // 24-2 for mode line and minibuffer
 	
 	editor := &Editor{
 		buffers:         []*Buffer{buffer},
@@ -36,6 +35,9 @@ func NewEditor() *Editor {
 	
 	// Register cursor movement commands as interactive functions
 	editor.registerCursorCommands()
+	
+	// Register scrolling commands as interactive functions
+	editor.registerScrollCommands()
 	
 	log.Info("Editor created with buffer: %s", buffer.Name())
 	return editor
@@ -61,7 +63,6 @@ func (e *Editor) EventQueue() *events.EventQueue {
 }
 
 func (e *Editor) HandleEvent(event events.Event) {
-	log.Debug("Handling event: %T", event)
 	switch ev := event.(type) {
 	case events.KeyEventData:
 		e.handleKeyEvent(ev)
@@ -76,7 +77,6 @@ func (e *Editor) HandleEvent(event events.Event) {
 }
 
 func (e *Editor) handleKeyEvent(event events.KeyEventData) {
-	log.Debug("Key event: key=%s, rune=%c, ctrl=%t, meta=%t", event.Key, event.Rune, event.Ctrl, event.Meta)
 	
 	// Handle Ctrl+C for quit
 	if event.Ctrl && event.Key == "c" {
@@ -97,13 +97,11 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	// Handle Meta key press detection
 	if event.Key == "\x1b" || event.Key == "Escape" {
 		e.metaPressed = true
-		log.Debug("Meta key pressed")
 		return
 	}
 	
 	// Handle M-x command
 	if e.metaPressed && event.Key == "x" {
-		log.Debug("M-x pressed, starting command input")
 		e.minibuffer.StartCommandInput()
 		e.metaPressed = false
 		return
@@ -116,7 +114,6 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	
 	// Check for key bindings first
 	if cmd, found := e.keyBindings.Lookup(event.Key, event.Ctrl, event.Meta); found {
-		log.Debug("Executing bound command for key: %s (ctrl=%t, meta=%t)", event.Key, event.Ctrl, event.Meta)
 		err := cmd(e)
 		if err != nil {
 			log.Error("Key binding command failed: %v", err)
@@ -126,7 +123,6 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	
 	// Check for key sequence bindings (like arrow keys)
 	if cmd, found := e.keyBindings.LookupSequence(event.Key); found {
-		log.Debug("Executing bound command for sequence: %q", event.Key)
 		err := cmd(e)
 		if err != nil {
 			log.Error("Key sequence command failed: %v", err)
@@ -143,11 +139,13 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	
 	if event.Rune != 0 && !event.Ctrl && !event.Meta {
 		if event.Key == "Enter" || event.Key == "Return" {
-			log.Debug("Inserting newline")
 			buffer.InsertChar('\n')
+			log.Info("SCROLL_TIMING: Text inserted (newline), calling EnsureCursorVisible at cursor (%d,%d)", buffer.Cursor().Row, buffer.Cursor().Col)
+			EnsureCursorVisible(e)
 		} else {
-			log.Debug("Inserting character: %c", event.Rune)
 			buffer.InsertChar(event.Rune)
+			log.Info("SCROLL_TIMING: Text inserted (char %c), calling EnsureCursorVisible at cursor (%d,%d)", event.Rune, buffer.Cursor().Row, buffer.Cursor().Col)
+			EnsureCursorVisible(e)
 		}
 	}
 }
@@ -156,7 +154,12 @@ func (e *Editor) handleResizeEvent(event events.ResizeEventData) {
 	log.Info("Window resize: %dx%d", event.Width, event.Height)
 	window := e.CurrentWindow()
 	if window != nil {
-		window.Resize(event.Width, event.Height)
+		// Reserve 2 lines for mode line and minibuffer
+		contentHeight := event.Height - 2
+		if contentHeight < 1 {
+			contentHeight = 1
+		}
+		window.Resize(event.Width, contentHeight)
 	} else {
 		log.Warn("No current window for resize event")
 	}
@@ -201,6 +204,18 @@ func (e *Editor) registerCursorCommands() {
 	e.commandRegistry.RegisterFunc("end-of-line", EndOfLine)
 }
 
+func (e *Editor) registerScrollCommands() {
+	// Register scrolling commands as M-x interactive functions
+	e.commandRegistry.RegisterFunc("scroll-up", ScrollUp)
+	e.commandRegistry.RegisterFunc("scroll-down", ScrollDown)
+	e.commandRegistry.RegisterFunc("scroll-left", ScrollLeftChar)
+	e.commandRegistry.RegisterFunc("scroll-right", ScrollRightChar)
+	e.commandRegistry.RegisterFunc("toggle-truncate-lines", ToggleLineWrap)
+	e.commandRegistry.RegisterFunc("page-up", PageUp)
+	e.commandRegistry.RegisterFunc("page-down", PageDown)
+	e.commandRegistry.RegisterFunc("debug-info", ShowDebugInfo)
+}
+
 func (e *Editor) handleCommandInput(event events.KeyEventData) {
 	// Handle Enter - execute command
 	if event.Key == "Enter" || event.Key == "Return" {
@@ -226,7 +241,6 @@ func (e *Editor) handleCommandInput(event events.KeyEventData) {
 	
 	// Handle Escape - cancel command
 	if event.Key == "\x1b" || event.Key == "Escape" {
-		log.Debug("Command input cancelled")
 		e.minibuffer.Clear()
 		return
 	}

@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec scroll/scroll_timing
+ * @scenario 早すぎるスクロールの回避
+ * @description コンテンツがウィンドウコンテンツエリアを真に超えるまでスクロールが発生しないことをテスト
+ * @given 12行のターミナル（10コンテンツ + モード + ミニ）
+ * @when 文字a〜jをそれぞれEnterで区切って入力する
+ * @then すべての10行がスクロールなしで表示される
+ * @implementation domain/scroll.go, cli/display.go
+ */
 func TestTerminal12LinesScenario(t *testing.T) {
 	// Exact user scenario: 12-line terminal
 	editor := domain.NewEditor()
@@ -119,6 +128,15 @@ func TestTerminal12LinesScenario(t *testing.T) {
 	}
 }
 
+/**
+ * @spec scroll/scroll_timing  
+ * @scenario コンテンツがウィンドウを超えた時のスクロール
+ * @description スクロール動作をステップごとに検証するデバッグテスト
+ * @given 12行のコンテンツエリアを持つターミナル
+ * @when コンテンツエリア限界を超えて一行ずつ追加する
+ * @then 適切なタイミングでスクロールが発生する
+ * @implementation domain/scroll.go, cli/display.go
+ */
 func TestTerminal12LinesDebugSteps(t *testing.T) {
 	// Debug each step in detail
 	editor := domain.NewEditor()

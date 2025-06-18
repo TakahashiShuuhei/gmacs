@@ -2,7 +2,6 @@ package domain
 
 import (
 	"unicode/utf8"
-	"github.com/TakahashiShuuhei/gmacs/core/log"
 	"github.com/TakahashiShuuhei/gmacs/core/util"
 )
 
@@ -27,12 +26,12 @@ func ForwardChar(editor *Editor) error {
 			if len(runes) > 0 {
 				newCol := cursor.Col + utf8.RuneLen(runes[0])
 				buffer.SetCursor(Position{Row: cursor.Row, Col: newCol})
-				log.Debug("ForwardChar: moved to (%d,%d)", cursor.Row, newCol)
+				EnsureCursorVisible(editor)
 			}
 		} else if cursor.Row < len(content)-1 {
 			// Move to beginning of next line
 			buffer.SetCursor(Position{Row: cursor.Row + 1, Col: 0})
-			log.Debug("ForwardChar: moved to next line (%d,0)", cursor.Row+1)
+			EnsureCursorVisible(editor)
 		}
 	}
 	
@@ -58,13 +57,13 @@ func BackwardChar(editor *Editor) error {
 			lastRune := runes[len(runes)-1]
 			newCol := cursor.Col - utf8.RuneLen(lastRune)
 			buffer.SetCursor(Position{Row: cursor.Row, Col: newCol})
-			log.Debug("BackwardChar: moved to (%d,%d)", cursor.Row, newCol)
+			EnsureCursorVisible(editor)
 		}
 	} else if cursor.Row > 0 {
 		// Move to end of previous line
 		prevLine := content[cursor.Row-1]
 		buffer.SetCursor(Position{Row: cursor.Row - 1, Col: len(prevLine)})
-		log.Debug("BackwardChar: moved to end of previous line (%d,%d)", cursor.Row-1, len(prevLine))
+		EnsureCursorVisible(editor)
 	}
 	
 	return nil
@@ -90,7 +89,7 @@ func NextLine(editor *Editor) error {
 		newCol := findBytePositionFromDisplay(nextLine, targetDisplayCol)
 		
 		buffer.SetCursor(Position{Row: cursor.Row + 1, Col: newCol})
-		log.Debug("NextLine: moved to (%d,%d)", cursor.Row+1, newCol)
+		EnsureCursorVisible(editor)
 	}
 	
 	return nil
@@ -116,7 +115,7 @@ func PreviousLine(editor *Editor) error {
 		newCol := findBytePositionFromDisplay(prevLine, targetDisplayCol)
 		
 		buffer.SetCursor(Position{Row: cursor.Row - 1, Col: newCol})
-		log.Debug("PreviousLine: moved to (%d,%d)", cursor.Row-1, newCol)
+		EnsureCursorVisible(editor)
 	}
 	
 	return nil
@@ -131,7 +130,7 @@ func BeginningOfLine(editor *Editor) error {
 	
 	cursor := buffer.Cursor()
 	buffer.SetCursor(Position{Row: cursor.Row, Col: 0})
-	log.Debug("BeginningOfLine: moved to (%d,0)", cursor.Row)
+	EnsureCursorVisible(editor)
 	
 	return nil
 }
@@ -149,7 +148,7 @@ func EndOfLine(editor *Editor) error {
 	if cursor.Row < len(content) {
 		line := content[cursor.Row]
 		buffer.SetCursor(Position{Row: cursor.Row, Col: len(line)})
-		log.Debug("EndOfLine: moved to (%d,%d)", cursor.Row, len(line))
+		EnsureCursorVisible(editor)
 	}
 	
 	return nil

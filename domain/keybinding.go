@@ -1,8 +1,5 @@
 package domain
 
-import (
-	"github.com/TakahashiShuuhei/gmacs/core/log"
-)
 
 // KeyBinding represents a key combination and its associated command
 type KeyBinding struct {
@@ -37,13 +34,17 @@ func (kbm *KeyBindingMap) registerDefaultBindings() {
 	kbm.Bind("a", true, false, BeginningOfLine) // C-a
 	kbm.Bind("e", true, false, EndOfLine)       // C-e
 	
+	// Scrolling
+	kbm.Bind("v", true, false, PageDown)        // C-v (page down)
+	kbm.BindSequence("\x1b[6~", PageDown)       // Page Down key
+	kbm.BindSequence("\x1b[5~", PageUp)         // Page Up key
+	
 	// Arrow keys (ANSI escape sequences)
 	kbm.BindSequence("\x1b[C", ForwardChar)     // Right arrow
 	kbm.BindSequence("\x1b[D", BackwardChar)    // Left arrow
 	kbm.BindSequence("\x1b[B", NextLine)        // Down arrow
 	kbm.BindSequence("\x1b[A", PreviousLine)    // Up arrow
 	
-	log.Debug("Registered default key bindings")
 }
 
 // Bind adds a key binding
@@ -55,7 +56,6 @@ func (kbm *KeyBindingMap) Bind(key string, ctrl, meta bool, command CommandFunc)
 		Command: command,
 	}
 	kbm.bindings = append(kbm.bindings, binding)
-	log.Debug("Bound key: %s (ctrl=%t, meta=%t)", key, ctrl, meta)
 }
 
 // BindSequence adds a key sequence binding (like arrow keys)
@@ -67,14 +67,12 @@ func (kbm *KeyBindingMap) BindSequence(sequence string, command CommandFunc) {
 		Command: command,
 	}
 	kbm.bindings = append(kbm.bindings, binding)
-	log.Debug("Bound key sequence: %q", sequence)
 }
 
 // Lookup finds a command for the given key combination
 func (kbm *KeyBindingMap) Lookup(key string, ctrl, meta bool) (CommandFunc, bool) {
 	for _, binding := range kbm.bindings {
 		if binding.Key == key && binding.Ctrl == ctrl && binding.Meta == meta {
-			log.Debug("Found binding for key: %s (ctrl=%t, meta=%t)", key, ctrl, meta)
 			return binding.Command, true
 		}
 	}
@@ -85,7 +83,6 @@ func (kbm *KeyBindingMap) Lookup(key string, ctrl, meta bool) (CommandFunc, bool
 func (kbm *KeyBindingMap) LookupSequence(sequence string) (CommandFunc, bool) {
 	for _, binding := range kbm.bindings {
 		if binding.Key == sequence && !binding.Ctrl && !binding.Meta {
-			log.Debug("Found binding for sequence: %q", sequence)
 			return binding.Command, true
 		}
 	}

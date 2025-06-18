@@ -30,11 +30,11 @@ func TestTerminalResize(t *testing.T) {
 	editor.HandleEvent(resizeEvent)
 	display.Resize(120, 30)
 	
-	// Check window was resized
+	// Check window was resized (height should be terminal height - 2)
 	window := editor.CurrentWindow()
 	windowWidth, windowHeight := window.Size()
-	if windowWidth != 120 || windowHeight != 30 {
-		t.Errorf("Expected window size (120, 30), got (%d, %d)", windowWidth, windowHeight)
+	if windowWidth != 120 || windowHeight != 28 { // 30-2 for mode line and minibuffer
+		t.Errorf("Expected window size (120, 28), got (%d, %d)", windowWidth, windowHeight)
 	}
 	
 	// Check display was resized
@@ -79,17 +79,17 @@ func TestResizeToSmallerSize(t *testing.T) {
 	editor.HandleEvent(resizeEvent)
 	display.Resize(40, 10)
 	
-	// Check sizes updated
+	// Check sizes updated (height should be terminal height - 2)
 	window := editor.CurrentWindow()
 	windowWidth, windowHeight := window.Size()
-	if windowWidth != 40 || windowHeight != 10 {
-		t.Errorf("Expected window size (40, 10), got (%d, %d)", windowWidth, windowHeight)
+	if windowWidth != 40 || windowHeight != 8 { // 10-2 for mode line and minibuffer
+		t.Errorf("Expected window size (40, 8), got (%d, %d)", windowWidth, windowHeight)
 	}
 	
 	// Re-render and check content fits
 	display.Render(editor)
 	content := display.GetContent()
-	if len(content) != 8 { // height-2 = 8
+	if len(content) != 8 { // height-2 = 8 (same as window height)
 		t.Errorf("Expected 8 content lines after resize, got %d", len(content))
 	}
 	
@@ -118,12 +118,12 @@ func TestMultipleResizes(t *testing.T) {
 		editor.HandleEvent(event)
 	}
 	
-	// Perform multiple resizes
-	sizes := []struct{ width, height int }{
-		{100, 30},
-		{60, 20},
-		{120, 40},
-		{80, 24},
+	// Perform multiple resizes (expected window heights will be terminal height - 2)
+	sizes := []struct{ width, height, expectedWindowHeight int }{
+		{100, 30, 28},
+		{60, 20, 18},
+		{120, 40, 38},
+		{80, 24, 22},
 	}
 	
 	for _, size := range sizes {
@@ -134,15 +134,15 @@ func TestMultipleResizes(t *testing.T) {
 		// Check size was applied
 		window := editor.CurrentWindow()
 		windowWidth, windowHeight := window.Size()
-		if windowWidth != size.width || windowHeight != size.height {
+		if windowWidth != size.width || windowHeight != size.expectedWindowHeight {
 			t.Errorf("Expected window size (%d, %d), got (%d, %d)", 
-				size.width, size.height, windowWidth, windowHeight)
+				size.width, size.expectedWindowHeight, windowWidth, windowHeight)
 		}
 		
 		// Render and check content is preserved
 		display.Render(editor)
 		content := display.GetContent()
-		expectedLines := size.height - 2
+		expectedLines := size.expectedWindowHeight
 		if len(content) != expectedLines {
 			t.Errorf("Expected %d content lines for size %dx%d, got %d", 
 				expectedLines, size.width, size.height, len(content))
