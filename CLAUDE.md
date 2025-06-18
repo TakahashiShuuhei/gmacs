@@ -93,6 +93,27 @@ go build -o gmacs
 3. CLI 部分の実装
 4. 統合テスト
 
+## ログ機能
+
+### ログファイル
+- プロセス起動ごとに `logs/gmacs_YYYYMMDD_HHMMSS.log` 形式で新しいファイルを作成
+- タイムスタンプ付きでマイクロ秒精度のログ出力
+- 自動的に `logs/` ディレクトリを作成
+
+### ログレベル
+- `Debug`: 詳細なデバッグ情報（キー入力、イベント処理等）
+- `Info`: 一般的な情報（起動、終了、ウィンドウリサイズ等）
+- `Warn`: 警告（未知のイベント、状態不整合等）
+- `Error`: エラー（ターミナル初期化失敗等）
+
+### 使用例
+```go
+log.Debug("Key event: key=%s, rune=%c", event.Key, event.Rune)
+log.Info("gmacs starting up")
+log.Warn("No current buffer for key event")
+log.Error("Failed to initialize terminal: %v", err)
+```
+
 ## 既知の問題
 
 ### UTF-8/日本語処理

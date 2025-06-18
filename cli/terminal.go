@@ -7,6 +7,7 @@ import (
 	"golang.org/x/term"
 	
 	"github.com/TakahashiShuuhei/gmacs/core/events"
+	"github.com/TakahashiShuuhei/gmacs/core/log"
 )
 
 type Terminal struct {
@@ -23,17 +24,21 @@ func NewTerminal() *Terminal {
 }
 
 func (t *Terminal) Init() error {
+	log.Debug("Initializing terminal")
 	var err error
 	t.oldState, err = term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
+		log.Error("Failed to make terminal raw: %v", err)
 		return err
 	}
 	
 	signal.Notify(t.sigChan, syscall.SIGWINCH, syscall.SIGINT, syscall.SIGTERM)
 	
+	log.Debug("Starting signal and input handlers")
 	go t.handleSignals()
 	go t.readInput()
 	
+	log.Info("Terminal initialized successfully")
 	return nil
 }
 
@@ -49,21 +54,28 @@ func (t *Terminal) EventChan() <-chan events.Event {
 }
 
 func (t *Terminal) handleSignals() {
+	log.Debug("Signal handler started")
 	for sig := range t.sigChan {
+		log.Debug("Received signal: %v", sig)
 		switch sig {
 		case syscall.SIGWINCH:
 			width, height, err := term.GetSize(int(os.Stdout.Fd()))
 			if err == nil {
+				log.Info("Terminal resized to %dx%d", width, height)
 				t.eventChan <- events.ResizeEventData{
 					Width:  width,
 					Height: height,
 				}
+			} else {
+				log.Error("Failed to get terminal size: %v", err)
 			}
 		case syscall.SIGINT, syscall.SIGTERM:
+			log.Info("Received termination signal: %v", sig)
 			t.eventChan <- events.QuitEventData{}
 			return
 		}
 	}
+	log.Debug("Signal handler stopped")
 }
 
 func (t *Terminal) readInput() {
