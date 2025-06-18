@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode"
 
 	"github.com/TakahashiShuuhei/gmacs/internal/buffer"
 	"github.com/TakahashiShuuhei/gmacs/internal/command"
@@ -152,6 +153,13 @@ func (e *Editor) SwitchToBufferByName(name string) error {
 	}
 
 	return e.SwitchToBuffer(index)
+}
+
+// isPrintableChar checks if a character is printable (including Unicode characters)
+func isPrintableChar(r rune) bool {
+	// Use unicode package for proper printability check
+	// Exclude control characters but include all printable Unicode characters
+	return unicode.IsPrint(r) && !unicode.IsControl(r)
 }
 
 // isFullWidth checks if a character is full-width (typically CJK characters)
@@ -406,8 +414,8 @@ func (e *Editor) handleKeySequence(key keymap.Key) error {
 
 	// No binding found and not a prefix
 	if len(e.keySequence) == 1 {
-		// Single key - check if it's printable
-		if key.Special == "" && key.Char >= 32 && key.Char <= 126 && !key.Ctrl && !key.Alt {
+		// Single key - check if it's printable (including Unicode characters)
+		if key.Special == "" && isPrintableChar(key.Char) && !key.Ctrl && !key.Alt {
 			e.keySequence = nil
 			return e.selfInsertCommand(key.Char)
 		}
