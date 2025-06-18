@@ -2,7 +2,7 @@
 
 このドキュメントはテストコードから自動抽出されたBDD仕様書です。
 
-**生成日時:** 2025年06月19日 00:19:11
+**生成日時:** 2025年06月19日 08:34:19
 
 ## commands/mx_basic
 
@@ -1246,6 +1246,46 @@
 
 ---
 
+## スクロール機能 (scroll/horizontal_boundary_scroll)
+
+### TestHorizontalBoundaryScroll
+
+**ファイル:** `test/horizontal_scroll_test.go`
+
+**シナリオ:** 水平スクロール境界でのスクロール動作
+
+**説明:** カーソルが可視範囲の左右境界を超えた時のスクロール動作
+
+**前提:** 行ラップ無効の狭いウィンドウと長い行
+
+**操作:** カーソルを左右の境界を超えて移動
+
+**結果:** 適切なタイミングでスクロールが発生する
+
+**実装ファイル:** `domain/scroll.go`, `境界スクロール処理`
+
+---
+
+## スクロール機能 (scroll/horizontal_cursor_follow)
+
+### TestHorizontalScrollCursorFollow
+
+**ファイル:** `test/horizontal_scroll_test.go`
+
+**シナリオ:** 水平スクロール時のカーソル追従
+
+**説明:** 行ラップ無効時の水平スクロールとカーソル移動の同期検証
+
+**前提:** 狭いウィンドウで行ラップを無効にし、長い行を作成
+
+**操作:** カーソルを右端まで移動し、その後左に戻る
+
+**結果:** カーソル位置に応じて水平スクロールが正しく調整される
+
+**実装ファイル:** `domain/scroll.go`, `水平スクロール制御`
+
+---
+
 ## スクロール機能 (scroll/horizontal_scrolling)
 
 ### TestHorizontalScrolling
@@ -1263,6 +1303,26 @@
 **結果:** 指定した位置からコンテンツが表示される
 
 **実装ファイル:** `domain/window.go`, `水平スクロール`
+
+---
+
+## スクロール機能 (scroll/horizontal_toggle_wrap_state)
+
+### TestHorizontalToggleWrapState
+
+**ファイル:** `test/horizontal_scroll_test.go`
+
+**シナリオ:** 行ラップ切り替え時の水平スクロール状態
+
+**説明:** 行ラップの有効/無効切り替え時の水平スクロール状態の保持
+
+**前提:** 長い行とカーソルが右端にある状態
+
+**操作:** 行ラップの有効/無効を切り替える
+
+**結果:** 適切にスクロール状態が管理される
+
+**実装ファイル:** `domain/scroll.go`, `ラップ切り替え処理`
 
 ---
 
