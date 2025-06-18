@@ -49,10 +49,10 @@ func (d *Display) Render(editor *domain.Editor) {
 	}
 	
 	lines := window.VisibleLines()
-	width, height := window.Size()
+	width, windowContentHeight := window.Size()
 	
-	// Render buffer content (height-2 lines for buffer, 1 for mode line, 1 for minibuffer)
-	for i := 0; i < height-2; i++ {
+	// Render buffer content (window content area is already adjusted for mode line and minibuffer)
+	for i := 0; i < windowContentHeight; i++ {
 		if i < len(lines) {
 			line := lines[i]
 			
@@ -63,7 +63,8 @@ func (d *Display) Render(editor *domain.Editor) {
 			}
 			fmt.Print(line)
 		}
-		if i < height-3 {
+		// Add newline after each line (to position cursor for next line)
+		if i < windowContentHeight-1 {
 			fmt.Print("\r\n")
 		}
 	}
@@ -78,14 +79,20 @@ func (d *Display) Render(editor *domain.Editor) {
 		// Position cursor in minibuffer (last line)
 		promptLen := util.StringWidth(minibuffer.Prompt())
 		cursorPos := promptLen + minibuffer.CursorPosition()
-		log.Debug("Moving cursor to minibuffer position (%d, %d)", height-1, cursorPos)
-		d.MoveCursor(height-1, cursorPos)
+		terminalHeight := d.height
+		log.Debug("Moving cursor to minibuffer position (%d, %d)", terminalHeight-1, cursorPos)
+		d.MoveCursor(terminalHeight-1, cursorPos)
 	} else {
 		// Position cursor in main window (buffer area)
 		cursorRow, cursorCol := window.CursorPosition()
-		if cursorRow >= 0 && cursorRow < height-2 { // height-2 because we now have mode line and minibuffer
+		// Window content area is height-2 (excluding mode line and minibuffer)
+		// But we need to get the actual window content height from the window itself
+		_, windowContentHeight := window.Size()
+		if cursorRow >= 0 && cursorRow < windowContentHeight {
 			log.Debug("Moving cursor to screen position (%d, %d)", cursorRow, cursorCol)
 			d.MoveCursor(cursorRow, cursorCol)
+		} else {
+			log.Debug("Cursor outside visible area: screen row %d, content height %d", cursorRow, windowContentHeight)
 		}
 	}
 }

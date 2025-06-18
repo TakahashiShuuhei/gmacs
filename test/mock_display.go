@@ -21,10 +21,13 @@ type MockDisplay struct {
 }
 
 func NewMockDisplay(width, height int) *MockDisplay {
+	// MockDisplay should match actual Display behavior
+	// The content area size should match what the window reports
+	contentHeight := height - 2  // Reserve 2 lines for mode line and minibuffer
 	return &MockDisplay{
 		width:   width,
 		height:  height,
-		content: make([]string, height-2), // -2 for mode line and minibuffer
+		content: make([]string, contentHeight),
 	}
 }
 
@@ -43,8 +46,16 @@ func (d *MockDisplay) Render(editor *domain.Editor) {
 		d.content[i] = ""
 	}
 	
-	// Render buffer lines (height-2 for buffer content)
-	for i := 0; i < d.height-2; i++ {
+	// Render buffer lines using window content height (to match actual Display)
+	_, windowContentHeight := window.Size()
+	
+	// Make sure our content array can hold the window content
+	if len(d.content) < windowContentHeight {
+		// Resize content array to match window content height
+		d.content = make([]string, windowContentHeight)
+	}
+	
+	for i := 0; i < windowContentHeight; i++ {
 		if i < len(lines) {
 			line := lines[i]
 			
@@ -53,6 +64,8 @@ func (d *MockDisplay) Render(editor *domain.Editor) {
 				line = truncateToWidthMock(line, d.width)
 			}
 			d.content[i] = line
+		} else {
+			d.content[i] = ""  // Empty line for unused content area
 		}
 	}
 	
