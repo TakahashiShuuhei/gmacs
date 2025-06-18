@@ -41,7 +41,8 @@ func (d *Display) Render(editor *domain.Editor) {
 	lines := window.VisibleLines()
 	width, height := window.Size()
 	
-	for i := 0; i < height-1; i++ {
+	// Render buffer content (height-2 lines for buffer, 1 for mode line, 1 for minibuffer)
+	for i := 0; i < height-2; i++ {
 		if i < len(lines) {
 			line := lines[i]
 			
@@ -52,32 +53,55 @@ func (d *Display) Render(editor *domain.Editor) {
 			}
 			fmt.Print(line)
 		}
-		if i < height-2 {
+		if i < height-3 {
 			fmt.Print("\r\n")
 		}
 	}
 	
-	d.renderBottomLine(editor)
+	// Render mode line and minibuffer
+	d.renderModeLine(editor)
+	d.renderMinibuffer(editor)
 	
 	// Position cursor based on whether minibuffer is active
 	minibuffer := editor.Minibuffer()
 	if minibuffer.IsActive() && minibuffer.Mode() == domain.MinibufferCommand {
-		// Position cursor in minibuffer
+		// Position cursor in minibuffer (last line)
 		promptLen := util.StringWidth(minibuffer.Prompt())
 		cursorPos := promptLen + minibuffer.CursorPosition()
 		log.Debug("Moving cursor to minibuffer position (%d, %d)", height-1, cursorPos)
 		d.MoveCursor(height-1, cursorPos)
 	} else {
-		// Position cursor in main window
+		// Position cursor in main window (buffer area)
 		cursorRow, cursorCol := window.CursorPosition()
-		if cursorRow >= 0 && cursorRow < height-1 {
+		if cursorRow >= 0 && cursorRow < height-2 { // height-2 because we now have mode line and minibuffer
 			log.Debug("Moving cursor to screen position (%d, %d)", cursorRow, cursorCol)
 			d.MoveCursor(cursorRow, cursorCol)
 		}
 	}
 }
 
-func (d *Display) renderBottomLine(editor *domain.Editor) {
+func (d *Display) renderModeLine(editor *domain.Editor) {
+	buffer := editor.CurrentBuffer()
+	if buffer == nil {
+		return
+	}
+	
+	fmt.Print("\r\n")
+	
+	// Always show mode line
+	modeLine := fmt.Sprintf(" %s ", buffer.Name())
+	// Calculate padding based on display width, not rune count
+	modeLineWidth := util.StringWidth(modeLine)
+	paddingLength := d.width - modeLineWidth
+	if paddingLength < 0 {
+		paddingLength = 0
+	}
+	padding := strings.Repeat("-", paddingLength)
+	
+	fmt.Printf("%s%s", modeLine, padding)
+}
+
+func (d *Display) renderMinibuffer(editor *domain.Editor) {
 	minibuffer := editor.Minibuffer()
 	
 	fmt.Print("\r\n")
@@ -101,22 +125,9 @@ func (d *Display) renderBottomLine(editor *domain.Editor) {
 			fmt.Print(padding)
 		}
 	} else {
-		// Show normal mode line
-		buffer := editor.CurrentBuffer()
-		if buffer == nil {
-			return
-		}
-		
-		modeLine := fmt.Sprintf(" %s ", buffer.Name())
-		// Calculate padding based on display width, not rune count
-		modeLineWidth := util.StringWidth(modeLine)
-		paddingLength := d.width - modeLineWidth
-		if paddingLength < 0 {
-			paddingLength = 0
-		}
-		padding := strings.Repeat("-", paddingLength)
-		
-		fmt.Printf("%s%s", modeLine, padding)
+		// Empty minibuffer line
+		padding := strings.Repeat(" ", d.width)
+		fmt.Print(padding)
 	}
 }
 

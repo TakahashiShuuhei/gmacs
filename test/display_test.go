@@ -25,8 +25,8 @@ func TestMockDisplayBasic(t *testing.T) {
 	display.Render(editor)
 	
 	content := display.GetContent()
-	if len(content) != 4 { // height-1 for mode line
-		t.Errorf("Expected 4 content lines, got %d", len(content))
+	if len(content) != 3 { // height-2 for mode line and minibuffer
+		t.Errorf("Expected 3 content lines, got %d", len(content))
 	}
 	
 	if content[0] != "hello" {

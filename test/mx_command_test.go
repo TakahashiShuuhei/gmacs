@@ -40,10 +40,10 @@ func TestMxCommandBasic(t *testing.T) {
 	
 	// Render and check prompt
 	display.Render(editor)
-	modeLine = display.GetModeLine()
+	minibufferContent := display.GetMinibuffer()
 	expectedPrompt := "M-x " + strings.Repeat(" ", 76)
-	if modeLine != expectedPrompt {
-		t.Errorf("Expected M-x prompt, got %q", modeLine)
+	if minibufferContent != expectedPrompt {
+		t.Errorf("Expected M-x prompt, got %q", minibufferContent)
 	}
 	
 	// Check cursor position (should be after "M-x ")
@@ -72,10 +72,10 @@ func TestMxVersionCommand(t *testing.T) {
 	
 	// Check minibuffer content
 	display.Render(editor)
-	modeLine := display.GetModeLine()
+	minibufferContent := display.GetMinibuffer()
 	expectedContent := "M-x version" + strings.Repeat(" ", 69)
-	if modeLine != expectedContent {
-		t.Errorf("Expected 'M-x version', got %q", modeLine)
+	if minibufferContent != expectedContent {
+		t.Errorf("Expected 'M-x version', got %q", minibufferContent)
 	}
 	
 	// Press Enter to execute
@@ -93,12 +93,12 @@ func TestMxVersionCommand(t *testing.T) {
 		t.Error("Minibuffer should be in message mode")
 	}
 	
-	modeLine = display.GetModeLine()
+	minibufferContent = display.GetMinibuffer()
 	expectedVersion := "gmacs 0.1.0 - Emacs-like text editor in Go"
 	expectedPadding := strings.Repeat(" ", 80-len(expectedVersion))
 	expectedLine := expectedVersion + expectedPadding
-	if modeLine != expectedLine {
-		t.Errorf("Expected version message, got %q", modeLine)
+	if minibufferContent != expectedLine {
+		t.Errorf("Expected version message, got %q", minibufferContent)
 	}
 	
 	// Any key should clear the message and insert into buffer
@@ -148,9 +148,9 @@ func TestMxUnknownCommand(t *testing.T) {
 		t.Error("Minibuffer should be in message mode")
 	}
 	
-	modeLine := display.GetModeLine()
-	if !strings.Contains(modeLine, "Unknown command: nonexistent") {
-		t.Errorf("Expected unknown command error, got %q", modeLine)
+	minibufferContent := display.GetMinibuffer()
+	if !strings.Contains(minibufferContent, "Unknown command: nonexistent") {
+		t.Errorf("Expected unknown command error, got %q", minibufferContent)
 	}
 }
 
@@ -208,16 +208,16 @@ func TestMxListCommands(t *testing.T) {
 	
 	// Check message contains available commands
 	display.Render(editor)
-	modeLine := display.GetModeLine()
-	if !strings.Contains(modeLine, "Available commands:") {
-		t.Errorf("Expected command list message, got %q", modeLine)
+	minibufferContent := display.GetMinibuffer()
+	if !strings.Contains(minibufferContent, "Available commands:") {
+		t.Errorf("Expected command list message, got %q", minibufferContent)
 	}
 	
 	// Check that some key commands are present (order may vary)
 	expectedCommands := []string{"version", "list-commands", "forward-char", "backward-char"}
 	for _, cmd := range expectedCommands {
-		if !strings.Contains(modeLine, cmd) {
-			t.Errorf("Expected %s command in list, got %q", cmd, modeLine)
+		if !strings.Contains(minibufferContent, cmd) {
+			t.Errorf("Expected %s command in list, got %q", cmd, minibufferContent)
 		}
 	}
 }
@@ -260,8 +260,8 @@ func TestMxClearBuffer(t *testing.T) {
 	}
 	
 	// Should show clear message
-	modeLine := display.GetModeLine()
-	if !strings.Contains(modeLine, "Buffer cleared") {
-		t.Errorf("Expected buffer cleared message, got %q", modeLine)
+	minibufferContent := display.GetMinibuffer()
+	if !strings.Contains(minibufferContent, "Buffer cleared") {
+		t.Errorf("Expected buffer cleared message, got %q", minibufferContent)
 	}
 }
