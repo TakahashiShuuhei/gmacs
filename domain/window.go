@@ -241,12 +241,10 @@ func (w *Window) CursorPosition() (int, int) {
 			} else {
 				// No wrapping: apply horizontal scrolling
 				screenRow := bufferPos.Row - w.scrollTop
-				displayCol -= w.scrollLeft
-				if displayCol < 0 {
-					displayCol = 0
-				}
-				log.Info("SCROLL_TIMING: CursorPosition result (no wrap) - screen (%d,%d)", screenRow, displayCol)
-				return screenRow, displayCol
+				screenCol := displayCol - w.scrollLeft
+				// Don't clamp screenCol to 0 - let it be negative if cursor is left of visible area
+				log.Info("SCROLL_TIMING: CursorPosition result (no wrap) - screen (%d,%d)", screenRow, screenCol)
+				return screenRow, screenCol
 			}
 		}
 	}

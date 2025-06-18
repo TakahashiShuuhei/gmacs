@@ -271,9 +271,7 @@ func TestHorizontalToggleWrapState(t *testing.T) {
 		isWrapped1, cursor1.Row, cursor1.Col, scrollX1)
 	
 	// 行ラップを無効にする
-	if window != nil {
-		window.SetLineWrap(false)
-	}
+	domain.ToggleLineWrap(editor)
 	
 	display.Render(editor)
 	scrollX2 := window.ScrollLeft()
@@ -296,9 +294,7 @@ func TestHorizontalToggleWrapState(t *testing.T) {
 	}
 	
 	// 再度行ラップを有効にする
-	if window != nil {
-		window.SetLineWrap(true)
-	}
+	domain.ToggleLineWrap(editor)
 	
 	display.Render(editor)
 	scrollX3 := window.ScrollLeft()

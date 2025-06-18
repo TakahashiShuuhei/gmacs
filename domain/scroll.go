@@ -3,6 +3,7 @@ package domain
 import (
 	"fmt"
 	"github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/core/util"
 )
 
 // ScrollUp scrolls the window up by one line
@@ -74,6 +75,9 @@ func ToggleLineWrap(editor *Editor) error {
 	// Reset horizontal scroll when enabling line wrap
 	if newWrap {
 		window.SetScrollLeft(0)
+	} else {
+		// When disabling line wrap, ensure cursor is visible
+		EnsureCursorVisible(editor)
 	}
 	
 	wrapStatus := "disabled"
@@ -216,14 +220,34 @@ func EnsureCursorVisible(editor *Editor) error {
 		}
 		
 		// Horizontal scrolling
-		if screenCol < 0 {
-			// Cursor is left of visible area
-			newScrollLeft := window.ScrollLeft() + screenCol
-			window.SetScrollLeft(newScrollLeft)
-		} else if screenCol >= window.width {
-			// Cursor is right of visible area
-			newScrollLeft := window.ScrollLeft() + (screenCol - window.width + 1)
-			window.SetScrollLeft(newScrollLeft)
+		windowWidth, _ := window.Size()
+		cursorPos = buffer.Cursor()
+		
+		// Calculate the actual display column for the cursor
+		if cursorPos.Row < len(buffer.Content()) {
+			line := buffer.Content()[cursorPos.Row]
+			if cursorPos.Col <= len(line) {
+				displayCol := util.StringWidthUpTo(line, cursorPos.Col)
+				
+				// Ensure cursor is visible horizontally
+				if displayCol < window.ScrollLeft() {
+					// Cursor is left of visible area - scroll left
+					newScrollLeft := displayCol
+					if newScrollLeft < 0 {
+						newScrollLeft = 0
+					}
+					log.Info("HORIZONTAL_SCROLL: Scrolling left to %d (cursor at displayCol %d)", newScrollLeft, displayCol)
+					window.SetScrollLeft(newScrollLeft)
+				} else if displayCol >= window.ScrollLeft()+windowWidth {
+					// Cursor is right of visible area - scroll right
+					newScrollLeft := displayCol - windowWidth + 1
+					if newScrollLeft < 0 {
+						newScrollLeft = 0
+					}
+					log.Info("HORIZONTAL_SCROLL: Scrolling right to %d (cursor at displayCol %d)", newScrollLeft, displayCol)
+					window.SetScrollLeft(newScrollLeft)
+				}
+			}
 		}
 	}
 	
