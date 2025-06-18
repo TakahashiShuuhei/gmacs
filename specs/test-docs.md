@@ -2,7 +2,7 @@
 
 このドキュメントはテストコードから自動抽出されたBDD仕様書です。
 
-**生成日時:** 2025年06月19日 08:34:19
+**生成日時:** 2025年06月19日 08:52:44
 
 ## commands/mx_basic
 
@@ -381,6 +381,146 @@
 **結果:** ラップ境界でスクリーンカーソル位置が正しく更新される
 
 **実装ファイル:** `domain/cursor.go`, `ラップ境界処理`
+
+---
+
+## delete/backward_char_basic
+
+### TestDeleteBackwardCharBasic
+
+**ファイル:** `test/delete_test.go`
+
+**シナリオ:** C-h による基本的な文字削除
+
+**説明:** カーソル前の文字を削除する基本的な backspace 機能
+
+**前提:** "hello"を入力済みでカーソルが行末にある
+
+**操作:** C-h（DeleteBackwardChar）コマンドを実行
+
+**結果:** 最後の文字が削除され"hell"になる
+
+**実装ファイル:** `domain/buffer.go`, `DeleteBackward関数`
+
+---
+
+## delete/backward_char_japanese
+
+### TestDeleteBackwardCharJapanese
+
+**ファイル:** `test/delete_test.go`
+
+**シナリオ:** 日本語文字のbackspace削除
+
+**説明:** 日本語文字（マルチバイト）のbackspace削除機能
+
+**前提:** "aあiい"を入力済みでカーソルが行末にある
+
+**操作:** C-h（DeleteBackwardChar）コマンドを実行
+
+**結果:** 最後の日本語文字が削除され"aあi"になる
+
+**実装ファイル:** `domain/buffer.go`, `UTF-8対応削除処理`
+
+---
+
+## delete/backward_line_join
+
+### TestDeleteBackwardLineJoin
+
+**ファイル:** `test/delete_test.go`
+
+**シナリオ:** 行頭でのbackspaceによる行結合
+
+**説明:** 行頭でbackspaceを実行して前の行と結合する機能
+
+**前提:** 2行のテキスト（"hello"、"world"）でカーソルが2行目の行頭
+
+**操作:** C-h（DeleteBackwardChar）コマンドを実行
+
+**結果:** 2行が結合され"helloworld"の1行になる
+
+**実装ファイル:** `domain/buffer.go`, `行結合処理`
+
+---
+
+## delete/edge_cases
+
+### TestDeleteEdgeCases
+
+**ファイル:** `test/delete_test.go`
+
+**シナリオ:** 削除のエッジケース
+
+**説明:** バッファの境界での削除動作
+
+**前提:** 空のバッファまたは境界位置
+
+**操作:** 削除コマンドを実行
+
+**結果:** エラーなく適切に処理される
+
+**実装ファイル:** `domain/buffer.go`, `境界チェック`
+
+---
+
+## delete/forward_char_basic
+
+### TestDeleteCharBasic
+
+**ファイル:** `test/delete_test.go`
+
+**シナリオ:** C-d による基本的な文字削除
+
+**説明:** カーソル位置の文字を削除する delete-char 機能
+
+**前提:** "hello"を入力済みでカーソルを行頭に移動
+
+**操作:** C-d（DeleteChar）コマンドを実行
+
+**結果:** 最初の文字が削除され"ello"になる
+
+**実装ファイル:** `domain/buffer.go`, `DeleteForward関数`
+
+---
+
+## delete/forward_char_japanese
+
+### TestDeleteCharJapanese
+
+**ファイル:** `test/delete_test.go`
+
+**シナリオ:** 日本語文字のdelete-char削除
+
+**説明:** 日本語文字（マルチバイト）のdelete-char削除機能
+
+**前提:** "aあiい"を入力済みでカーソルを"あ"の位置に移動
+
+**操作:** C-d（DeleteChar）コマンドを実行
+
+**結果:** "あ"が削除され"aiい"になる
+
+**実装ファイル:** `domain/buffer.go`, `UTF-8対応削除処理`
+
+---
+
+## delete/forward_line_join
+
+### TestDeleteForwardLineJoin
+
+**ファイル:** `test/delete_test.go`
+
+**シナリオ:** 行末でのdelete-charによる行結合
+
+**説明:** 行末でdelete-charを実行して次の行と結合する機能
+
+**前提:** 2行のテキスト（"hello"、"world"）でカーソルが1行目の行末
+
+**操作:** C-d（DeleteChar）コマンドを実行
+
+**結果:** 2行が結合され"helloworld"の1行になる
+
+**実装ファイル:** `domain/buffer.go`, `行結合処理`
 
 ---
 

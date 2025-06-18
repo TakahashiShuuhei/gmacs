@@ -119,3 +119,102 @@ func (b *Buffer) Clear() {
 	b.cursor = Position{Row: 0, Col: 0}
 	b.modified = true
 }
+
+// DeleteBackward deletes the character before the cursor (backspace)
+func (b *Buffer) DeleteBackward() {
+	if b.cursor.Row == 0 && b.cursor.Col == 0 {
+		// At beginning of buffer, nothing to delete
+		return
+	}
+	
+	line := b.content[b.cursor.Row]
+	
+	if b.cursor.Col == 0 {
+		// At beginning of line, join with previous line
+		if b.cursor.Row > 0 {
+			prevLine := b.content[b.cursor.Row-1]
+			
+			// Join lines
+			b.content[b.cursor.Row-1] = prevLine + line
+			
+			// Remove current line
+			newContent := make([]string, 0, len(b.content)-1)
+			newContent = append(newContent, b.content[:b.cursor.Row]...)
+			newContent = append(newContent, b.content[b.cursor.Row+1:]...)
+			b.content = newContent
+			
+			// Move cursor to end of previous line
+			b.cursor.Row--
+			b.cursor.Col = len(prevLine) // Use byte position for cursor
+			b.modified = true
+		}
+	} else {
+		// Delete character before cursor
+		runes := []rune(line)
+		if len(runes) > 0 {
+			// Find the rune position before cursor
+			bytePos := 0
+			runeIndex := 0
+			for bytePos < b.cursor.Col && runeIndex < len(runes) {
+				bytePos += utf8.RuneLen(runes[runeIndex])
+				runeIndex++
+			}
+			
+			if runeIndex > 0 {
+				// Remove the previous rune
+				newRunes := append(runes[:runeIndex-1], runes[runeIndex:]...)
+				b.content[b.cursor.Row] = string(newRunes)
+				
+				// Move cursor back by the byte length of the deleted rune
+				deletedRune := runes[runeIndex-1]
+				b.cursor.Col -= utf8.RuneLen(deletedRune)
+				b.modified = true
+			}
+		}
+	}
+}
+
+// DeleteForward deletes the character at the cursor position (delete)
+func (b *Buffer) DeleteForward() {
+	if b.cursor.Row >= len(b.content) {
+		return
+	}
+	
+	line := b.content[b.cursor.Row]
+	
+	if b.cursor.Col >= len(line) {
+		// At end of line, join with next line
+		if b.cursor.Row < len(b.content)-1 {
+			nextLine := b.content[b.cursor.Row+1]
+			
+			// Join lines
+			b.content[b.cursor.Row] = line + nextLine
+			
+			// Remove next line
+			newContent := make([]string, 0, len(b.content)-1)
+			newContent = append(newContent, b.content[:b.cursor.Row+1]...)
+			newContent = append(newContent, b.content[b.cursor.Row+2:]...)
+			b.content = newContent
+			b.modified = true
+		}
+	} else {
+		// Delete character at cursor
+		runes := []rune(line)
+		if len(runes) > 0 {
+			// Find the rune position at cursor
+			bytePos := 0
+			runeIndex := 0
+			for bytePos < b.cursor.Col && runeIndex < len(runes) {
+				bytePos += utf8.RuneLen(runes[runeIndex])
+				runeIndex++
+			}
+			
+			if runeIndex < len(runes) {
+				// Remove the rune at cursor position
+				newRunes := append(runes[:runeIndex], runes[runeIndex+1:]...)
+				b.content[b.cursor.Row] = string(newRunes)
+				b.modified = true
+			}
+		}
+	}
+}

@@ -61,6 +61,10 @@ func (kbm *KeyBindingMap) registerDefaultBindings() {
 	kbm.BindKeySequence("C-a", BeginningOfLine) // C-a
 	kbm.BindKeySequence("C-e", EndOfLine)       // C-e
 	
+	// Deletion
+	kbm.BindKeySequence("C-h", DeleteBackwardChar) // C-h: backspace
+	kbm.BindKeySequence("C-d", DeleteChar)         // C-d: delete-char
+	
 	// Scrolling
 	kbm.BindKeySequence("C-v", PageDown)        // C-v (page down)
 	kbm.BindRawSequence("\x1b[6~", PageDown)    // Page Down key

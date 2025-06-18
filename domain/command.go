@@ -76,6 +76,26 @@ func Quit(editor *Editor) error {
 	return nil
 }
 
+// DeleteBackwardChar command for C-h (backspace)
+func DeleteBackwardChar(editor *Editor) error {
+	buffer := editor.CurrentBuffer()
+	if buffer != nil {
+		buffer.DeleteBackward()
+		log.Debug("Deleted backward character")
+	}
+	return nil
+}
+
+// DeleteChar command for C-d (delete-char)
+func DeleteChar(editor *Editor) error {
+	buffer := editor.CurrentBuffer()
+	if buffer != nil {
+		buffer.DeleteForward()
+		log.Debug("Deleted forward character")
+	}
+	return nil
+}
+
 func (cr *CommandRegistry) Register(cmd *Command) {
 	cr.commands[cmd.Name()] = cmd
 }
