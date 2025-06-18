@@ -116,3 +116,9 @@ func (b *Buffer) InsertString(s string) {
 	b.cursor.Col = len(lines[len(lines)-1]) - len(afterCursor)
 	b.modified = true
 }
+
+func (b *Buffer) Clear() {
+	b.content = []string{""}
+	b.cursor = Position{Row: 0, Col: 0}
+	b.modified = true
+}

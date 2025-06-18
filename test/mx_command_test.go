@@ -187,3 +187,79 @@ func TestMxCancel(t *testing.T) {
 		t.Error("Minibuffer should be cleared after cancel")
 	}
 }
+
+func TestMxListCommands(t *testing.T) {
+	editor := domain.NewEditor()
+	display := NewMockDisplay(80, 5)
+	
+	// Execute list-commands
+	escEvent := events.KeyEventData{Key: "\x1b", Rune: 0}
+	editor.HandleEvent(escEvent)
+	xEvent := events.KeyEventData{Key: "x", Rune: 'x'}
+	editor.HandleEvent(xEvent)
+	
+	for _, ch := range "list-commands" {
+		event := events.KeyEventData{Key: string(ch), Rune: ch}
+		editor.HandleEvent(event)
+	}
+	
+	enterEvent := events.KeyEventData{Key: "Enter", Rune: '\n'}
+	editor.HandleEvent(enterEvent)
+	
+	// Check message contains available commands
+	display.Render(editor)
+	modeLine := display.GetModeLine()
+	if !strings.Contains(modeLine, "Available commands:") {
+		t.Errorf("Expected command list message, got %q", modeLine)
+	}
+	if !strings.Contains(modeLine, "version") {
+		t.Errorf("Expected version command in list, got %q", modeLine)
+	}
+	if !strings.Contains(modeLine, "list-commands") {
+		t.Errorf("Expected list-commands in list, got %q", modeLine)
+	}
+}
+
+func TestMxClearBuffer(t *testing.T) {
+	editor := domain.NewEditor()
+	display := NewMockDisplay(80, 5)
+	
+	// Add some content to buffer
+	for _, ch := range "hello world" {
+		event := events.KeyEventData{Key: string(ch), Rune: ch}
+		editor.HandleEvent(event)
+	}
+	
+	display.Render(editor)
+	content := display.GetContent()
+	if content[0] != "hello world" {
+		t.Errorf("Expected 'hello world', got %q", content[0])
+	}
+	
+	// Execute clear-buffer
+	escEvent := events.KeyEventData{Key: "\x1b", Rune: 0}
+	editor.HandleEvent(escEvent)
+	xEvent := events.KeyEventData{Key: "x", Rune: 'x'}
+	editor.HandleEvent(xEvent)
+	
+	for _, ch := range "clear-buffer" {
+		event := events.KeyEventData{Key: string(ch), Rune: ch}
+		editor.HandleEvent(event)
+	}
+	
+	enterEvent := events.KeyEventData{Key: "Enter", Rune: '\n'}
+	editor.HandleEvent(enterEvent)
+	
+	// Buffer should be cleared
+	display.Render(editor)
+	content = display.GetContent()
+	if content[0] != "" {
+		t.Errorf("Expected empty buffer, got %q", content[0])
+	}
+	
+	// Should show clear message
+	modeLine := display.GetModeLine()
+	if !strings.Contains(modeLine, "Buffer cleared") {
+		t.Errorf("Expected buffer cleared message, got %q", modeLine)
+	}
+}
