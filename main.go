@@ -35,6 +35,8 @@ func main() {
 	defer ticker.Stop()
 
 	gmacslog.Info("Entering main loop")
+	needsRender := false
+	
 	for editor.IsRunning() {
 		select {
 		case event := <-terminal.EventChan():
@@ -48,8 +50,14 @@ func main() {
 				}
 				gmacslog.Debug("Processing event: %T", event)
 				editor.HandleEvent(event)
+				needsRender = true
 			}
-			display.Render(editor)
+			
+			// Only render if there were events or if we need to render
+			if needsRender {
+				display.Render(editor)
+				needsRender = false
+			}
 		}
 	}
 

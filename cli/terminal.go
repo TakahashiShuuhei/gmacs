@@ -79,43 +79,80 @@ func (t *Terminal) handleSignals() {
 }
 
 func (t *Terminal) readInput() {
+	log.Debug("Input reader started")
 	buf := make([]byte, 256)
 	for {
 		n, err := os.Stdin.Read(buf)
 		if err != nil {
+			log.Error("Failed to read input: %v", err)
 			break
 		}
 		
 		if n > 0 {
+			log.Debug("Raw input received: %d bytes: %v (hex: %x)", n, buf[:n], buf[:n])
 			t.parseInput(buf[:n])
 		}
 	}
+	log.Debug("Input reader stopped")
 }
 
 func (t *Terminal) parseInput(data []byte) {
-	for _, b := range data {
+	log.Debug("Parsing input data: %d bytes", len(data))
+	
+	// Try to parse as UTF-8 first
+	if len(data) > 1 {
+		// Multi-byte sequence - could be UTF-8
+		runes := []rune(string(data))
+		log.Debug("UTF-8 parsing: %d runes from %d bytes: %+q", len(runes), len(data), runes)
+		
+		for _, r := range runes {
+			if r != '\ufffd' { // Valid UTF-8 character
+				event := events.KeyEventData{
+					Raw:  data,
+					Rune: r,
+					Key:  string(r),
+				}
+				log.Debug("Created UTF-8 event: rune=%c (U+%04X), key=%s", r, r, event.Key)
+				t.eventChan <- event
+			}
+		}
+		return
+	}
+	
+	// Single byte processing
+	for i, b := range data {
 		event := events.KeyEventData{
 			Raw: []byte{b},
 		}
+		
+		log.Debug("Processing byte %d: 0x%02x (%d)", i, b, b)
 		
 		switch b {
 		case 3: // Ctrl+C
 			event.Key = "c"
 			event.Ctrl = true
+			log.Debug("Recognized Ctrl+C")
 		case 13: // Enter
 			event.Key = "Enter"
 			event.Rune = '\n'
+			log.Debug("Recognized Enter")
 		case 27: // ESC
 			event.Key = "Escape"
+			log.Debug("Recognized Escape")
 		case 127: // Backspace
 			event.Key = "Backspace"
+			log.Debug("Recognized Backspace")
 		default:
 			if b >= 32 && b <= 126 {
 				event.Rune = rune(b)
 				event.Key = string(rune(b))
+				log.Debug("ASCII character: %c", b)
+			} else {
+				log.Debug("Non-printable byte: 0x%02x", b)
 			}
 		}
 		
+		log.Debug("Sending event: key=%s, rune=%c, ctrl=%t, raw=%v", event.Key, event.Rune, event.Ctrl, event.Raw)
 		t.eventChan <- event
 	}
 }

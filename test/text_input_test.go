@@ -92,14 +92,15 @@ func TestJapaneseTextInput(t *testing.T) {
 	editor := domain.NewEditor()
 	renderer := &TestRenderer{}
 	
-	testText := "こんにちは世界"
+	testText := "あいう"
 	
-	for _, ch := range testText {
-		event := events.KeyEventData{
+	// Process each character from the IME input
+	for _, ch := range []rune(testText) {
+		charEvent := events.KeyEventData{
 			Rune: ch,
 			Key:  string(ch),
 		}
-		editor.HandleEvent(event)
+		editor.HandleEvent(charEvent)
 	}
 	
 	renderer.Render(editor)
@@ -109,10 +110,9 @@ func TestJapaneseTextInput(t *testing.T) {
 		t.Fatal("Expected at least one line after Japanese text input")
 	}
 	
-	// Unicode handling might need improvement
 	t.Logf("Input: '%s', Output: '%s'", testText, lines[0])
 	
-	if len([]rune(lines[0])) != len([]rune(testText)) {
-		t.Errorf("Expected %d characters, got %d", len([]rune(testText)), len([]rune(lines[0])))
+	if lines[0] != testText {
+		t.Errorf("Expected '%s', got '%s'", testText, lines[0])
 	}
 }

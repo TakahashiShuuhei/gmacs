@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/TakahashiShuuhei/gmacs/core/domain"
+	"github.com/TakahashiShuuhei/gmacs/core/log"
 )
 
 type Display struct {
@@ -42,8 +44,13 @@ func (d *Display) Render(editor *domain.Editor) {
 	for i := 0; i < height-1; i++ {
 		if i < len(lines) {
 			line := lines[i]
-			if len(line) > width {
-				line = line[:width]
+			
+			// Truncate by rune count, not byte count
+			runes := []rune(line)
+			if len(runes) > width {
+				runes = runes[:width]
+				line = string(runes)
+				log.Debug("Truncated line %d to %d runes: %q", i, width, line)
 			}
 			fmt.Print(line)
 		}
@@ -67,7 +74,13 @@ func (d *Display) renderModeLine(editor *domain.Editor) {
 	}
 	
 	modeLine := fmt.Sprintf(" %s ", buffer.Name())
-	padding := strings.Repeat("-", d.width-len(modeLine))
+	// Calculate padding based on rune count, not byte count
+	modeLineRunes := utf8.RuneCountInString(modeLine)
+	paddingLength := d.width - modeLineRunes
+	if paddingLength < 0 {
+		paddingLength = 0
+	}
+	padding := strings.Repeat("-", paddingLength)
 	
 	fmt.Printf("\r\n%s%s", modeLine, padding)
 }

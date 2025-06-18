@@ -1,5 +1,9 @@
 package domain
 
+import (
+	"unicode/utf8"
+)
+
 type Window struct {
 	buffer      *Buffer
 	width       int
@@ -71,5 +75,16 @@ func (w *Window) VisibleLines() []string {
 func (w *Window) CursorPosition() (int, int) {
 	bufferPos := w.buffer.Cursor()
 	screenRow := bufferPos.Row - w.scrollTop
+	
+	// Convert byte position to rune position for display
+	if bufferPos.Row < len(w.buffer.content) {
+		line := w.buffer.content[bufferPos.Row]
+		if bufferPos.Col <= len(line) {
+			// Count runes up to cursor position
+			runeCol := utf8.RuneCountInString(line[:bufferPos.Col])
+			return screenRow, runeCol
+		}
+	}
+	
 	return screenRow, bufferPos.Col
 }
