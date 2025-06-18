@@ -57,31 +57,67 @@ func (d *Display) Render(editor *domain.Editor) {
 		}
 	}
 	
-	d.renderModeLine(editor)
+	d.renderBottomLine(editor)
 	
-	cursorRow, cursorCol := window.CursorPosition()
-	if cursorRow >= 0 && cursorRow < height-1 {
-		log.Debug("Moving cursor to screen position (%d, %d)", cursorRow, cursorCol)
-		d.MoveCursor(cursorRow, cursorCol)
+	// Position cursor based on whether minibuffer is active
+	minibuffer := editor.Minibuffer()
+	if minibuffer.IsActive() && minibuffer.Mode() == domain.MinibufferCommand {
+		// Position cursor in minibuffer
+		promptLen := util.StringWidth(minibuffer.Prompt())
+		cursorPos := promptLen + minibuffer.CursorPosition()
+		log.Debug("Moving cursor to minibuffer position (%d, %d)", height-1, cursorPos)
+		d.MoveCursor(height-1, cursorPos)
+	} else {
+		// Position cursor in main window
+		cursorRow, cursorCol := window.CursorPosition()
+		if cursorRow >= 0 && cursorRow < height-1 {
+			log.Debug("Moving cursor to screen position (%d, %d)", cursorRow, cursorCol)
+			d.MoveCursor(cursorRow, cursorCol)
+		}
 	}
 }
 
-func (d *Display) renderModeLine(editor *domain.Editor) {
-	buffer := editor.CurrentBuffer()
-	if buffer == nil {
-		return
-	}
+func (d *Display) renderBottomLine(editor *domain.Editor) {
+	minibuffer := editor.Minibuffer()
 	
-	modeLine := fmt.Sprintf(" %s ", buffer.Name())
-	// Calculate padding based on display width, not rune count
-	modeLineWidth := util.StringWidth(modeLine)
-	paddingLength := d.width - modeLineWidth
-	if paddingLength < 0 {
-		paddingLength = 0
-	}
-	padding := strings.Repeat("-", paddingLength)
+	fmt.Print("\r\n")
 	
-	fmt.Printf("\r\n%s%s", modeLine, padding)
+	if minibuffer.IsActive() {
+		// Show minibuffer content
+		content := minibuffer.GetDisplayText()
+		contentWidth := util.StringWidth(content)
+		
+		// Truncate if too long
+		if contentWidth > d.width {
+			content = truncateToWidth(content, d.width)
+		}
+		
+		fmt.Print(content)
+		
+		// Pad with spaces to clear any remaining text
+		paddingLength := d.width - util.StringWidth(content)
+		if paddingLength > 0 {
+			padding := strings.Repeat(" ", paddingLength)
+			fmt.Print(padding)
+		}
+	} else {
+		// Show normal mode line
+		buffer := editor.CurrentBuffer()
+		if buffer == nil {
+			return
+		}
+		
+		modeLine := fmt.Sprintf(" %s ", buffer.Name())
+		// Calculate padding based on display width, not rune count
+		modeLineWidth := util.StringWidth(modeLine)
+		paddingLength := d.width - modeLineWidth
+		if paddingLength < 0 {
+			paddingLength = 0
+		}
+		padding := strings.Repeat("-", paddingLength)
+		
+		fmt.Printf("%s%s", modeLine, padding)
+	}
 }
 
 func (d *Display) Size() (int, int) {

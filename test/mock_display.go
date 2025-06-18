@@ -55,21 +55,51 @@ func (d *MockDisplay) Render(editor *domain.Editor) {
 		}
 	}
 	
-	// Render mode line
-	buffer := editor.CurrentBuffer()
-	if buffer != nil {
-		modeLine := fmt.Sprintf(" %s ", buffer.Name())
-		modeLineWidth := util.StringWidth(modeLine)
-		paddingLength := d.width - modeLineWidth
-		if paddingLength < 0 {
-			paddingLength = 0
+	// Render bottom line (mode line or minibuffer)
+	minibuffer := editor.Minibuffer()
+	if minibuffer.IsActive() {
+		// Show minibuffer content
+		content := minibuffer.GetDisplayText()
+		contentWidth := util.StringWidth(content)
+		
+		// Truncate if too long
+		if contentWidth > d.width {
+			content = truncateToWidthMock(content, d.width)
 		}
-		padding := strings.Repeat("-", paddingLength)
-		d.modeLine = modeLine + padding
+		
+		// Pad with spaces
+		paddingLength := d.width - util.StringWidth(content)
+		if paddingLength > 0 {
+			padding := strings.Repeat(" ", paddingLength)
+			content += padding
+		}
+		
+		d.modeLine = content
+	} else {
+		// Show normal mode line
+		buffer := editor.CurrentBuffer()
+		if buffer != nil {
+			modeLine := fmt.Sprintf(" %s ", buffer.Name())
+			modeLineWidth := util.StringWidth(modeLine)
+			paddingLength := d.width - modeLineWidth
+			if paddingLength < 0 {
+				paddingLength = 0
+			}
+			padding := strings.Repeat("-", paddingLength)
+			d.modeLine = modeLine + padding
+		}
 	}
 	
-	// Get cursor position
-	d.cursorRow, d.cursorCol = window.CursorPosition()
+	// Get cursor position (minibuffer or main window)
+	if minibuffer.IsActive() && minibuffer.Mode() == domain.MinibufferCommand {
+		// Position cursor in minibuffer
+		promptLen := util.StringWidth(minibuffer.Prompt())
+		d.cursorRow = d.height - 1
+		d.cursorCol = promptLen + minibuffer.CursorPosition()
+	} else {
+		// Position cursor in main window
+		d.cursorRow, d.cursorCol = window.CursorPosition()
+	}
 }
 
 func (d *MockDisplay) GetContent() []string {
