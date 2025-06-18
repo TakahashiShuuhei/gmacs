@@ -6,6 +6,7 @@ import (
 
 	"github.com/TakahashiShuuhei/gmacs/core/cli"
 	"github.com/TakahashiShuuhei/gmacs/core/domain"
+	"github.com/TakahashiShuuhei/gmacs/core/events"
 	gmacslog "github.com/TakahashiShuuhei/gmacs/core/log"
 )
 
@@ -17,7 +18,6 @@ func main() {
 
 	gmacslog.Info("gmacs starting up")
 
-	editor := domain.NewEditor()
 	display := cli.NewDisplay()
 	terminal := cli.NewTerminal()
 
@@ -27,6 +27,15 @@ func main() {
 		log.Fatal("Failed to initialize terminal:", err)
 	}
 	defer terminal.Restore()
+
+	// Create editor and set initial size from display
+	editor := domain.NewEditor()
+	width, height := display.Size()
+	resizeEvent := events.ResizeEventData{
+		Width:  width,
+		Height: height,
+	}
+	editor.HandleEvent(resizeEvent)
 
 	gmacslog.Debug("Initial render")
 	display.Render(editor)
@@ -49,6 +58,12 @@ func main() {
 					break
 				}
 				gmacslog.Debug("Processing event: %T", event)
+				
+				// Handle resize events for display as well
+				if resizeEvent, ok := event.(events.ResizeEventData); ok {
+					display.Resize(resizeEvent.Width, resizeEvent.Height)
+				}
+				
 				editor.HandleEvent(event)
 				needsRender = true
 			}

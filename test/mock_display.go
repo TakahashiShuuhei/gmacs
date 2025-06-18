@@ -126,6 +126,16 @@ func (d *MockDisplay) GetRenderCount() int {
 	return d.renderCount
 }
 
+func (d *MockDisplay) Size() (int, int) {
+	return d.width, d.height
+}
+
+func (d *MockDisplay) Resize(width, height int) {
+	d.width = width
+	d.height = height
+	d.content = make([]string, height-2) // Update content array size
+}
+
 // Get full screen representation as string
 func (d *MockDisplay) GetScreenText() string {
 	var result strings.Builder

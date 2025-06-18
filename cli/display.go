@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"golang.org/x/term"
 	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/log"
 	"github.com/TakahashiShuuhei/gmacs/core/util"
@@ -16,9 +17,18 @@ type Display struct {
 }
 
 func NewDisplay() *Display {
+	// Get initial terminal size
+	width, height, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		log.Warn("Failed to get terminal size, using defaults: %v", err)
+		width, height = 80, 24
+	}
+	
+	log.Info("Initial terminal size: %dx%d", width, height)
+	
 	return &Display{
-		width:  80,
-		height: 24,
+		width:  width,
+		height: height,
 	}
 }
 
