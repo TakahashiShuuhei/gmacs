@@ -15,6 +15,7 @@ type Editor struct {
 	commandRegistry *CommandRegistry
 	keyBindings     *KeyBindingMap
 	metaPressed     bool
+	ctrlXPressed    bool
 }
 
 func NewEditor() *Editor {
@@ -31,6 +32,7 @@ func NewEditor() *Editor {
 		commandRegistry: NewCommandRegistry(),
 		keyBindings:     NewKeyBindingMap(),
 		metaPressed:     false,
+		ctrlXPressed:    false,
 	}
 	
 	// Register cursor movement commands as interactive functions
@@ -78,10 +80,26 @@ func (e *Editor) HandleEvent(event events.Event) {
 
 func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	
-	// Handle Ctrl+C for quit
-	if event.Ctrl && event.Key == "c" {
-		log.Info("Ctrl+C pressed, shutting down")
-		e.running = false
+	// Handle C-x prefix key sequences
+	if e.ctrlXPressed {
+		if event.Ctrl && event.Key == "c" {
+			// C-x C-c: quit
+			log.Info("C-x C-c pressed, shutting down")
+			e.running = false
+			e.ctrlXPressed = false
+			return
+		}
+		// Reset C-x state for other keys
+		e.ctrlXPressed = false
+		// For now, just log unhandled C-x sequences
+		log.Info("Unhandled C-x sequence: C-x %s", event.Key)
+		return
+	}
+	
+	// Handle C-x prefix key
+	if event.Ctrl && event.Key == "x" {
+		e.ctrlXPressed = true
+		log.Info("C-x prefix pressed")
 		return
 	}
 	

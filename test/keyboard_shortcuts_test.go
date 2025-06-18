@@ -8,32 +8,117 @@ import (
 )
 
 /**
- * @spec keyboard/ctrl_c_quit
- * @scenario Ctrl+Cでのエディタ終了
- * @description Ctrl+Cキーコンビネーションでエディタを終了する機能の検証
+ * @spec keyboard/ctrl_x_ctrl_c_quit
+ * @scenario C-x C-cでのエディタ終了
+ * @description C-x C-cキーシーケンスでエディタを終了する機能の検証
  * @given エディタが実行中の状態
- * @when Ctrl+Cキーイベントを送信する
+ * @when C-x（prefix key）とC-cキーイベントを順次送信する
  * @then エディタが終了状態になる
- * @implementation domain/editor.go, events/key_event.go
+ * @implementation domain/editor.go, prefix key システム
  */
-func TestCtrlCQuit(t *testing.T) {
+func TestCtrlXCtrlCQuit(t *testing.T) {
 	editor := domain.NewEditor()
 	
 	if !editor.IsRunning() {
 		t.Fatal("Editor should be running initially")
 	}
 	
+	// Send C-x (prefix key)
+	event1 := events.KeyEventData{
+		Key:  "x",
+		Ctrl: true,
+	}
+	editor.HandleEvent(event1)
+	
+	// Editor should still be running after C-x
+	if !editor.IsRunning() {
+		t.Error("Editor should still be running after C-x")
+	}
+	
+	// Send C-c (quit command)
+	event2 := events.KeyEventData{
+		Key:  "c",
+		Ctrl: true,
+	}
+	editor.HandleEvent(event2)
+	
+	// Now editor should have quit
+	if editor.IsRunning() {
+		t.Error("Editor should have quit after C-x C-c")
+	}
+}
+
+/**
+ * @spec keyboard/ctrl_c_no_quit
+ * @scenario C-c単独ではエディタ終了しない
+ * @description C-x prefix key なしのC-cではエディタが終了しないことの検証
+ * @given エディタが実行中の状態
+ * @when C-cキーイベントのみを送信する
+ * @then エディタが実行中のまま維持される
+ * @implementation domain/editor.go, prefix key システム
+ */
+func TestCtrlCAloneDoesNotQuit(t *testing.T) {
+	editor := domain.NewEditor()
+	
+	if !editor.IsRunning() {
+		t.Fatal("Editor should be running initially")
+	}
+	
+	// Send C-c alone (should not quit)
 	event := events.KeyEventData{
 		Key:  "c",
 		Ctrl: true,
 	}
 	editor.HandleEvent(event)
 	
-	if editor.IsRunning() {
-		t.Error("Editor should have quit after Ctrl+C")
+	// Editor should still be running
+	if !editor.IsRunning() {
+		t.Error("Editor should still be running after C-c alone")
 	}
 }
 
+/**
+ * @spec keyboard/ctrl_x_prefix_reset
+ * @scenario C-x prefix key状態のリセット
+ * @description C-x後に無効なキーを押すとprefix状態がリセットされることの検証
+ * @given エディタが実行中の状態
+ * @when C-x後に通常の文字キーを送信する
+ * @then prefix状態がリセットされ、通常のテキスト入力として処理される
+ * @implementation domain/editor.go, prefix key システム
+ */
+func TestCtrlXPrefixReset(t *testing.T) {
+	editor := domain.NewEditor()
+	
+	// Send C-x (prefix key)
+	event1 := events.KeyEventData{
+		Key:  "x",
+		Ctrl: true,
+	}
+	editor.HandleEvent(event1)
+	
+	// Send a regular character (should reset prefix state)
+	event2 := events.KeyEventData{
+		Key:  "a",
+		Rune: 'a',
+	}
+	editor.HandleEvent(event2)
+	
+	// Editor should still be running (prefix state reset)
+	if !editor.IsRunning() {
+		t.Error("Editor should still be running after C-x followed by regular key")
+	}
+	
+	// Now C-c alone should not quit (prefix state was reset)
+	event3 := events.KeyEventData{
+		Key:  "c",
+		Ctrl: true,
+	}
+	editor.HandleEvent(event3)
+	
+	if !editor.IsRunning() {
+		t.Error("Editor should still be running - C-x prefix should have been reset")
+	}
+}
 
 /**
  * @spec keyboard/ctrl_modifier_no_insert
