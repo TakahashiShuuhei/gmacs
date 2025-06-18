@@ -190,7 +190,7 @@ func TestMxCancel(t *testing.T) {
 
 func TestMxListCommands(t *testing.T) {
 	editor := domain.NewEditor()
-	display := NewMockDisplay(80, 5)
+	display := NewMockDisplay(200, 5) // Wider display to show all commands
 	
 	// Execute list-commands
 	escEvent := events.KeyEventData{Key: "\x1b", Rune: 0}
@@ -212,11 +212,13 @@ func TestMxListCommands(t *testing.T) {
 	if !strings.Contains(modeLine, "Available commands:") {
 		t.Errorf("Expected command list message, got %q", modeLine)
 	}
-	if !strings.Contains(modeLine, "version") {
-		t.Errorf("Expected version command in list, got %q", modeLine)
-	}
-	if !strings.Contains(modeLine, "list-commands") {
-		t.Errorf("Expected list-commands in list, got %q", modeLine)
+	
+	// Check that some key commands are present (order may vary)
+	expectedCommands := []string{"version", "list-commands", "forward-char", "backward-char"}
+	for _, cmd := range expectedCommands {
+		if !strings.Contains(modeLine, cmd) {
+			t.Errorf("Expected %s command in list, got %q", cmd, modeLine)
+		}
 	}
 }
 

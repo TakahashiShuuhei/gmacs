@@ -1,0 +1,233 @@
+package test
+
+import (
+	"testing"
+
+	"github.com/TakahashiShuuhei/gmacs/core/domain"
+	"github.com/TakahashiShuuhei/gmacs/core/events"
+)
+
+func TestForwardCharBasic(t *testing.T) {
+	editor := domain.NewEditor()
+	buffer := editor.CurrentBuffer()
+	
+	// Type "hello"
+	for _, ch := range "hello" {
+		event := events.KeyEventData{Rune: ch, Key: string(ch)}
+		editor.HandleEvent(event)
+	}
+	
+	// Move cursor to beginning
+	buffer.SetCursor(domain.Position{Row: 0, Col: 0})
+	
+	// Test forward-char (C-f)
+	event := events.KeyEventData{Key: "f", Ctrl: true}
+	editor.HandleEvent(event)
+	
+	cursor := buffer.Cursor()
+	if cursor.Row != 0 || cursor.Col != 1 {
+		t.Errorf("Expected cursor at (0,1), got (%d,%d)", cursor.Row, cursor.Col)
+	}
+}
+
+func TestBackwardCharBasic(t *testing.T) {
+	editor := domain.NewEditor()
+	buffer := editor.CurrentBuffer()
+	
+	// Type "hello"
+	for _, ch := range "hello" {
+		event := events.KeyEventData{Rune: ch, Key: string(ch)}
+		editor.HandleEvent(event)
+	}
+	
+	// Cursor should be at end (0,5)
+	cursor := buffer.Cursor()
+	if cursor.Row != 0 || cursor.Col != 5 {
+		t.Errorf("Expected cursor at (0,5), got (%d,%d)", cursor.Row, cursor.Col)
+	}
+	
+	// Test backward-char (C-b)
+	event := events.KeyEventData{Key: "b", Ctrl: true}
+	editor.HandleEvent(event)
+	
+	cursor = buffer.Cursor()
+	if cursor.Row != 0 || cursor.Col != 4 {
+		t.Errorf("Expected cursor at (0,4), got (%d,%d)", cursor.Row, cursor.Col)
+	}
+}
+
+func TestArrowKeys(t *testing.T) {
+	editor := domain.NewEditor()
+	buffer := editor.CurrentBuffer()
+	
+	// Type "hello"
+	for _, ch := range "hello" {
+		event := events.KeyEventData{Rune: ch, Key: string(ch)}
+		editor.HandleEvent(event)
+	}
+	
+	// Move cursor to beginning
+	buffer.SetCursor(domain.Position{Row: 0, Col: 0})
+	
+	// Test right arrow
+	rightEvent := events.KeyEventData{Key: "\x1b[C"}
+	editor.HandleEvent(rightEvent)
+	
+	cursor := buffer.Cursor()
+	if cursor.Row != 0 || cursor.Col != 1 {
+		t.Errorf("Expected cursor at (0,1) after right arrow, got (%d,%d)", cursor.Row, cursor.Col)
+	}
+	
+	// Test left arrow
+	leftEvent := events.KeyEventData{Key: "\x1b[D"}
+	editor.HandleEvent(leftEvent)
+	
+	cursor = buffer.Cursor()
+	if cursor.Row != 0 || cursor.Col != 0 {
+		t.Errorf("Expected cursor at (0,0) after left arrow, got (%d,%d)", cursor.Row, cursor.Col)
+	}
+}
+
+func TestNextPreviousLine(t *testing.T) {
+	editor := domain.NewEditor()
+	buffer := editor.CurrentBuffer()
+	
+	// Create multi-line content: "hello" + Enter + "world"
+	for _, ch := range "hello" {
+		event := events.KeyEventData{Rune: ch, Key: string(ch)}
+		editor.HandleEvent(event)
+	}
+	
+	enterEvent := events.KeyEventData{Key: "Enter", Rune: '\n'}
+	editor.HandleEvent(enterEvent)
+	
+	for _, ch := range "world" {
+		event := events.KeyEventData{Rune: ch, Key: string(ch)}
+		editor.HandleEvent(event)
+	}
+	
+	// Cursor should be at (1,5)
+	cursor := buffer.Cursor()
+	if cursor.Row != 1 || cursor.Col != 5 {
+		t.Errorf("Expected cursor at (1,5), got (%d,%d)", cursor.Row, cursor.Col)
+	}
+	
+	// Test previous-line (C-p)
+	event := events.KeyEventData{Key: "p", Ctrl: true}
+	editor.HandleEvent(event)
+	
+	cursor = buffer.Cursor()
+	if cursor.Row != 0 || cursor.Col != 5 {
+		t.Errorf("Expected cursor at (0,5) after C-p, got (%d,%d)", cursor.Row, cursor.Col)
+	}
+	
+	// Test next-line (C-n)
+	event = events.KeyEventData{Key: "n", Ctrl: true}
+	editor.HandleEvent(event)
+	
+	cursor = buffer.Cursor()
+	if cursor.Row != 1 || cursor.Col != 5 {
+		t.Errorf("Expected cursor at (1,5) after C-n, got (%d,%d)", cursor.Row, cursor.Col)
+	}
+}
+
+func TestBeginningEndOfLine(t *testing.T) {
+	editor := domain.NewEditor()
+	buffer := editor.CurrentBuffer()
+	
+	// Type "hello world"
+	for _, ch := range "hello world" {
+		event := events.KeyEventData{Rune: ch, Key: string(ch)}
+		editor.HandleEvent(event)
+	}
+	
+	// Cursor should be at end (0,11)
+	cursor := buffer.Cursor()
+	if cursor.Row != 0 || cursor.Col != 11 {
+		t.Errorf("Expected cursor at (0,11), got (%d,%d)", cursor.Row, cursor.Col)
+	}
+	
+	// Test beginning-of-line (C-a)
+	event := events.KeyEventData{Key: "a", Ctrl: true}
+	editor.HandleEvent(event)
+	
+	cursor = buffer.Cursor()
+	if cursor.Row != 0 || cursor.Col != 0 {
+		t.Errorf("Expected cursor at (0,0) after C-a, got (%d,%d)", cursor.Row, cursor.Col)
+	}
+	
+	// Test end-of-line (C-e)
+	event = events.KeyEventData{Key: "e", Ctrl: true}
+	editor.HandleEvent(event)
+	
+	cursor = buffer.Cursor()
+	if cursor.Row != 0 || cursor.Col != 11 {
+		t.Errorf("Expected cursor at (0,11) after C-e, got (%d,%d)", cursor.Row, cursor.Col)
+	}
+}
+
+func TestCursorMovementWithJapanese(t *testing.T) {
+	editor := domain.NewEditor()
+	buffer := editor.CurrentBuffer()
+	
+	// Type "aあbいc" (mixed ASCII and Japanese)
+	chars := []rune{'a', 'あ', 'b', 'い', 'c'}
+	for _, ch := range chars {
+		event := events.KeyEventData{Rune: ch, Key: string(ch)}
+		editor.HandleEvent(event)
+	}
+	
+	// Move to beginning
+	buffer.SetCursor(domain.Position{Row: 0, Col: 0})
+	
+	// Test forward movement through mixed characters
+	positions := []struct{ row, col int }{
+		{0, 1}, // after 'a'
+		{0, 4}, // after 'あ' (3 bytes)
+		{0, 5}, // after 'b'
+		{0, 8}, // after 'い' (3 bytes)
+		{0, 9}, // after 'c'
+	}
+	
+	for i, expected := range positions {
+		event := events.KeyEventData{Key: "f", Ctrl: true}
+		editor.HandleEvent(event)
+		
+		cursor := buffer.Cursor()
+		if cursor.Row != expected.row || cursor.Col != expected.col {
+			t.Errorf("Step %d: expected cursor at (%d,%d), got (%d,%d)", 
+				i+1, expected.row, expected.col, cursor.Row, cursor.Col)
+		}
+	}
+}
+
+func TestInteractiveCommands(t *testing.T) {
+	editor := domain.NewEditor()
+	buffer := editor.CurrentBuffer()
+	
+	// Type "hello"
+	for _, ch := range "hello" {
+		event := events.KeyEventData{Rune: ch, Key: string(ch)}
+		editor.HandleEvent(event)
+	}
+	
+	// Test M-x forward-char
+	escEvent := events.KeyEventData{Key: "\x1b", Rune: 0}
+	editor.HandleEvent(escEvent)
+	xEvent := events.KeyEventData{Key: "x", Rune: 'x'}
+	editor.HandleEvent(xEvent)
+	
+	for _, ch := range "beginning-of-line" {
+		event := events.KeyEventData{Key: string(ch), Rune: ch}
+		editor.HandleEvent(event)
+	}
+	
+	enterEvent := events.KeyEventData{Key: "Enter", Rune: '\n'}
+	editor.HandleEvent(enterEvent)
+	
+	// Should move cursor to beginning
+	cursor := buffer.Cursor()
+	if cursor.Row != 0 || cursor.Col != 0 {
+		t.Errorf("Expected cursor at (0,0) after M-x beginning-of-line, got (%d,%d)", cursor.Row, cursor.Col)
+	}
+}

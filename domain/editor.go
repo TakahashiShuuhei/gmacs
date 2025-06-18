@@ -13,6 +13,7 @@ type Editor struct {
 	running         bool
 	minibuffer      *Minibuffer
 	commandRegistry *CommandRegistry
+	keyBindings     *KeyBindingMap
 	metaPressed     bool
 }
 
@@ -29,8 +30,12 @@ func NewEditor() *Editor {
 		running:         true,
 		minibuffer:      NewMinibuffer(),
 		commandRegistry: NewCommandRegistry(),
+		keyBindings:     NewKeyBindingMap(),
 		metaPressed:     false,
 	}
+	
+	// Register cursor movement commands as interactive functions
+	editor.registerCursorCommands()
 	
 	log.Info("Editor created with buffer: %s", buffer.Name())
 	return editor
@@ -109,6 +114,26 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 		e.metaPressed = false
 	}
 	
+	// Check for key bindings first
+	if cmd, found := e.keyBindings.Lookup(event.Key, event.Ctrl, event.Meta); found {
+		log.Debug("Executing bound command for key: %s (ctrl=%t, meta=%t)", event.Key, event.Ctrl, event.Meta)
+		err := cmd(e)
+		if err != nil {
+			log.Error("Key binding command failed: %v", err)
+		}
+		return
+	}
+	
+	// Check for key sequence bindings (like arrow keys)
+	if cmd, found := e.keyBindings.LookupSequence(event.Key); found {
+		log.Debug("Executing bound command for sequence: %q", event.Key)
+		err := cmd(e)
+		if err != nil {
+			log.Error("Key sequence command failed: %v", err)
+		}
+		return
+	}
+	
 	// Regular text input
 	buffer := e.CurrentBuffer()
 	if buffer == nil {
@@ -164,6 +189,16 @@ func (e *Editor) handleMinibufferInput(event events.KeyEventData) bool {
 		return false
 	}
 	return false
+}
+
+func (e *Editor) registerCursorCommands() {
+	// Register cursor movement commands as M-x interactive functions
+	e.commandRegistry.RegisterFunc("forward-char", ForwardChar)
+	e.commandRegistry.RegisterFunc("backward-char", BackwardChar)
+	e.commandRegistry.RegisterFunc("next-line", NextLine)
+	e.commandRegistry.RegisterFunc("previous-line", PreviousLine)
+	e.commandRegistry.RegisterFunc("beginning-of-line", BeginningOfLine)
+	e.commandRegistry.RegisterFunc("end-of-line", EndOfLine)
 }
 
 func (e *Editor) handleCommandInput(event events.KeyEventData) {

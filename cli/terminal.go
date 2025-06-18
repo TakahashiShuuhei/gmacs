@@ -99,7 +99,36 @@ func (t *Terminal) readInput() {
 func (t *Terminal) parseInput(data []byte) {
 	log.Debug("Parsing input data: %d bytes", len(data))
 	
-	// Try to parse as UTF-8 first
+	// Check for ANSI escape sequences first
+	if len(data) >= 3 && data[0] == 27 && data[1] == '[' {
+		// Arrow keys and other ANSI sequences
+		sequence := string(data)
+		log.Debug("Detected ANSI escape sequence: %q", sequence)
+		
+		event := events.KeyEventData{
+			Raw: data,
+			Key: sequence,
+		}
+		
+		switch sequence {
+		case "\x1b[A":
+			log.Debug("Recognized Up arrow")
+		case "\x1b[B":
+			log.Debug("Recognized Down arrow")
+		case "\x1b[C":
+			log.Debug("Recognized Right arrow")
+		case "\x1b[D":
+			log.Debug("Recognized Left arrow")
+		default:
+			log.Debug("Unknown ANSI sequence: %q", sequence)
+		}
+		
+		log.Debug("Sending ANSI event: key=%s", event.Key)
+		t.eventChan <- event
+		return
+	}
+	
+	// Try to parse as UTF-8 for multi-byte characters
 	if len(data) > 1 {
 		// Multi-byte sequence - could be UTF-8
 		runes := []rune(string(data))
@@ -128,16 +157,40 @@ func (t *Terminal) parseInput(data []byte) {
 		log.Debug("Processing byte %d: 0x%02x (%d)", i, b, b)
 		
 		switch b {
+		case 1: // Ctrl+A
+			event.Key = "a"
+			event.Ctrl = true
+			log.Debug("Recognized Ctrl+A")
+		case 2: // Ctrl+B
+			event.Key = "b"
+			event.Ctrl = true
+			log.Debug("Recognized Ctrl+B")
 		case 3: // Ctrl+C
 			event.Key = "c"
 			event.Ctrl = true
 			log.Debug("Recognized Ctrl+C")
+		case 5: // Ctrl+E
+			event.Key = "e"
+			event.Ctrl = true
+			log.Debug("Recognized Ctrl+E")
+		case 6: // Ctrl+F
+			event.Key = "f"
+			event.Ctrl = true
+			log.Debug("Recognized Ctrl+F")
+		case 14: // Ctrl+N
+			event.Key = "n"
+			event.Ctrl = true
+			log.Debug("Recognized Ctrl+N")
+		case 16: // Ctrl+P
+			event.Key = "p"
+			event.Ctrl = true
+			log.Debug("Recognized Ctrl+P")
 		case 13: // Enter
 			event.Key = "Enter"
 			event.Rune = '\n'
 			log.Debug("Recognized Enter")
 		case 27: // ESC
-			event.Key = "Escape"
+			event.Key = "\x1b"
 			log.Debug("Recognized Escape")
 		case 127: // Backspace
 			event.Key = "Backspace"
@@ -147,6 +200,11 @@ func (t *Terminal) parseInput(data []byte) {
 				event.Rune = rune(b)
 				event.Key = string(rune(b))
 				log.Debug("ASCII character: %c", b)
+			} else if b >= 1 && b <= 26 {
+				// Other Ctrl combinations
+				event.Key = string(rune('a' + b - 1))
+				event.Ctrl = true
+				log.Debug("Recognized Ctrl+%c", 'A'+b-1)
 			} else {
 				log.Debug("Non-printable byte: 0x%02x", b)
 			}
