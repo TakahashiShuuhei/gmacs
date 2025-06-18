@@ -87,27 +87,48 @@ func (mb *Minibuffer) ReadCommand() (string, error) {
 
 // ReadString reads a string from the user with a custom prompt
 func (mb *Minibuffer) ReadString(prompt string) (string, error) {
+	logging.Debug("ReadString started with prompt: %q", prompt)
+	
 	mb.prompt = prompt
 	mb.input = ""
 	mb.cursorPos = 0
-	mb.active = true
+	// Don't set active here if it's already active (to avoid overriding)
+	if !mb.active {
+		mb.active = true
+		logging.Debug("Minibuffer set to active in ReadString")
+	} else {
+		logging.Debug("Minibuffer already active, continuing")
+	}
 	
-	defer func() {
-		mb.clearData()
-	}()
-	
+	logging.Debug("Displaying prompt")
+	// Initial display
 	mb.displayMinibuffer()
 	
-	line, err := mb.keyboard.ReadLine()
+	logging.Debug("Starting raw input collection for filename")
+	line, err := mb.readRawInput()
+	logging.Debug("Raw input collection returned: %q, err: %v", line, err)
+	
+	// 入力完了後、必ずミニバッファの状態をクリア
+	mb.clearData()
+	logging.Debug("Minibuffer cleared and deactivated")
+	
 	if err != nil {
+		logging.LogError("ReadString", err)
 		return "", err
 	}
 	
-	if line == "C-g" || line == "\\C-g" {
+	// Handle special inputs
+	switch line {
+	case "": // Enter pressed - return empty string
+		return "", nil
+	case "C-g", "\\C-g": // Cancel
 		return "", fmt.Errorf("quit")
+	case "C-c", "\\C-c": // Cancel
+		return "", fmt.Errorf("quit")
+	default:
+		// Normal input - this is the filename
+		return line, nil
 	}
-	
-	return line, nil
 }
 
 // displayMinibuffer displays the current minibuffer content
@@ -306,7 +327,7 @@ func (mb *Minibuffer) readRawInput() (string, error) {
 			}
 		default:
 			// Handle printable characters
-			if keyEvent.Key.Char != 0 && keyEvent.Key.Char >= 32 && keyEvent.Key.Char <= 126 {
+			if keyEvent.Key.Char != 0 && isPrintableChar(keyEvent.Key.Char) {
 				inputBuffer += string(keyEvent.Key.Char)
 				mb.input = inputBuffer
 				mb.cursorPos = len(inputBuffer)

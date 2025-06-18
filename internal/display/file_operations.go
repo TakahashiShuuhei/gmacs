@@ -16,14 +16,11 @@ func init() {
 
 // findFile opens a file for editing (C-x C-f)
 func (e *Editor) findFile() error {
-	// Temporarily disable raw mode to read line input
-	if e.rawKeyboard.IsRawMode() {
-		e.rawKeyboard.DisableRawMode()
-		defer e.rawKeyboard.EnableRawMode()
-	}
-
-	// Prompt for filename
-	e.minibuffer.ShowMessage("Find file: ")
+	// Use minibuffer's channel-based input system
+	// Set minibuffer active to use unified input channel
+	e.minibuffer.SetActive(true)
+	
+	// Prompt for filename using ReadCommand (which uses channel-based input)
 	filename, err := e.minibuffer.ReadString("Find file: ")
 	if err != nil {
 		if err.Error() == "quit" {
@@ -92,11 +89,9 @@ func (e *Editor) saveBuffer() error {
 
 // writeFile saves the buffer to a specified file (C-x C-w)
 func (e *Editor) writeFile() error {
-	// Temporarily disable raw mode to read line input
-	if e.rawKeyboard.IsRawMode() {
-		e.rawKeyboard.DisableRawMode()
-		defer e.rawKeyboard.EnableRawMode()
-	}
+	// Use minibuffer's channel-based input system
+	// Set minibuffer active to use unified input channel
+	e.minibuffer.SetActive(true)
 
 	buf := e.currentWin.Buffer()
 	currentFilename := buf.Filename()
@@ -107,7 +102,6 @@ func (e *Editor) writeFile() error {
 		prompt = fmt.Sprintf("Write file (default %s): ", currentFilename)
 	}
 
-	e.minibuffer.ShowMessage(prompt)
 	filename, err := e.minibuffer.ReadString(prompt)
 	if err != nil {
 		if err.Error() == "quit" {
