@@ -1,11 +1,13 @@
 package display
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/TakahashiShuuhei/gmacs/internal/buffer"
 	"github.com/TakahashiShuuhei/gmacs/internal/command"
@@ -45,6 +47,9 @@ type Editor struct {
 	// Input channels for draining
 	keyEventChan chan *input.KeyEvent
 	lineChan     chan string
+	// Context for graceful shutdown
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // NewEditor creates a new editor instance
@@ -55,6 +60,9 @@ func NewEditor() *Editor {
 	// Initialize channels first
 	keyEventChan := make(chan *input.KeyEvent, 1)
 	lineChan := make(chan string, 1)
+	
+	// Create context for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
 	
 	minibuffer := NewMinibuffer(terminal, keyboard, rawKeyboard, keyEventChan)
 
@@ -82,6 +90,8 @@ func NewEditor() *Editor {
 		resizeSignal: make(chan os.Signal, 1),      // ウィンドウサイズ変更検知用
 		keyEventChan: keyEventChan,
 		lineChan:     lineChan,
+		ctx:          ctx,
+		cancel:       cancel,
 	}
 
 	// SIGWINCHシグナル（ウィンドウサイズ変更）を監視
@@ -179,27 +189,84 @@ func (e *Editor) Run() error {
 
 	// Use channels for concurrent input handling
 	errorChan := make(chan error, 1)
+	
+	// Use Editor's context for graceful shutdown
+	defer e.cancel()
 
 	// Start input goroutine
 	go func() {
+		defer func() {
+			logging.Debug("Input goroutine exiting")
+			e.cancel() // Signal that input goroutine has finished
+		}()
+		
 		for e.running {
+			// Check context cancellation before reading
+			select {
+			case <-e.ctx.Done():
+				logging.Debug("Input goroutine: context cancelled, exiting")
+				return
+			default:
+			}
+			
 			if rawModeEnabled {
+				// Check again before potentially blocking call
+				if e.ctx.Err() != nil {
+					logging.Debug("Input goroutine: context cancelled before ReadKey")
+					return
+				}
+				
 				keyEvent, err := e.rawKeyboard.ReadKey()
 				if err != nil {
-					errorChan <- err
+					// Check if this is due to the editor shutting down
+					if !e.running || e.ctx.Err() != nil {
+						logging.Debug("Input goroutine: editor shutting down, exiting")
+						return
+					}
+					select {
+					case errorChan <- err:
+					case <-e.ctx.Done():
+						return
+					}
+					return
+				}
+				// Double-check running state before sending
+				if !e.running || e.ctx.Err() != nil {
+					logging.Debug("Input goroutine: detected shutdown, exiting")
 					return
 				}
 				logging.Debug("Input goroutine: sending key event to channel: %s", keyEvent.Key.String())
-				e.keyEventChan <- keyEvent
+				select {
+				case e.keyEventChan <- keyEvent:
+				case <-e.ctx.Done():
+					return
+				}
 			} else {
 				line, err := e.keyboard.ReadLine()
 				if err != nil {
-					errorChan <- err
+					if !e.running || e.ctx.Err() != nil {
+						logging.Debug("Input goroutine: editor shutting down, exiting")
+						return
+					}
+					select {
+					case errorChan <- err:
+					case <-e.ctx.Done():
+						return
+					}
 					return
 				}
-				e.lineChan <- line
+				if !e.running || e.ctx.Err() != nil {
+					logging.Debug("Input goroutine: detected shutdown, exiting")
+					return
+				}
+				select {
+				case e.lineChan <- line:
+				case <-e.ctx.Done():
+					return
+				}
 			}
 		}
+		logging.Debug("Input goroutine: main loop exited")
 	}()
 
 	for e.running {
@@ -234,7 +301,23 @@ func (e *Editor) Run() error {
 		case err := <-errorChan:
 			// Handle input errors
 			return err
+		
+		case <-e.ctx.Done():
+			// Context cancelled - quit was called
+			logging.Debug("Main loop: context cancelled, exiting")
+			return nil
 		}
+	}
+	
+	logging.Debug("Main loop exited normally")
+	
+	// Give input goroutine a chance to exit gracefully
+	logging.Debug("Waiting for input goroutine to exit...")
+	select {
+	case <-time.After(100 * time.Millisecond):
+		logging.Debug("Timeout waiting for input goroutine")
+	case <-e.ctx.Done():
+		logging.Debug("Context already cancelled, input goroutine should be exiting")
 	}
 
 	// Stop signal monitoring
@@ -663,8 +746,37 @@ func (e *Editor) drawCursor() {
 
 // quit quits the editor
 func (e *Editor) quit() error {
+	logging.Debug("Quit command executed - shutting down editor")
+	
+	// Set running to false to stop main loop
 	e.running = false
+	
+	// Cancel context to signal all goroutines to stop
+	logging.Debug("Cancelling context to stop all goroutines")
+	e.cancel()
+	
+	// Disable raw mode immediately if enabled to unblock input goroutine
+	if e.rawKeyboard.IsRawMode() {
+		logging.Debug("Disabling raw mode before quit")
+		if err := e.rawKeyboard.DisableRawMode(); err != nil {
+			logging.LogError("Failed to disable raw mode during quit", err)
+		}
+	}
+	
+	// Clear the screen and move cursor to bottom
 	e.terminal.Clear()
+	_, height := e.terminal.Size()
+	e.terminal.MoveCursor(height, 1)
+	e.terminal.Print("Goodbye!")
+	e.terminal.Flush()
+	
+	logging.Debug("Quit processing complete, context cancelled")
+	
+	// Force exit immediately as graceful shutdown is not working
+	logging.Debug("Performing immediate force exit due to blocking input goroutine")
+	time.Sleep(50 * time.Millisecond) // Very short delay for logs to flush
+	os.Exit(0)
+	
 	return nil
 }
 
