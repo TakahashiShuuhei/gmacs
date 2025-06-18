@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -170,7 +171,16 @@ func generateTestDocumentation(docs []TestDocumentation, outputFile string) erro
 		"editor":  "エディタ基本機能",
 	}
 
-	for specRef, specDocs := range specGroups {
+	// specRefをソートして確定的な順序にする
+	var sortedSpecs []string
+	for specRef := range specGroups {
+		sortedSpecs = append(sortedSpecs, specRef)
+	}
+	sort.Strings(sortedSpecs)
+
+	for _, specRef := range sortedSpecs {
+		specDocs := specGroups[specRef]
+		
 		// 機能カテゴリを日本語で表示
 		parts := strings.Split(specRef, "/")
 		categoryJP := specRef
@@ -181,6 +191,11 @@ func generateTestDocumentation(docs []TestDocumentation, outputFile string) erro
 		}
 		
 		fmt.Fprintf(file, "## %s\n\n", categoryJP)
+		
+		// 各spec内でも関数名でソート
+		sort.Slice(specDocs, func(i, j int) bool {
+			return specDocs[i].Function < specDocs[j].Function
+		})
 		
 		for _, doc := range specDocs {
 			fmt.Fprintf(file, "### %s\n\n", doc.Function)
