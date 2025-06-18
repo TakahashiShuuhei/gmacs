@@ -8,6 +8,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec scroll/realistic_terminal
+ * @scenario リアルなターミナルサイズでのスクロール
+ * @description 80x24のリアルなターミナルサイズでのスクロール動作検証
+ * @given 80x24ターミナル（22コンテンツ行）でリサイズイベントを送信
+ * @when 30行のコンテンツを順次追加し、各ステップでスクロール状態を監視
+ * @then ウィンドウ高を超えたタイミングでスクロールが開始され、カーソルが常に可視範囲内に保たれる
+ * @implementation domain/scroll.go, リアルターミナル環境
+ */
 func TestRealisticTerminalScroll(t *testing.T) {
 	editor := domain.NewEditor()
 	
@@ -70,6 +79,15 @@ func TestRealisticTerminalScroll(t *testing.T) {
 	}
 }
 
+/**
+ * @spec scroll/timing_verification
+ * @scenario 異なるウィンドウサイズでのスクロールタイミング検証
+ * @description 複数のウィンドウサイズでスクロール開始タイミングの正確性を検証
+ * @given 異なるターミナル高（6、6、10、24）でテストケースを実行
+ * @when 各サイズでウィンドウ高まで行を追加し、さらに1行追加
+ * @then ウィンドウ高まではスクロールせず、超えた時点でスクロールが発生する
+ * @implementation domain/scroll.go, サイズ別タイミング検証
+ */
 func TestScrollStartsAtRightTime(t *testing.T) {
 	// Test with different window sizes to verify scroll timing
 	testCases := []struct {

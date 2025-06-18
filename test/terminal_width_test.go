@@ -7,7 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
-// Test that demonstrates the terminal width problem
+/**
+ * @spec terminal/width_calculation
+ * @scenario ターミナル幅計算問題の検証
+ * @description ASCII文字と日本語文字の混合テキストでのターミナル表示位置計算
+ * @given 20x3のMockDisplayと様々な文字組み合わせのテストケース
+ * @when 各テストケースで文字を入力し、カーソル位置を取得
+ * @then ASCII文字は1列、日本語文字は2列、混合テキストは合計列数で正確に表示される
+ * @implementation test/mock_display.go, ターミナル幅計算処理
+ */
 func TestTerminalWidthIssue(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(20, 3)

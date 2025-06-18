@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec resize/terminal_resize
+ * @scenario ターミナルリサイズ処理
+ * @description ターミナルサイズ変更時のウィンドウサイズ更新とコンテンツ保持
+ * @given 80x24サイズのターミナルで"hello world"を入力済み
+ * @when ターミナルを120x30にリサイズする
+ * @then ウィンドウサイズが更新され、コンテンツが保持される
+ * @implementation domain/window.go, events/resize_event.go
+ */
 func TestTerminalResize(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(80, 24)
@@ -55,6 +64,15 @@ func TestTerminalResize(t *testing.T) {
 	}
 }
 
+/**
+ * @spec resize/smaller_size_resize
+ * @scenario 小さいサイズへのリサイズ
+ * @description ターミナルを小さいサイズにリサイズした際のコンテンツ保持
+ * @given 80x24サイズで複数行のコンテンツを入力済み
+ * @when ターミナルのサイズを40x10に縮小する
+ * @then ウィンドウサイズが更新され、バッファの全コンテンツが保持される
+ * @implementation domain/window.go, domain/buffer.go
+ */
 func TestResizeToSmallerSize(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(80, 24)
@@ -108,6 +126,15 @@ func TestResizeToSmallerSize(t *testing.T) {
 	}
 }
 
+/**
+ * @spec resize/multiple_resizes
+ * @scenario 連続的なリサイズ操作
+ * @description 複数回のリサイズ操作でのサイズ更新とコンテンツ保持
+ * @given 80x24サイズで"test content"を入力済み
+ * @when 異なるサイズで複数回連続してリサイズする
+ * @then 各リサイズ後にサイズが正確に更新され、コンテンツが保持される
+ * @implementation domain/window.go, events/resize_event.go
+ */
 func TestMultipleResizes(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(80, 24)
@@ -155,6 +182,15 @@ func TestMultipleResizes(t *testing.T) {
 	}
 }
 
+/**
+ * @spec resize/cursor_position_preservation
+ * @scenario リサイズ後のカーソル位置保持
+ * @description ターミナルリサイズ後のカーソル位置保持の検証
+ * @given "hello"を入力しカーソルを中央（位置2）に設定
+ * @when ターミナルを120x30にリサイズする
+ * @then カーソル位置がリサイズ後も(0,2)で保持される
+ * @implementation domain/window.go, domain/cursor.go
+ */
 func TestCursorPositionAfterResize(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(80, 24)

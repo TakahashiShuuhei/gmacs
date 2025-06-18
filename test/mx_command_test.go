@@ -8,6 +8,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec commands/mx_basic
+ * @scenario M-xコマンドの基本動作
+ * @description M-xコマンドモードの有効化とミニバッファ状態の確認
+ * @given エディタを新規作成し、通常モードで起動
+ * @when ESCキーを押し、続いてxキーを押下（M-x）
+ * @then ミニバッファがアクティブになり、"M-x "プロンプトが表示される
+ * @implementation domain/commands.go, domain/minibuffer.go
+ */
 func TestMxCommandBasic(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(80, 5)
@@ -53,6 +62,15 @@ func TestMxCommandBasic(t *testing.T) {
 	}
 }
 
+/**
+ * @spec commands/mx_version
+ * @scenario M-x versionコマンドの実行
+ * @description M-x versionコマンドでバージョン情報を表示
+ * @given M-xコマンドモードを有効化
+ * @when "version"を入力してEnterキーを押下
+ * @then バージョンメッセージがミニバッファに表示される
+ * @implementation domain/commands.go, domain/minibuffer.go
+ */
 func TestMxVersionCommand(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(80, 5)
@@ -117,6 +135,15 @@ func TestMxVersionCommand(t *testing.T) {
 	}
 }
 
+/**
+ * @spec commands/mx_unknown
+ * @scenario 未知のM-xコマンドのエラー処理
+ * @description 存在しないコマンドを実行した際のエラーハンドリング
+ * @given M-xコマンドモードを有効化
+ * @when 存在しないコマンド"nonexistent"を入力してEnterを押下
+ * @then エラーメッセージがミニバッファに表示される
+ * @implementation domain/commands.go, エラー処理
+ */
 func TestMxUnknownCommand(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(80, 5)
@@ -154,6 +181,15 @@ func TestMxUnknownCommand(t *testing.T) {
 	}
 }
 
+/**
+ * @spec commands/mx_cancel
+ * @scenario M-xコマンドのキャンセル
+ * @description ESCキーでM-xコマンドをキャンセルする機能
+ * @given M-xコマンドモードで部分的にコマンドを入力済み
+ * @when ESCキーを押してキャンセルする
+ * @then ミニバッファがクリアされ、通常モードに戻る
+ * @implementation domain/commands.go, キャンセル処理
+ */
 func TestMxCancel(t *testing.T) {
 	editor := domain.NewEditor()
 	
@@ -188,6 +224,15 @@ func TestMxCancel(t *testing.T) {
 	}
 }
 
+/**
+ * @spec commands/mx_list_commands
+ * @scenario M-x list-commandsコマンドの実行
+ * @description 利用可能なコマンド一覧を表示する機能
+ * @given M-xコマンドモードを有効化
+ * @when "list-commands"を入力してEnterキーを押下
+ * @then 利用可能なコマンド一覧がミニバッファに表示される
+ * @implementation domain/commands.go, コマンド一覧機能
+ */
 func TestMxListCommands(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(200, 5) // Wider display to show all commands
@@ -222,6 +267,15 @@ func TestMxListCommands(t *testing.T) {
 	}
 }
 
+/**
+ * @spec commands/mx_clear_buffer
+ * @scenario M-x clear-bufferコマンドの実行
+ * @description バッファの内容を全てクリアする機能
+ * @given バッファに"hello world"を入力済み
+ * @when M-x clear-bufferコマンドを実行
+ * @then バッファが空になり、クリアメッセージが表示される
+ * @implementation domain/commands.go, domain/buffer.go
+ */
 func TestMxClearBuffer(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(80, 5)

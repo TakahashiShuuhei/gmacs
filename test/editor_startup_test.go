@@ -27,6 +27,15 @@ func (tr *TestRenderer) GetRenderCount() int {
 	return tr.renderCount
 }
 
+/**
+ * @spec editor/startup
+ * @scenario エディタ初期化と基本状態の確認
+ * @description エディタ起動時の初期状態（バッファ、ウィンドウ、レンダリング）を検証
+ * @given エディタを新規作成する
+ * @when エディタの初期状態を確認する
+ * @then 実行中状態、*scratch*バッファ、ウィンドウが正しく設定される
+ * @implementation domain/editor.go, domain/buffer.go, domain/window.go
+ */
 func TestEditorStartup(t *testing.T) {
 	editor := domain.NewEditor()
 	renderer := &TestRenderer{}

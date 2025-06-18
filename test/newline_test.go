@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec input/newline_basic
+ * @scenario 基本的な改行挿入
+ * @description 行末でのEnterキーによる基本的な改行動作
+ * @given 空のバッファに"hello"を入力済み
+ * @when 行末でEnterキーを押し、"world"を入力
+ * @then 2行に分かれてテキストが配置され、カーソルが適切な位置に移動する
+ * @implementation domain/buffer.go, events/key_event.go
+ */
 func TestNewlineBasic(t *testing.T) {
 	editor := domain.NewEditor()
 	buffer := editor.CurrentBuffer()
@@ -59,6 +68,15 @@ func TestNewlineBasic(t *testing.T) {
 	}
 }
 
+/**
+ * @spec input/newline_split
+ * @scenario 行の中間での改行挿入
+ * @description 行の中間でEnterキーを押した際の行分割動作
+ * @given "hello world"を入力済みでカーソルを"hello"の後（位置5）に移動
+ * @when カーソル位置でEnterキーを押下
+ * @then 行が"hello"と" world"に分割され、カーソルが2行目の先頭に移動する
+ * @implementation domain/buffer.go, 行分割処理
+ */
 func TestNewlineInMiddle(t *testing.T) {
 	editor := domain.NewEditor()
 	buffer := editor.CurrentBuffer()
@@ -99,6 +117,15 @@ func TestNewlineInMiddle(t *testing.T) {
 	}
 }
 
+/**
+ * @spec input/newline_beginning
+ * @scenario 行頭での改行挿入
+ * @description 行頭でEnterキーを押した際の新しい行挿入動作
+ * @given "hello"を入力済みでカーソルを行頭に移動
+ * @when 行頭でEnterキーを押下
+ * @then 空の新しい行が挿入され、既存のコンテンツが2行目に移動する
+ * @implementation domain/buffer.go, 行挿入処理
+ */
 func TestNewlineAtBeginning(t *testing.T) {
 	editor := domain.NewEditor()
 	buffer := editor.CurrentBuffer()
@@ -135,6 +162,15 @@ func TestNewlineAtBeginning(t *testing.T) {
 	}
 }
 
+/**
+ * @spec input/newline_multiple
+ * @scenario 連続した改行挿入
+ * @description 複数のEnterキーを連続して押した際の動作
+ * @given 空のバッファから開始
+ * @when "a" + Enter + "b" + Enter + "c"を順次入力
+ * @then 3行のコンテンツが正確に作成され、カーソル位置が適切に設定される
+ * @implementation domain/buffer.go, 複数行処理
+ */
 func TestMultipleNewlines(t *testing.T) {
 	editor := domain.NewEditor()
 	buffer := editor.CurrentBuffer()

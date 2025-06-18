@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec scroll/edge_case_debug
+ * @scenario スクロールエッジケースのデバッグ
+ * @description 8行丁度まで埋めた後のEnterキー押下時のスクロール動作の詳細分析
+ * @given 40x10ディスプレイ（8コンテンツ行）で8行丁度までコンテンツを埋める
+ * @when 最後の可視行でEnterキーを押下
+ * @then スクロール量と表示内容が期待値と一致し、適切な1行スクロールが発生する
+ * @implementation domain/scroll.go, エッジケース処理
+ */
 func TestDebugScrollBehavior(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(40, 10) // 10 total = 8 content + mode + mini

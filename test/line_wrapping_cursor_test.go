@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec cursor/line_wrap_position
+ * @scenario 行ラップ有効時のカーソル位置
+ * @description 行ラップ有効時の長い行でのカーソル位置計算と表示
+ * @given 10x8の小さいウィンドウで行ラップ有効
+ * @when ウィンドウ幅を超える長い行を入力し、カーソルを移動
+ * @then ラップされた行の境界でカーソル位置が正確に計算される
+ * @implementation domain/cursor.go, 行ラップ処理
+ */
 func TestCursorPositionWithLineWrapping(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(10, 8) // Small window for testing wrapping
@@ -58,6 +67,15 @@ func TestCursorPositionWithLineWrapping(t *testing.T) {
 	t.Logf("Visible lines (no wrap): %v", visible)
 }
 
+/**
+ * @spec cursor/wrapped_line_movement
+ * @scenario ラップされた行をまたいだカーソル移動
+ * @description ラップされた行の境界を跨いだカーソル移動の検証
+ * @given 10x8ウィンドウでラップするコンテンツを作成
+ * @when 行頭に移動し、forward-charで一文字ずつ進む
+ * @then ラップ境界でスクリーンカーソル位置が正しく更新される
+ * @implementation domain/cursor.go, ラップ境界処理
+ */
 func TestCursorMovementAcrossWrappedLines(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(10, 8)
@@ -100,6 +118,15 @@ func TestCursorMovementAcrossWrappedLines(t *testing.T) {
 	}
 }
 
+/**
+ * @spec commands/toggle_line_wrap
+ * @scenario 行ラップトグルコマンドの実行
+ * @description M-x toggle-truncate-linesコマンドでの行ラップ状態切り替え
+ * @given エディタを新規作成（デフォルトでラップ有効）
+ * @when ToggleLineWrap関数とM-x toggle-truncate-linesコマンドを実行
+ * @then 行ラップ状態が適切に切り替わり、コマンドが正しく動作する
+ * @implementation domain/commands.go, コマンド処理
+ */
 func TestWrappingToggleCommand(t *testing.T) {
 	editor := domain.NewEditor()
 	

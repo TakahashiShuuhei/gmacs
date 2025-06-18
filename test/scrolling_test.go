@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec scroll/vertical_scrolling
+ * @scenario 垂直スクロール動作
+ * @description 大量のコンテンツがある場合の垂直スクロール動作の検証
+ * @given 40x10サイズのウィンドウに20行のコンテンツを作成
+ * @when カーソルが最後の行にある状態でスクロール位置を設定
+ * @then カーソルが可視範囲に保たれるように自動スクロールされる
+ * @implementation domain/window.go, domain/scroll.go
+ */
 func TestVerticalScrolling(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(40, 10) // Small window for testing
@@ -53,6 +62,15 @@ func TestVerticalScrolling(t *testing.T) {
 	}
 }
 
+/**
+ * @spec scroll/horizontal_scrolling
+ * @scenario 水平スクロール動作
+ * @description 長い行のコンテンツでの水平スクロール動作の検証
+ * @given 10x5の狭いウィンドウと長い行のコンテンツ
+ * @when 行ラップを無効化して水平スクロールを設定
+ * @then 指定した位置からコンテンツが表示される
+ * @implementation domain/window.go, 水平スクロール
+ */
 func TestHorizontalScrolling(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(10, 5) // Very narrow window
@@ -93,6 +111,15 @@ func TestHorizontalScrolling(t *testing.T) {
 	}
 }
 
+/**
+ * @spec scroll/line_wrapping
+ * @scenario 行ラップ機能
+ * @description 長い行のラップ機能の有効/無効切り替え検証
+ * @given 10x5の小さいウィンドウと長い行のコンテンツ
+ * @when 行ラップの有効/無効を切り替える
+ * @then ラップ有効時は複数行、無効時は単一行で表示される
+ * @implementation domain/window.go, 行ラップ処理
+ */
 func TestLineWrapping(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(10, 5) // Small window
@@ -127,6 +154,15 @@ func TestLineWrapping(t *testing.T) {
 	}
 }
 
+/**
+ * @spec scroll/toggle_line_wrap
+ * @scenario 行ラップトグルコマンド
+ * @description ToggleLineWrapコマンドによる行ラップ状態の切り替え
+ * @given エディタを新規作成（デフォルトでラップ有効）
+ * @when ToggleLineWrapコマンドを実行
+ * @then 行ラップの有効/無効が切り替わる
+ * @implementation domain/commands.go, domain/window.go
+ */
 func TestToggleLineWrap(t *testing.T) {
 	editor := domain.NewEditor()
 
@@ -158,6 +194,15 @@ func TestToggleLineWrap(t *testing.T) {
 	}
 }
 
+/**
+ * @spec scroll/page_navigation
+ * @scenario ページアップ/ダウンナビゲーション
+ * @description PageUp/PageDownコマンドによるページ単位のスクロール
+ * @given 50行の大量コンテンツを持つエディタ
+ * @when PageDown、PageUpコマンドを順次実行
+ * @then スクロール位置がページ単位で適切に変更される
+ * @implementation domain/commands.go, domain/window.go
+ */
 func TestPageUpDown(t *testing.T) {
 	editor := domain.NewEditor()
 
@@ -199,6 +244,15 @@ func TestPageUpDown(t *testing.T) {
 	}
 }
 
+/**
+ * @spec scroll/individual_scroll_commands
+ * @scenario 個別スクロールコマンド
+ * @description ScrollUp/ScrollDownコマンドによる1行単位のスクロール
+ * @given 30行のコンテンツを持つエディタ
+ * @when ScrollDown、ScrollUpコマンドを順次実行
+ * @then スクロール位置が1行単位で正確に変更される
+ * @implementation domain/commands.go, domain/window.go
+ */
 func TestScrollCommands(t *testing.T) {
 	editor := domain.NewEditor()
 

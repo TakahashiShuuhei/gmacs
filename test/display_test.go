@@ -8,6 +8,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec display/basic_rendering
+ * @scenario 基本的なテキスト表示
+ * @description MockDisplayでの基本的なテキスト表示とカーソル位置の検証
+ * @given 10x5サイズのMockDisplayを作成
+ * @when "hello"を入力する
+ * @then テキストが正確に表示され、カーソル位置が適切に設定される
+ * @implementation test/mock_display.go, cli/display.go
+ */
 func TestMockDisplayBasic(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(10, 5)
@@ -39,6 +48,15 @@ func TestMockDisplayBasic(t *testing.T) {
 	}
 }
 
+/**
+ * @spec display/japanese_rendering
+ * @scenario 日本語テキスト表示
+ * @description 日本語文字の表示と表示幅計算の検証
+ * @given 10x5サイズのMockDisplayを作成
+ * @when "あいう"（ひらがな）を入力する
+ * @then 日本語テキストが正確に表示され、カーソル位置が適切に計算される
+ * @implementation test/mock_display.go, UTF-8処理
+ */
 func TestMockDisplayJapanese(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(10, 5)
@@ -71,6 +89,15 @@ func TestMockDisplayJapanese(t *testing.T) {
 	t.Logf("Screen info:\n%s", display.GetScreenInfo())
 }
 
+/**
+ * @spec display/mixed_character_cursor
+ * @scenario ASCII+日本語混在カーソル進行
+ * @description ASCII文字と日本語文字が混在するテキストでのカーソル位置進行
+ * @given 20x5サイズのMockDisplayを作成
+ * @when 'a'、'あ'、'b'、'い'、'c'を順次入力
+ * @then マルチバイト文字の表示幅を考慮してカーソルが適切に進行する
+ * @implementation test/mock_display.go, 文字幅計算
+ */
 func TestMockDisplayCursorProgression(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(20, 5)
@@ -107,6 +134,15 @@ func TestMockDisplayCursorProgression(t *testing.T) {
 	}
 }
 
+/**
+ * @spec display/multiline_rendering
+ * @scenario 複数行テキスト表示
+ * @description 複数行のテキストとカーソル位置の表示検証
+ * @given 10x5サイズのMockDisplayを作成
+ * @when "hello" + Enter + "world"を入力
+ * @then 2行のテキストが正確に表示され、2行目にカーソルが配置される
+ * @implementation test/mock_display.go, 複数行処理
+ */
 func TestMockDisplayMultiline(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(10, 5)
@@ -145,6 +181,15 @@ func TestMockDisplayMultiline(t *testing.T) {
 	t.Logf("Multi-line screen:\n%s", display.GetScreenWithCursor())
 }
 
+/**
+ * @spec display/terminal_width_handling
+ * @scenario ターミナル幅と文字幅の問題検証
+ * @description 異なる文字タイプのターミナル幅処理の検証
+ * @given 10x3サイズのMockDisplayを作成
+ * @when ASCII、日本語、混在テキストを各々入力
+ * @then ターミナル表示幅とルーン数の違いを適切に処理する
+ * @implementation test/mock_display.go, 文字幅計算
+ */
 func TestMockDisplayWidthProblem(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(10, 3)

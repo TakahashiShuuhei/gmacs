@@ -6,6 +6,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/util"
 )
 
+/**
+ * @spec text/rune_width_calculation
+ * @scenario 文字幅計算機能
+ * @description Unicode文字（ASCII、日本語、制御文字）の表示幅計算
+ * @given ASCII文字、日本語文字、制御文字のテストケース
+ * @when RuneWidth関数で各文字の表示幅を計算
+ * @then ASCII文字は幅1、日本語文字は幅2、制御文字は幅0で計算される
+ * @implementation util/runewidth.go, 文字幅計算
+ */
 func TestRuneWidth(t *testing.T) {
 	testCases := []struct {
 		r        rune
@@ -39,6 +48,15 @@ func TestRuneWidth(t *testing.T) {
 	}
 }
 
+/**
+ * @spec text/string_width_calculation
+ * @scenario 文字列幅計算機能
+ * @description ASCII、日本語、混合文字列の総表示幅計算
+ * @given 空文字列、ASCII文字列、日本語文字列、混合文字列のテストケース
+ * @when StringWidth関数で各文字列の総表示幅を計算
+ * @then 各文字の幅の合計値が正確に計算される（混合文字列は範囲チェック）
+ * @implementation util/runewidth.go, 文字列幅計算
+ */
 func TestStringWidth(t *testing.T) {
 	testCases := []struct {
 		s        string
@@ -68,6 +86,15 @@ func TestStringWidth(t *testing.T) {
 	}
 }
 
+/**
+ * @spec text/partial_string_width
+ * @scenario 部分文字列幅計算機能
+ * @description 指定バイト位置までの文字列の表示幅計算
+ * @given ASCII文字列、日本語文字列、混合文字列と様々なバイト位置
+ * @when StringWidthUpTo関数で指定位置までの表示幅を計算
+ * @then マルチバイト文字の境界を考慮した正確な部分幅が計算される
+ * @implementation util/runewidth.go, 部分文字列幅計算
+ */
 func TestStringWidthUpTo(t *testing.T) {
 	testCases := []struct {
 		s        string

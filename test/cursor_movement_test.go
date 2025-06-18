@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec cursor/forward_char
+ * @scenario 前方向文字移動（C-f）
+ * @description カーソルを1文字右に移動する機能の検証
+ * @given "hello"を入力済みでカーソルを行頭に設定
+ * @when C-f（forward-char）コマンドを実行
+ * @then カーソルが1文字右に移動する
+ * @implementation domain/cursor.go, events/key_event.go
+ */
 func TestForwardCharBasic(t *testing.T) {
 	editor := domain.NewEditor()
 	buffer := editor.CurrentBuffer()
@@ -30,6 +39,15 @@ func TestForwardCharBasic(t *testing.T) {
 	}
 }
 
+/**
+ * @spec cursor/backward_char
+ * @scenario 後方向文字移動（C-b）
+ * @description カーソルを1文字左に移動する機能の検証
+ * @given "hello"を入力済みでカーソルが行末にある
+ * @when C-b（backward-char）コマンドを実行
+ * @then カーソルが1文字左に移動する
+ * @implementation domain/cursor.go, events/key_event.go
+ */
 func TestBackwardCharBasic(t *testing.T) {
 	editor := domain.NewEditor()
 	buffer := editor.CurrentBuffer()
@@ -56,6 +74,15 @@ func TestBackwardCharBasic(t *testing.T) {
 	}
 }
 
+/**
+ * @spec cursor/arrow_keys
+ * @scenario 矢印キーによるカーソル移動
+ * @description 左右矢印キーでのカーソル移動機能の検証
+ * @given "hello"を入力済みでカーソルを行頭に設定
+ * @when 右矢印キー、左矢印キーを順次押下
+ * @then カーソルが適切に左右に移動する
+ * @implementation domain/cursor.go, events/key_event.go
+ */
 func TestArrowKeys(t *testing.T) {
 	editor := domain.NewEditor()
 	buffer := editor.CurrentBuffer()
@@ -88,6 +115,15 @@ func TestArrowKeys(t *testing.T) {
 	}
 }
 
+/**
+ * @spec cursor/vertical_movement
+ * @scenario 垂直方向のカーソル移動（C-p/C-n）
+ * @description 前の行・次の行へのカーソル移動機能の検証
+ * @given 2行のテキスト（"hello"、"world"）を入力済み
+ * @when C-p（前の行）、C-n（次の行）を順次実行
+ * @then カーソルが適切に上下の行を移動する
+ * @implementation domain/cursor.go, events/key_event.go
+ */
 func TestNextPreviousLine(t *testing.T) {
 	editor := domain.NewEditor()
 	buffer := editor.CurrentBuffer()
@@ -131,6 +167,15 @@ func TestNextPreviousLine(t *testing.T) {
 	}
 }
 
+/**
+ * @spec cursor/line_boundaries
+ * @scenario 行頭・行末移動（C-a/C-e）
+ * @description 行の先頭と末尾への移動機能の検証
+ * @given "hello world"を入力済みでカーソルが行末にある
+ * @when C-a（行頭）、C-e（行末）を順次実行
+ * @then カーソルが行頭と行末に適切に移動する
+ * @implementation domain/cursor.go, events/key_event.go
+ */
 func TestBeginningEndOfLine(t *testing.T) {
 	editor := domain.NewEditor()
 	buffer := editor.CurrentBuffer()
@@ -166,6 +211,15 @@ func TestBeginningEndOfLine(t *testing.T) {
 	}
 }
 
+/**
+ * @spec cursor/japanese_support
+ * @scenario 日本語文字を含むカーソル移動
+ * @description ASCII文字と日本語文字が混在するテキストでのカーソル移動
+ * @given "aあbいc"（ASCII+日本語混在）を入力済み
+ * @when C-fで1文字ずつ前進する
+ * @then マルチバイト文字を適切に処理してカーソルが移動する
+ * @implementation domain/cursor.go, UTF-8処理
+ */
 func TestCursorMovementWithJapanese(t *testing.T) {
 	editor := domain.NewEditor()
 	buffer := editor.CurrentBuffer()
@@ -201,6 +255,15 @@ func TestCursorMovementWithJapanese(t *testing.T) {
 	}
 }
 
+/**
+ * @spec cursor/mx_commands
+ * @scenario M-xコマンドによるカーソル移動
+ * @description M-x beginning-of-lineコマンドの実行検証
+ * @given "hello"を入力済みでカーソルが行末にある
+ * @when M-x beginning-of-lineコマンドを実行
+ * @then カーソルが行頭に移動する
+ * @implementation domain/commands.go, events/key_event.go
+ */
 func TestInteractiveCommands(t *testing.T) {
 	editor := domain.NewEditor()
 	buffer := editor.CurrentBuffer()

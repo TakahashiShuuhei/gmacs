@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec display/layout_analysis
+ * @scenario 表示レイアウト解析
+ * @description 実際の表示レイアウトと期待されるレイアウトの比較分析
+ * @given 40x10ターミナルでリサイズイベントを送信
+ * @when ウィンドウ高と同じ数の行を追加し、さらに1行追加
+ * @then MockDisplayと実際のCLI Displayの動作が一致し、適切なスクロールタイミングが確認される
+ * @implementation cli/display.go, test/mock_display.go
+ */
 func TestDisplayLayoutAnalysis(t *testing.T) {
 	// Test actual display layout vs expected layout
 	editor := domain.NewEditor()
@@ -89,6 +98,15 @@ func TestDisplayLayoutAnalysis(t *testing.T) {
 	}
 }
 
+/**
+ * @spec display/mock_vs_real
+ * @scenario MockDisplayと実際のDisplay比較
+ * @description ユーザー報告シナリオでのMockDisplayと実際のCLI Displayの動作比較
+ * @given 40x10ターミナルでa〜hまで8行のコンテンツを作成
+ * @when 最後にEnterキーを押下
+ * @then MockDisplayの動作がユーザー期待（bから始まる表示）と一致する
+ * @implementation test/mock_display.go, cli/display.go
+ */
 func TestRealVsMockDisplay(t *testing.T) {
 	// Test what happens with exactly the user scenario
 	editor := domain.NewEditor()

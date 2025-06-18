@@ -96,6 +96,15 @@ func TestActualDisplayIssue(t *testing.T) {
 	}
 }
 
+/**
+ * @spec display/mock_consistency
+ * @scenario MockDisplayと実際のDisplay一貫性確認
+ * @description MockDisplayとWindow.VisibleLines()の表示内容が一致することを確認
+ * @given 80x10ターミナル環境
+ * @when 3行のテキスト（a、b、c）を入力する
+ * @then MockDisplayの内容とWindow.VisibleLines()が完全に一致する
+ * @implementation cli/display.go, test/mock_display.go
+ */
 func TestDisplayConsistency(t *testing.T) {
 	// Test if MockDisplay and actual Display logic are consistent
 	editor := domain.NewEditor()

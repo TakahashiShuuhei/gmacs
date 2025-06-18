@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec scroll/auto_scroll_lines
+ * @scenario 行追加時の自動スクロール
+ * @description ウィンドウ高を超える行を追加した際の自動スクロール動作
+ * @given 40x10サイズのディスプレイ（8コンテンツ行）
+ * @when 15行のコンテンツを順次追加する
+ * @then カーソルが常に可視範囲内に保たれ、現在の行が表示される
+ * @implementation domain/scroll.go, domain/window.go
+ */
 func TestAutoScrollWhenAddingLines(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(40, 10) // 8 content lines (10-2)
@@ -69,6 +78,15 @@ func TestAutoScrollWhenAddingLines(t *testing.T) {
 	}
 }
 
+/**
+ * @spec scroll/auto_scroll_wrapping
+ * @scenario 長い行での自動スクロールと行ラップ
+ * @description 行ラップ有効時の長い行での自動スクロール動作
+ * @given 20x8の小さいウィンドウで行ラップ有効
+ * @when 短い行と長い行（ラップする）を混在して追加
+ * @then カーソルが常に可視範囲内に保たれる
+ * @implementation domain/scroll.go, domain/window.go
+ */
 func TestAutoScrollWithLongLines(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(20, 8) // Small window
@@ -116,6 +134,15 @@ func TestAutoScrollWithLongLines(t *testing.T) {
 	}
 }
 
+/**
+ * @spec scroll/auto_scroll_insertion
+ * @scenario テキスト挿入時の自動スクロール
+ * @description 可視範囲を超えるテキスト挿入時のスクロール動作
+ * @given 30x6の小さいウィンドウ（4コンテンツ行）に3行の初期コンテンツ
+ * @when さらに5行の新しいコンテンツを追加
+ * @then スクロールが発生し、カーソルが可視範囲内に保たれる
+ * @implementation domain/scroll.go, domain/window.go
+ */
 func TestAutoScrollOnTextInsertion(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(30, 6) // Very small window - 4 content lines
@@ -177,6 +204,15 @@ func TestAutoScrollOnTextInsertion(t *testing.T) {
 	}
 }
 
+/**
+ * @spec scroll/cursor_movement_display
+ * @scenario 手動カーソル移動時の表示更新
+ * @description 手動でカーソルを移動した際の適切な表示更新
+ * @given 30x8ウィンドウに20行のコンテンツを作成
+ * @when カーソルを手動でバッファの先頭に移動
+ * @then ウィンドウがスクロールしてカーソルが表示される
+ * @implementation domain/scroll.go, domain/cursor.go
+ */
 func TestCursorMovementTriggersDisplay(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(30, 8)

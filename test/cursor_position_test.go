@@ -8,6 +8,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec cursor/japanese_position
+ * @scenario 日本語文字でのカーソル位置計算
+ * @description 日本語文字入力時のバイト位置とターミナル表示位置の正確な計算
+ * @given エディタを新規作成する
+ * @when "あいう"（日本語ひらがな3文字）を入力
+ * @then バイト位置が9（3文字 × 3バイト）、ターミナル表示位置が6（3文字 × 2幅）になる
+ * @implementation domain/cursor.go, UTF-8処理
+ */
 func TestCursorPositionWithJapanese(t *testing.T) {
 	editor := domain.NewEditor()
 	
@@ -61,6 +70,15 @@ func TestCursorPositionWithJapanese(t *testing.T) {
 	}
 }
 
+/**
+ * @spec cursor/japanese_progression
+ * @scenario 日本語文字連続入力時のカーソル進行
+ * @description 日本語文字を連続して入力した際のカーソル位置の步進的進行
+ * @given エディタを新規作成する
+ * @when 日本語文字（あ、い、う、え、お）を1文字ずつ順次入力
+ * @then 各文字の入力後にバイト位置とターミナル表示位置が正確に進行する
+ * @implementation domain/cursor.go, 文字幅計算
+ */
 func TestCursorPositionProgression(t *testing.T) {
 	editor := domain.NewEditor()
 	
@@ -94,6 +112,15 @@ func TestCursorPositionProgression(t *testing.T) {
 	}
 }
 
+/**
+ * @spec cursor/mixed_ascii_japanese
+ * @scenario ASCIIと日本語混在カーソル位置
+ * @description ASCII文字と日本語文字が混在するテキストでのカーソル位置計算
+ * @given エディタを新規作成する
+ * @when "aあiい"（ASCIIと日本語の混在）を順次入力
+ * @then 各文字タイプのバイト数と表示幅の違いを正確に処理してカーソル位置が計算される
+ * @implementation domain/cursor.go, 混合文字列処理
+ */
 func TestMixedASCIIJapaneseCursor(t *testing.T) {
 	editor := domain.NewEditor()
 	

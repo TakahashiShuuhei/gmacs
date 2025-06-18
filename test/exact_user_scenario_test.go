@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec scroll/exact_user_scenario
+ * @scenario ユーザー報告の正確なシナリオ再現
+ * @description 高さ10ターミナルでa〜hまで入力後のEnter時のスクロール動作
+ * @given 高さ10ターミナル（コンテンツエリア8行）でリサイズイベントを発生
+ * @when a + Enter + b + ... + h を入力し、最後にEnterを押下
+ * @then a〜hが表示され、Enter後はb〜h+空行が表示される
+ * @implementation domain/scroll.go, ユーザーシナリオ修正
+ */
 func TestExactUserScenario(t *testing.T) {
 	// Setup: Height 10 terminal (8 content + 1 mode + 1 mini)
 	editor := domain.NewEditor()
@@ -128,6 +137,15 @@ func TestExactUserScenario(t *testing.T) {
 }
 
 // Test the exact scenario step by step for debugging
+/**
+ * @spec scroll/step_by_step_debug
+ * @scenario ユーザーシナリオのステップバイステップデバッグ
+ * @description ユーザー報告シナリオをステップごとに詳細に検証するデバッグテスト
+ * @given 40x10ディスプレイでウィンドウサイズを設定
+ * @when a〜hをステップごとに入力し、各ステップで状態をログ出力
+ * @then 各ステップでカーソル位置とスクロール状態が正しく、最終的に期待結果を得る
+ * @implementation domain/scroll.go, デバッグ情報出力
+ */
 func TestUserScenarioStepByStep(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(40, 10)

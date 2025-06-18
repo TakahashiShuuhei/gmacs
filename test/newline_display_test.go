@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec display/newline_rendering
+ * @scenario 改行表示のレンダリング
+ * @description 改行を含む複数行コンテンツの正確な表示検証
+ * @given 20x5サイズのMockDisplayを作成
+ * @when "hello" + Enter + "world"を入力
+ * @then 2行のコンテンツが正確に表示され、カーソル位置が適切に設定される
+ * @implementation test/mock_display.go, 改行処理
+ */
 func TestNewlineDisplay(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(20, 5)
@@ -60,6 +69,15 @@ func TestNewlineDisplay(t *testing.T) {
 	t.Logf("Display content: %v", content)
 }
 
+/**
+ * @spec display/multiline_newline
+ * @scenario 複数改行での行末処理
+ * @description 連続した改行操作での行末処理とコンテンツ構築
+ * @given エディタを新規作成する
+ * @when "abc" + Enter + "def" + Enter + "ghi"を順次入力
+ * @then 3行のコンテンツが正確に作成され、カーソルが最終行の末尾に配置される
+ * @implementation domain/buffer.go, 複数行改行処理
+ */
 func TestNewlineAtEndOfLine(t *testing.T) {
 	editor := domain.NewEditor()
 	

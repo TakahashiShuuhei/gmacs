@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec input/basic_text
+ * @scenario 基本的なテキスト入力
+ * @description ASCII文字の連続入力と表示の検証
+ * @given エディタを新規作成する
+ * @when "Hello, World!"を1文字ずつ入力する
+ * @then 入力したテキストが正確に表示される
+ * @implementation domain/buffer.go, domain/editor.go
+ */
 func TestBasicTextInput(t *testing.T) {
 	editor := domain.NewEditor()
 	renderer := &TestRenderer{}
@@ -33,6 +42,15 @@ func TestBasicTextInput(t *testing.T) {
 	}
 }
 
+/**
+ * @spec input/newline
+ * @scenario Enter キーによる改行
+ * @description Enter キーで行を分割し複数行テキストを作成
+ * @given エディタに "Hi" を入力済み
+ * @when Enter キーを押して "Wo" を入力する
+ * @then 2行に分かれてテキストが表示される
+ * @implementation domain/buffer.go, events/key_event.go
+ */
 func TestEnterKeyNewline(t *testing.T) {
 	editor := domain.NewEditor()
 	renderer := &TestRenderer{}
@@ -59,6 +77,15 @@ func TestEnterKeyNewline(t *testing.T) {
 	}
 }
 
+/**
+ * @spec input/multiline
+ * @scenario 複数行テキスト入力
+ * @description 3行のテキストを順次入力し、行分離を検証
+ * @given エディタを新規作成する
+ * @when "First line", "Second line", "Third line"を Enter で区切って入力する
+ * @then 3行が正確に分かれて表示される
+ * @implementation domain/buffer.go, domain/editor.go
+ */
 func TestMultilineTextInput(t *testing.T) {
 	editor := domain.NewEditor()
 	renderer := &TestRenderer{}
@@ -88,6 +115,15 @@ func TestMultilineTextInput(t *testing.T) {
 	}
 }
 
+/**
+ * @spec input/japanese
+ * @scenario 日本語テキスト入力
+ * @description ひらがな文字の入力と表示の検証
+ * @given エディタを新規作成する
+ * @when "あいう"を文字ごとに入力する
+ * @then 日本語テキストが正確に表示される
+ * @implementation domain/buffer.go, UTF-8処理
+ */
 func TestJapaneseTextInput(t *testing.T) {
 	editor := domain.NewEditor()
 	renderer := &TestRenderer{}

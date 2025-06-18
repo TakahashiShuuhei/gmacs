@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec keyboard/ctrl_c_quit
+ * @scenario Ctrl+Cでのエディタ終了
+ * @description Ctrl+Cキーコンビネーションでエディタを終了する機能の検証
+ * @given エディタが実行中の状態
+ * @when Ctrl+Cキーイベントを送信する
+ * @then エディタが終了状態になる
+ * @implementation domain/editor.go, events/key_event.go
+ */
 func TestCtrlCQuit(t *testing.T) {
 	editor := domain.NewEditor()
 	
@@ -26,6 +35,15 @@ func TestCtrlCQuit(t *testing.T) {
 }
 
 
+/**
+ * @spec keyboard/ctrl_modifier_no_insert
+ * @scenario Ctrl修飾キーのテキスト非挿入
+ * @description Ctrl+文字キーの組み合わせでテキストが挿入されないことの検証
+ * @given エディタを新規作成する
+ * @when Ctrl+aキーイベントを送信する
+ * @then テキストが挿入されず、空の行が維持される
+ * @implementation domain/editor.go, events/key_event.go
+ */
 func TestCtrlModifierDoesNotInsertText(t *testing.T) {
 	editor := domain.NewEditor()
 	renderer := &TestRenderer{}
@@ -49,6 +67,15 @@ func TestCtrlModifierDoesNotInsertText(t *testing.T) {
 	}
 }
 
+/**
+ * @spec keyboard/meta_modifier_no_insert
+ * @scenario Meta修飾キーのテキスト非挿入
+ * @description Meta+文字キーの組み合わせでテキストが挿入されないことの検証
+ * @given エディタを新規作成する
+ * @when Meta+xキーイベントを送信する
+ * @then テキストが挿入されず、空の行が維持される
+ * @implementation domain/editor.go, events/key_event.go
+ */
 func TestMetaModifierDoesNotInsertText(t *testing.T) {
 	editor := domain.NewEditor()
 	renderer := &TestRenderer{}

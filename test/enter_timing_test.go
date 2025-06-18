@@ -7,6 +7,15 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
+/**
+ * @spec scroll/enter_timing_issue
+ * @scenario Enterキータイミング問題の検証
+ * @description 最後の可視行でEnterキーを押した際のスクロールタイミング問題の検証
+ * @given 40x10ディスプレイ（8コンテンツ行）でまず7行を作成
+ * @when 最後の可視行（行7）でEnterキーを押下
+ * @then カーソルが行8に移動し、即座に1行スクロールが発生する
+ * @implementation domain/scroll.go, スクロールタイミング修正
+ */
 func TestEnterKeyTimingIssue(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(40, 10) // 10 total = 8 content + mode + mini
@@ -117,6 +126,15 @@ func TestEnterKeyTimingIssue(t *testing.T) {
 }
 
 // Test to verify what user reports as wrong behavior
+/**
+ * @spec scroll/user_reported_behavior
+ * @scenario ユーザー報告された問題の再現
+ * @description ユーザーが報告したスクロールディレイの正確な再現テスト
+ * @given 8行でスクリーンを埋めた状態
+ * @when 連続してEnter+コンテンツ入力を繰り返す
+ * @then ユーザー期待と実際の動作の違いを特定し、修正を検証する
+ * @implementation domain/scroll.go, ユーザー報告修正
+ */
 func TestUserReportedBehavior(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(40, 10)
