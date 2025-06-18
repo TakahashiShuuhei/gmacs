@@ -69,6 +69,13 @@ func NewCommandRegistry() *CommandRegistry {
 	return registry
 }
 
+// Quit command for C-x C-c
+func Quit(editor *Editor) error {
+	log.Info("Quit command executed")
+	editor.Quit()
+	return nil
+}
+
 func (cr *CommandRegistry) Register(cmd *Command) {
 	cr.commands[cmd.Name()] = cmd
 }

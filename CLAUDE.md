@@ -48,7 +48,7 @@ core/
 ### 現在の実装状況
 - 基本的な ASCII 文字入力
 - C-x C-c でのエディタ終了（Emacs準拠）
-- C-x prefix keyシステム
+- 汎用的なキーシーケンスバインディングシステム（BindKeySequence API）
 - Enter キーでの改行
 - 修飾キー（Ctrl、Meta）の認識
 - 基本的なカーソル移動（C-f, C-b, C-p, C-n, C-a, C-e）
@@ -91,6 +91,32 @@ make verify   # テスト + ドキュメント生成のみ
 
 ### 終了
 - `C-x C-c`: エディタを終了（Emacsと同じ）
+
+## キーバインディングシステム
+
+### キーシーケンスバインディング
+gmacs では Emacs スタイルのマルチキーシーケンスをサポートしています。
+
+#### API使用例
+```go
+// KeyBindingMap インスタンスでキーシーケンスをバインド
+kbm.BindKeySequence("C-x C-c", Quit)        // C-x C-c: 終了
+kbm.BindKeySequence("C-x C-f", FindFile)    // C-x C-f: ファイルを開く（将来実装）
+kbm.BindKeySequence("C-x C-s", SaveFile)    // C-x C-s: ファイル保存（将来実装）
+```
+
+#### システム特徴
+- **汎用的**: 任意の長さのキーシーケンスをサポート
+- **設定と実装の分離**: コードとキーバインディング設定が独立
+- **テスト可能**: `NewEmptyKeyBindingMap()` でテスト用の空マップを作成可能
+- **状態管理**: prefix key の状態を自動管理
+- **リセット機能**: Escape キーでシーケンス状態をリセット
+
+#### 実装詳細
+- `KeyPress` 構造体で個別のキー押下を表現
+- `KeySequenceBinding` で複数キーのシーケンスを管理
+- `ProcessKeyPress()` で段階的なマッチングを実行
+- 部分マッチ、完全マッチ、マッチ失敗を区別して処理
 
 ## 開発ルール
 

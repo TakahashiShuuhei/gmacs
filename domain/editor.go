@@ -15,7 +15,6 @@ type Editor struct {
 	commandRegistry *CommandRegistry
 	keyBindings     *KeyBindingMap
 	metaPressed     bool
-	ctrlXPressed    bool
 }
 
 func NewEditor() *Editor {
@@ -32,7 +31,6 @@ func NewEditor() *Editor {
 		commandRegistry: NewCommandRegistry(),
 		keyBindings:     NewKeyBindingMap(),
 		metaPressed:     false,
-		ctrlXPressed:    false,
 	}
 	
 	// Register cursor movement commands as interactive functions
@@ -80,26 +78,16 @@ func (e *Editor) HandleEvent(event events.Event) {
 
 func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	
-	// Handle C-x prefix key sequences
-	if e.ctrlXPressed {
-		if event.Ctrl && event.Key == "c" {
-			// C-x C-c: quit
-			log.Info("C-x C-c pressed, shutting down")
-			e.running = false
-			e.ctrlXPressed = false
-			return
+	// First check for key sequences (like C-x C-c)
+	if cmd, matched, continuing := e.keyBindings.ProcessKeyPress(event.Key, event.Ctrl, event.Meta); matched {
+		log.Info("Key sequence matched, executing command")
+		err := cmd(e)
+		if err != nil {
+			log.Error("Key sequence command failed: %v", err)
 		}
-		// Reset C-x state for other keys
-		e.ctrlXPressed = false
-		// For now, just log unhandled C-x sequences
-		log.Info("Unhandled C-x sequence: C-x %s", event.Key)
 		return
-	}
-	
-	// Handle C-x prefix key
-	if event.Ctrl && event.Key == "x" {
-		e.ctrlXPressed = true
-		log.Info("C-x prefix pressed")
+	} else if continuing {
+		log.Info("Key sequence in progress")
 		return
 	}
 	
@@ -115,6 +103,8 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	// Handle Meta key press detection
 	if event.Key == "\x1b" || event.Key == "Escape" {
 		e.metaPressed = true
+		// Reset key sequence on Escape
+		e.keyBindings.ResetSequence()
 		return
 	}
 	
