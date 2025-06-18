@@ -1,7 +1,8 @@
 package domain
 
 import (
-	"unicode/utf8"
+	"github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/core/util"
 )
 
 type Window struct {
@@ -76,15 +77,19 @@ func (w *Window) CursorPosition() (int, int) {
 	bufferPos := w.buffer.Cursor()
 	screenRow := bufferPos.Row - w.scrollTop
 	
-	// Convert byte position to rune position for display
+	// Convert byte position to terminal display width position
 	if bufferPos.Row < len(w.buffer.content) {
 		line := w.buffer.content[bufferPos.Row]
 		if bufferPos.Col <= len(line) {
-			// Count runes up to cursor position
-			runeCol := utf8.RuneCountInString(line[:bufferPos.Col])
-			return screenRow, runeCol
+			// Calculate display width up to cursor position
+			displayCol := util.StringWidthUpTo(line, bufferPos.Col)
+			log.Debug("Cursor conversion: buffer (%d,%d) -> screen (%d,%d), line: %q, display_width: %d", 
+				bufferPos.Row, bufferPos.Col, screenRow, displayCol, line, displayCol)
+			return screenRow, displayCol
 		}
 	}
 	
+	log.Debug("Cursor fallback: buffer (%d,%d) -> screen (%d,%d)", 
+		bufferPos.Row, bufferPos.Col, screenRow, bufferPos.Col)
 	return screenRow, bufferPos.Col
 }

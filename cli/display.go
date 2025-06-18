@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"unicode/utf8"
 
 	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/core/util"
 )
 
 type Display struct {
@@ -45,12 +45,10 @@ func (d *Display) Render(editor *domain.Editor) {
 		if i < len(lines) {
 			line := lines[i]
 			
-			// Truncate by rune count, not byte count
-			runes := []rune(line)
-			if len(runes) > width {
-				runes = runes[:width]
-				line = string(runes)
-				log.Debug("Truncated line %d to %d runes: %q", i, width, line)
+			// Truncate by display width, not rune count
+			if util.StringWidth(line) > width {
+				line = truncateToWidth(line, width)
+				log.Debug("Truncated line %d to width %d: %q", i, width, line)
 			}
 			fmt.Print(line)
 		}
@@ -63,6 +61,7 @@ func (d *Display) Render(editor *domain.Editor) {
 	
 	cursorRow, cursorCol := window.CursorPosition()
 	if cursorRow >= 0 && cursorRow < height-1 {
+		log.Debug("Moving cursor to screen position (%d, %d)", cursorRow, cursorCol)
 		d.MoveCursor(cursorRow, cursorCol)
 	}
 }
@@ -74,9 +73,9 @@ func (d *Display) renderModeLine(editor *domain.Editor) {
 	}
 	
 	modeLine := fmt.Sprintf(" %s ", buffer.Name())
-	// Calculate padding based on rune count, not byte count
-	modeLineRunes := utf8.RuneCountInString(modeLine)
-	paddingLength := d.width - modeLineRunes
+	// Calculate padding based on display width, not rune count
+	modeLineWidth := util.StringWidth(modeLine)
+	paddingLength := d.width - modeLineWidth
 	if paddingLength < 0 {
 		paddingLength = 0
 	}
@@ -96,4 +95,24 @@ func (d *Display) Resize(width, height int) {
 
 func (d *Display) ShowMessage(msg string) {
 	fmt.Fprintf(os.Stderr, "%s\n", msg)
+}
+
+// truncateToWidth truncates a string to fit within the specified display width
+func truncateToWidth(s string, maxWidth int) string {
+	if util.StringWidth(s) <= maxWidth {
+		return s
+	}
+	
+	runes := []rune(s)
+	width := 0
+	
+	for i, r := range runes {
+		charWidth := util.RuneWidth(r)
+		if width + charWidth > maxWidth {
+			return string(runes[:i])
+		}
+		width += charWidth
+	}
+	
+	return s
 }
