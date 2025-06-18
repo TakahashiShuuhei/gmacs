@@ -120,16 +120,8 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 		e.metaPressed = false
 	}
 	
-	// Check for key bindings first
-	if cmd, found := e.keyBindings.Lookup(event.Key, event.Ctrl, event.Meta); found {
-		err := cmd(e)
-		if err != nil {
-			log.Error("Key binding command failed: %v", err)
-		}
-		return
-	}
-	
-	// Check for key sequence bindings (like arrow keys)
+	// Check for any remaining key bindings through the unified system
+	// (single keys and raw sequences that weren't caught by sequence processing)
 	if cmd, found := e.keyBindings.LookupSequence(event.Key); found {
 		err := cmd(e)
 		if err != nil {

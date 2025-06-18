@@ -2,7 +2,7 @@
 
 このドキュメントはテストコードから自動抽出されたBDD仕様書です。
 
-**生成日時:** 2025年06月18日 23:48:29
+**生成日時:** 2025年06月19日 00:19:11
 
 ## commands/mx_basic
 
@@ -946,6 +946,26 @@
 
 ---
 
+## keyboard/key_sequence_binding
+
+### TestKeySequenceBinding
+
+**ファイル:** `test/key_sequence_test.go`
+
+**シナリオ:** キーシーケンスバインディングシステム
+
+**説明:** BindKeySequence APIでキーシーケンスを設定し実行する機能の検証
+
+**前提:** 新しいキーバインディングマップを作成
+
+**操作:** "C-x C-f"のようなキーシーケンスをバインドし、該当するキー入力を送信
+
+**結果:** バインドされたコマンドが実行される
+
+**実装ファイル:** `domain/keybinding.go`, `キーシーケンス処理システム`
+
+---
+
 ## keyboard/meta_modifier_no_insert
 
 ### TestMetaModifierDoesNotInsertText
@@ -963,6 +983,46 @@
 **結果:** テキストが挿入されず、空の行が維持される
 
 **実装ファイル:** `domain/editor.go`, `events/key_event.go`
+
+---
+
+## keyboard/multiple_sequences
+
+### TestMultipleKeySequences
+
+**ファイル:** `test/key_sequence_test.go`
+
+**シナリオ:** 複数キーシーケンスの同時サポート
+
+**説明:** 複数の異なるキーシーケンスを同時にサポートする機能の検証
+
+**前提:** キーバインディングマップに"C-x C-c"と"C-x C-f"を両方バインド
+
+**操作:** 各シーケンスを順次実行
+
+**結果:** それぞれ対応するコマンドが実行される
+
+**実装ファイル:** `domain/keybinding.go`, `複数シーケンス管理`
+
+---
+
+## keyboard/sequence_reset
+
+### TestKeySequenceReset
+
+**ファイル:** `test/key_sequence_test.go`
+
+**シナリオ:** キーシーケンス状態のリセット
+
+**説明:** 無効なキーが入力された場合のシーケンス状態リセットの検証
+
+**前提:** キーバインディングマップに"C-x C-c"をバインド
+
+**操作:** C-x後に無効なキー（'z'）を送信
+
+**結果:** シーケンス状態がリセットされ、その後のC-cでは実行されない
+
+**実装ファイル:** `domain/keybinding.go`, `シーケンス状態管理`
 
 ---
 

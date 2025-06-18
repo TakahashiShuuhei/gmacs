@@ -4,14 +4,6 @@ import (
 	"strings"
 )
 
-// KeyBinding represents a key combination and its associated command
-type KeyBinding struct {
-	Key     string
-	Ctrl    bool
-	Meta    bool
-	Command CommandFunc
-}
-
 // KeySequenceBinding represents a multi-key sequence binding
 type KeySequenceBinding struct {
 	Sequence []KeyPress
@@ -25,18 +17,24 @@ type KeyPress struct {
 	Meta bool
 }
 
+// RawSequenceBinding represents raw escape sequences (like arrow keys)
+type RawSequenceBinding struct {
+	Sequence string
+	Command  CommandFunc
+}
+
 // KeyBindingMap manages key bindings
 type KeyBindingMap struct {
-	bindings         []KeyBinding
-	sequenceBindings []KeySequenceBinding
-	currentSequence  []KeyPress
+	sequenceBindings    []KeySequenceBinding
+	rawSequenceBindings []RawSequenceBinding
+	currentSequence     []KeyPress
 }
 
 func NewKeyBindingMap() *KeyBindingMap {
 	kbm := &KeyBindingMap{
-		bindings:         make([]KeyBinding, 0),
-		sequenceBindings: make([]KeySequenceBinding, 0),
-		currentSequence:  make([]KeyPress, 0),
+		sequenceBindings:    make([]KeySequenceBinding, 0),
+		rawSequenceBindings: make([]RawSequenceBinding, 0),
+		currentSequence:     make([]KeyPress, 0),
 	}
 	
 	// Register default Emacs-style key bindings
@@ -48,72 +46,49 @@ func NewKeyBindingMap() *KeyBindingMap {
 // NewEmptyKeyBindingMap creates a KeyBindingMap without default bindings for testing
 func NewEmptyKeyBindingMap() *KeyBindingMap {
 	return &KeyBindingMap{
-		bindings:         make([]KeyBinding, 0),
-		sequenceBindings: make([]KeySequenceBinding, 0),
-		currentSequence:  make([]KeyPress, 0),
+		sequenceBindings:    make([]KeySequenceBinding, 0),
+		rawSequenceBindings: make([]RawSequenceBinding, 0),
+		currentSequence:     make([]KeyPress, 0),
 	}
 }
 
 func (kbm *KeyBindingMap) registerDefaultBindings() {
 	// Cursor movement
-	kbm.Bind("f", true, false, ForwardChar)      // C-f
-	kbm.Bind("b", true, false, BackwardChar)     // C-b
-	kbm.Bind("n", true, false, NextLine)        // C-n
-	kbm.Bind("p", true, false, PreviousLine)    // C-p
-	kbm.Bind("a", true, false, BeginningOfLine) // C-a
-	kbm.Bind("e", true, false, EndOfLine)       // C-e
+	kbm.BindKeySequence("C-f", ForwardChar)      // C-f
+	kbm.BindKeySequence("C-b", BackwardChar)     // C-b
+	kbm.BindKeySequence("C-n", NextLine)        // C-n
+	kbm.BindKeySequence("C-p", PreviousLine)    // C-p
+	kbm.BindKeySequence("C-a", BeginningOfLine) // C-a
+	kbm.BindKeySequence("C-e", EndOfLine)       // C-e
 	
 	// Scrolling
-	kbm.Bind("v", true, false, PageDown)        // C-v (page down)
-	kbm.BindSequence("\x1b[6~", PageDown)       // Page Down key
-	kbm.BindSequence("\x1b[5~", PageUp)         // Page Up key
+	kbm.BindKeySequence("C-v", PageDown)        // C-v (page down)
+	kbm.BindRawSequence("\x1b[6~", PageDown)    // Page Down key
+	kbm.BindRawSequence("\x1b[5~", PageUp)      // Page Up key
 	
 	// Arrow keys (ANSI escape sequences)
-	kbm.BindSequence("\x1b[C", ForwardChar)     // Right arrow
-	kbm.BindSequence("\x1b[D", BackwardChar)    // Left arrow
-	kbm.BindSequence("\x1b[B", NextLine)        // Down arrow
-	kbm.BindSequence("\x1b[A", PreviousLine)    // Up arrow
+	kbm.BindRawSequence("\x1b[C", ForwardChar)  // Right arrow
+	kbm.BindRawSequence("\x1b[D", BackwardChar) // Left arrow
+	kbm.BindRawSequence("\x1b[B", NextLine)     // Down arrow
+	kbm.BindRawSequence("\x1b[A", PreviousLine) // Up arrow
 	
 	// Multi-key sequences
 	kbm.BindKeySequence("C-x C-c", Quit)        // C-x C-c: quit
 }
 
-// Bind adds a key binding
-func (kbm *KeyBindingMap) Bind(key string, ctrl, meta bool, command CommandFunc) {
-	binding := KeyBinding{
-		Key:     key,
-		Ctrl:    ctrl,
-		Meta:    meta,
-		Command: command,
+// BindRawSequence adds a raw key sequence binding (like arrow keys)
+func (kbm *KeyBindingMap) BindRawSequence(sequence string, command CommandFunc) {
+	binding := RawSequenceBinding{
+		Sequence: sequence,
+		Command:  command,
 	}
-	kbm.bindings = append(kbm.bindings, binding)
+	kbm.rawSequenceBindings = append(kbm.rawSequenceBindings, binding)
 }
 
-// BindSequence adds a key sequence binding (like arrow keys)
-func (kbm *KeyBindingMap) BindSequence(sequence string, command CommandFunc) {
-	binding := KeyBinding{
-		Key:     sequence,
-		Ctrl:    false,
-		Meta:    false,
-		Command: command,
-	}
-	kbm.bindings = append(kbm.bindings, binding)
-}
-
-// Lookup finds a command for the given key combination
-func (kbm *KeyBindingMap) Lookup(key string, ctrl, meta bool) (CommandFunc, bool) {
-	for _, binding := range kbm.bindings {
-		if binding.Key == key && binding.Ctrl == ctrl && binding.Meta == meta {
-			return binding.Command, true
-		}
-	}
-	return nil, false
-}
-
-// LookupSequence finds a command for the given key sequence
+// LookupSequence finds a command for the given raw key sequence
 func (kbm *KeyBindingMap) LookupSequence(sequence string) (CommandFunc, bool) {
-	for _, binding := range kbm.bindings {
-		if binding.Key == sequence && !binding.Ctrl && !binding.Meta {
+	for _, binding := range kbm.rawSequenceBindings {
+		if binding.Sequence == sequence {
 			return binding.Command, true
 		}
 	}

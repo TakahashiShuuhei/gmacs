@@ -99,13 +99,15 @@ gmacs では Emacs スタイルのマルチキーシーケンスをサポート�
 
 #### API使用例
 ```go
-// KeyBindingMap インスタンスでキーシーケンスをバインド
-kbm.BindKeySequence("C-x C-c", Quit)        // C-x C-c: 終了
-kbm.BindKeySequence("C-x C-f", FindFile)    // C-x C-f: ファイルを開く（将来実装）
-kbm.BindKeySequence("C-x C-s", SaveFile)    // C-x C-s: ファイル保存（将来実装）
+// 統一されたキーシーケンスAPI
+kbm.BindKeySequence("C-f", ForwardChar)     // 単一キー: C-f
+kbm.BindKeySequence("C-x C-c", Quit)        // マルチキー: C-x C-c
+kbm.BindKeySequence("C-x C-f", FindFile)    // マルチキー: C-x C-f（将来実装）
+kbm.BindRawSequence("\x1b[C", ForwardChar)  // 生エスケープ: 右矢印キー
 ```
 
 #### システム特徴
+- **統一API**: `BindKeySequence()` で単一キーもマルチキーも統一
 - **汎用的**: 任意の長さのキーシーケンスをサポート
 - **設定と実装の分離**: コードとキーバインディング設定が独立
 - **テスト可能**: `NewEmptyKeyBindingMap()` でテスト用の空マップを作成可能
@@ -115,6 +117,7 @@ kbm.BindKeySequence("C-x C-s", SaveFile)    // C-x C-s: ファイル保存（将
 #### 実装詳細
 - `KeyPress` 構造体で個別のキー押下を表現
 - `KeySequenceBinding` で複数キーのシーケンスを管理
+- `RawSequenceBinding` でエスケープシーケンス（矢印キー等）を管理
 - `ProcessKeyPress()` で段階的なマッチングを実行
 - 部分マッチ、完全マッチ、マッチ失敗を区別して処理
 
