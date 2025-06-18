@@ -13,6 +13,11 @@ core/
 ├── events/     # イベントシステム
 ├── cli/        # CLI インターフェース（Display、Terminal）
 ├── test/       # E2E テスト
+├── specs/      # BDD仕様書管理
+│   ├── features/    # 日本語Gherkin仕様書
+│   ├── tools/       # ドキュメント生成ツール
+│   └── test-docs.md # 自動生成テストドキュメント
+├── Makefile    # ビルド・テスト自動化
 ├── main.go     # メインエントリポイント
 └── CLAUDE.md   # このファイル
 ```
@@ -56,21 +61,29 @@ core/
 
 ### テスト実行
 ```bash
-go test ./test/          # 全テスト実行
-go test ./test/ -v       # 詳細モード
-go test ./test/ -bench=. # ベンチマーク実行
+make test                       # 全テスト実行
+make test-pattern PATTERN=名前  # 特定テストのみ実行
+go test ./test/ -v              # 詳細モード
+go test ./test/ -bench=.        # ベンチマーク実行
 ```
 
 ## ビルドと実行
 
 ### ビルド
 ```bash
-go build -o gmacs
+make build    # Makefileを使用（推奨）
+go build -o gmacs  # 直接実行
 ```
 
 ### 実行
 ```bash
 ./gmacs
+```
+
+### 開発サイクル
+```bash
+make dev      # ビルド + テスト + ドキュメント生成
+make verify   # テスト + ドキュメント生成のみ
 ```
 
 ### 終了
@@ -87,11 +100,12 @@ go build -o gmacs
 - `.gitignore` でビルド成果物や IDE ファイルを除外
 - コミット前に `go test ./test/` でテストを実行
 
-### 追加機能の実装方針
-1. まずドメインロジックを実装
-2. 対応する E2E テストを作成
-3. CLI 部分の実装
-4. 統合テスト
+### 追加機能の実装方針（BDD方式）
+1. **仕様書作成**: `specs/features/` で日本語Gherkin仕様を書く
+2. **テスト実装**: 日本語アノテーション付きでテストを実装
+3. **ドメインロジック実装**: TDD/BDDに従って実装
+4. **CLI 部分の実装**: インターフェース層を実装
+5. **ドキュメント更新**: `make docs` で自動ドキュメント生成
 
 ## ログ機能
 
@@ -137,6 +151,69 @@ log.Error("Failed to initialize terminal: %v", err)
 ### Go バージョン
 - Go 1.22.2 以上
 
+## BDD仕様書管理システム
+
+### 概要
+gmacs は日本語対応の振る舞い駆動開発(BDD)システムを採用しています。
+
+### ワークフロー
+```bash
+# 1. 仕様書作成（手動）
+vim specs/features/新機能/機能名.feature
+
+# 2. テスト実装（日本語アノテーション付き）
+vim test/新機能_test.go
+
+# 3. 自動ドキュメント生成
+make docs
+
+# 4. 開発サイクル実行
+make dev  # build + test + docs
+```
+
+### テストアノテーション形式
+```go
+/**
+ * @spec 機能カテゴリ/機能名
+ * @scenario シナリオ名
+ * @description 説明
+ * @given 前提条件
+ * @when 操作
+ * @then 期待結果
+ * @implementation 実装ファイル
+ * @bug_fix バグ修正内容（オプション）
+ */
+func TestFunctionName(t *testing.T) {
+    // テスト実装
+}
+```
+
+### Gherkin仕様書形式
+```gherkin
+Feature: 機能名
+  As a ユーザー
+  I want to やりたいこと
+  So that 得られる価値
+
+  Scenario: シナリオ名
+    Given 前提条件
+    When 操作
+    Then 期待結果
+    And 追加条件
+```
+
+### 自動化コマンド
+```bash
+make docs        # テストドキュメント生成
+make test-docs   # 同上（エイリアス）
+make verify      # テスト + ドキュメント生成
+make dev         # ビルド + テスト + ドキュメント
+```
+
+### 生成されるドキュメント
+- `specs/features/*.feature` - 日本語Gherkin仕様書（手動編集）
+- `specs/test-docs.md` - テストから抽出した日本語ドキュメント（自動生成）
+
 ## 参考情報
 
-このプロジェクトは GNU Emacs の動作を参考にしていますが、完全な互換性は目指していません。基本的な編集機能と Emacs らしい操作感の提供を目標としています。
+このプロジェクトは GNU Emacs の動作を参考にしていますが、完全な互換性は目指していません。基本的な編集機能と Emacs らしい操作感の提供を目標としています。BDD仕様書により、機能の意図と実装の対応関係を明確に管理しています。
