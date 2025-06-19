@@ -310,31 +310,34 @@ func TestListBuffersBasic(t *testing.T) {
 	ctrlBEvent := events.KeyEventData{Key: "b", Ctrl: true}
 	editor.HandleEvent(ctrlBEvent)
 	
-	// Then: Should show buffer list message
+	// Then: Should switch to *Buffer List* buffer and display buffer list
+	currentBuffer := editor.CurrentBuffer()
+	if currentBuffer.Name() != "*Buffer List*" {
+		t.Errorf("Expected to switch to '*Buffer List*' buffer, got %q", currentBuffer.Name())
+	}
+	
+	// Render and check buffer list content
 	display.Render(editor)
-	minibuffer := editor.Minibuffer()
-	if !minibuffer.IsActive() || minibuffer.Mode() != domain.MinibufferMessage {
-		t.Error("Should show buffer list message in minibuffer")
+	content := display.GetContent()
+	
+	// Should have header line
+	if len(content) == 0 || !strings.Contains(content[0], "CRM Buffer") {
+		t.Errorf("Expected header line with 'CRM Buffer', got content: %v", content)
 	}
 	
-	minibufferContent := display.GetMinibuffer()
-	
-	// Should contain "Buffers:" prefix
-	if !strings.Contains(minibufferContent, "Buffers:") {
-		t.Errorf("Expected 'Buffers:' in message, got %q", minibufferContent)
-	}
-	
-	// Should contain all buffer names
-	expectedBuffers := []string{"*scratch*", "buffer-1", "buffer-2"}
+	// Should contain all buffer names in the content
+	allContent := strings.Join(content, "\n")
+	expectedBuffers := []string{"*scratch*", "buffer-1", "buffer-2", "*Buffer List*"}
 	for _, bufName := range expectedBuffers {
-		if !strings.Contains(minibufferContent, bufName) {
-			t.Errorf("Expected buffer name %q in list, got %q", bufName, minibufferContent)
+		if !strings.Contains(allContent, bufName) {
+			t.Errorf("Expected buffer name %q in list, got content: %s", bufName, allContent)
 		}
 	}
 	
-	// Should mark current buffer
-	if !strings.Contains(minibufferContent, "buffer-1 (current)") {
-		t.Errorf("Expected current buffer to be marked, got %q", minibufferContent)
+	// Should mark current buffer with "."
+	// Note: buffer-1 was current before switching to *Buffer List*
+	if !strings.Contains(allContent, ".   buffer-1") {
+		t.Errorf("Expected current buffer to be marked with '.', got content: %s", allContent)
 	}
 }
 
@@ -614,11 +617,18 @@ func TestBufferMxCommands(t *testing.T) {
 	enterEvent = events.KeyEventData{Key: "Enter", Rune: '\n'}
 	editor.HandleEvent(enterEvent)
 	
-	// Check buffer list message
+	// Check that we switched to *Buffer List* buffer
+	currentBuffer := editor.CurrentBuffer()
+	if currentBuffer.Name() != "*Buffer List*" {
+		t.Errorf("M-x list-buffers should switch to *Buffer List* buffer, got %q", currentBuffer.Name())
+	}
+	
+	// Check buffer list content
 	display.Render(editor)
-	minibufferContent := display.GetMinibuffer()
-	if !strings.Contains(minibufferContent, "Buffers:") {
-		t.Errorf("M-x list-buffers should show buffer list, got %q", minibufferContent)
+	content := display.GetContent()
+	allContent := strings.Join(content, "\n")
+	if !strings.Contains(allContent, "CRM Buffer") {
+		t.Errorf("M-x list-buffers should show buffer list header, got %q", allContent)
 	}
 }
 

@@ -83,6 +83,10 @@ func (b *Buffer) Cursor() Position {
 	return b.cursor
 }
 
+func (b *Buffer) IsModified() bool {
+	return b.modified
+}
+
 func (b *Buffer) SetCursor(pos Position) {
 	if pos.Row < 0 {
 		pos.Row = 0

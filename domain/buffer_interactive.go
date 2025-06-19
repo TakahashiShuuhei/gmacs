@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/TakahashiShuuhei/gmacs/core/events"
@@ -27,24 +28,33 @@ func SwitchToBufferInteractive(e *Editor) error {
 
 // ListBuffersInteractive implements C-x C-b (list-buffers)
 func ListBuffersInteractive(e *Editor) error {
-	// Create a buffer list message
-	var bufferList strings.Builder
-	bufferList.WriteString("Buffers: ")
-	
-	for i, buffer := range e.buffers {
-		if i > 0 {
-			bufferList.WriteString(", ")
-		}
-		bufferList.WriteString(buffer.Name())
-		
-		// Mark current buffer
-		if buffer == e.CurrentBuffer() {
-			bufferList.WriteString(" (current)")
-		}
+	// Create or find *Buffer List* buffer
+	bufferListName := "*Buffer List*"
+	bufferListBuffer := e.FindBuffer(bufferListName)
+	if bufferListBuffer == nil {
+		bufferListBuffer = NewBuffer(bufferListName)
+		e.AddBuffer(bufferListBuffer)
 	}
 	
-	e.minibuffer.SetMessage(bufferList.String())
-	log.Info("Listed buffers")
+	// Clear the buffer and populate with buffer list
+	bufferListBuffer.Clear()
+	
+	// Create the buffer list content in Emacs format
+	content := e.formatBufferList()
+	for _, line := range content {
+		for _, ch := range line {
+			bufferListBuffer.InsertChar(ch)
+		}
+		bufferListBuffer.InsertChar('\n')
+	}
+	
+	// Switch to the *Buffer List* buffer
+	e.SwitchToBuffer(bufferListBuffer)
+	
+	// Move cursor to beginning
+	bufferListBuffer.SetCursor(Position{Row: 0, Col: 0})
+	
+	log.Info("Listed buffers in *Buffer List* buffer")
 	return nil
 }
 
@@ -227,4 +237,125 @@ func findCommonPrefix(strs []string) string {
 	}
 	
 	return prefix
+}
+
+// formatBufferList creates buffer list content in Emacs format
+func (e *Editor) formatBufferList() []string {
+	var lines []string
+	
+	// Header line
+	header := "CRM Buffer                Size  Mode              File"
+	lines = append(lines, header)
+	
+	currentBuffer := e.CurrentBuffer()
+	
+	// Sort buffers by usage order (most recent first)
+	// For now, keep original order but put current buffer first
+	var sortedBuffers []*Buffer
+	if currentBuffer != nil {
+		sortedBuffers = append(sortedBuffers, currentBuffer)
+	}
+	for _, buffer := range e.buffers {
+		if buffer != currentBuffer {
+			sortedBuffers = append(sortedBuffers, buffer)
+		}
+	}
+	
+	// Format each buffer line
+	for _, buffer := range sortedBuffers {
+		line := e.formatBufferLine(buffer, currentBuffer)
+		lines = append(lines, line)
+	}
+	
+	return lines
+}
+
+// formatBufferLine formats a single buffer line
+func (e *Editor) formatBufferLine(buffer *Buffer, currentBuffer *Buffer) string {
+	// CRM indicators
+	c := " " // C - Current buffer indicator
+	r := " " // R - Read-only indicator  
+	m := " " // M - Modified indicator
+	
+	// Current buffer gets "."
+	if buffer == currentBuffer {
+		c = "."
+	}
+	
+	// Modified buffer gets "*"
+	if buffer.IsModified() {
+		m = "*"
+	}
+	
+	// Read-only buffers get "%" (for now, assume all buffers are writable)
+	// Special buffers like *Buffer List*, *scratch* could be marked read-only
+	if strings.HasPrefix(buffer.Name(), "*") && buffer.Name() != "*scratch*" {
+		r = "%"
+	}
+	
+	// Buffer name (truncated to fit column width)
+	name := buffer.Name()
+	if len(name) > 20 {
+		name = name[:17] + "..."
+	}
+	
+	// Buffer size
+	size := e.getBufferSize(buffer)
+	
+	// Mode (simplified for now)
+	mode := e.getBufferMode(buffer)
+	
+	// File path
+	filepath := buffer.Filepath()
+	if filepath == "" {
+		filepath = ""
+	}
+	
+	// Format the line with proper spacing
+	line := fmt.Sprintf("%s%s%s %-20s %5d  %-16s %s", 
+		c, r, m, name, size, mode, filepath)
+	
+	return line
+}
+
+// getBufferSize calculates buffer size in characters
+func (e *Editor) getBufferSize(buffer *Buffer) int {
+	total := 0
+	for _, line := range buffer.Content() {
+		total += len(line) + 1 // +1 for newline
+	}
+	return total
+}
+
+// getBufferMode returns the buffer mode
+func (e *Editor) getBufferMode(buffer *Buffer) string {
+	name := buffer.Name()
+	
+	// Special buffer modes
+	if name == "*scratch*" {
+		return "Lisp Interaction"
+	}
+	if name == "*Buffer List*" {
+		return "Buffer Menu"
+	}
+	if strings.HasPrefix(name, "*") {
+		return "Special"
+	}
+	
+	// File-based modes (simplified)
+	filepath := buffer.Filepath()
+	if filepath != "" {
+		if strings.HasSuffix(filepath, ".go") {
+			return "Go"
+		}
+		if strings.HasSuffix(filepath, ".md") {
+			return "Markdown"
+		}
+		if strings.HasSuffix(filepath, ".txt") {
+			return "Text"
+		}
+		return "Fundamental"
+	}
+	
+	return "Fundamental"
 }
