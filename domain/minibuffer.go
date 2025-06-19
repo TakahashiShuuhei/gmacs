@@ -120,7 +120,66 @@ func (mb *Minibuffer) DeleteBackward() {
 	
 	mb.content = string(append(before, after...))
 	mb.cursor--
+}
+
+// DeleteForward deletes the character at the cursor position
+func (mb *Minibuffer) DeleteForward() {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
+		return
+	}
 	
+	runes := []rune(mb.content)
+	if mb.cursor >= len(runes) {
+		return // Nothing to delete
+	}
+	
+	before := runes[:mb.cursor]
+	after := runes[mb.cursor+1:]
+	
+	mb.content = string(append(before, after...))
+	// Cursor position stays the same
+}
+
+// MoveCursorForward moves cursor one position to the right
+func (mb *Minibuffer) MoveCursorForward() {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
+		return
+	}
+	
+	runes := []rune(mb.content)
+	if mb.cursor < len(runes) {
+		mb.cursor++
+	}
+}
+
+// MoveCursorBackward moves cursor one position to the left
+func (mb *Minibuffer) MoveCursorBackward() {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
+		return
+	}
+	
+	if mb.cursor > 0 {
+		mb.cursor--
+	}
+}
+
+// MoveCursorToBeginning moves cursor to the beginning of the line
+func (mb *Minibuffer) MoveCursorToBeginning() {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
+		return
+	}
+	
+	mb.cursor = 0
+}
+
+// MoveCursorToEnd moves cursor to the end of the line
+func (mb *Minibuffer) MoveCursorToEnd() {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
+		return
+	}
+	
+	runes := []rune(mb.content)
+	mb.cursor = len(runes)
 }
 
 // GetDisplayText returns the text to display in the minibuffer

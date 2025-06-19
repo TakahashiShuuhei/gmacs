@@ -78,7 +78,16 @@ func (e *Editor) HandleEvent(event events.Event) {
 
 func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	
-	// First check for key sequences (like C-x C-c)
+	// Handle minibuffer input first if active
+	if e.minibuffer.IsActive() {
+		handled := e.handleMinibufferInput(event)
+		if handled {
+			return
+		}
+		// If not handled, continue processing as normal input
+	}
+	
+	// Then check for key sequences (like C-x C-c)
 	if cmd, matched, continuing := e.keyBindings.ProcessKeyPress(event.Key, event.Ctrl, event.Meta); matched {
 		log.Info("Key sequence matched, executing command")
 		err := cmd(e)
@@ -89,15 +98,6 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	} else if continuing {
 		log.Info("Key sequence in progress")
 		return
-	}
-	
-	// Handle minibuffer input if active
-	if e.minibuffer.IsActive() {
-		handled := e.handleMinibufferInput(event)
-		if handled {
-			return
-		}
-		// If not handled, continue processing as normal input
 	}
 	
 	// Handle Meta key press detection
@@ -182,6 +182,11 @@ func (e *Editor) SetMinibufferMessage(message string) {
 }
 
 func (e *Editor) handleMinibufferInput(event events.KeyEventData) bool {
+	// C-g should always be handled as keyboard-quit, even in minibuffer
+	if event.Ctrl && event.Key == "g" {
+		return false // Let the keyboard-quit binding handle it
+	}
+	
 	switch e.minibuffer.Mode() {
 	case MinibufferCommand:
 		e.handleCommandInput(event)
@@ -248,6 +253,30 @@ func (e *Editor) handleCommandInput(event events.KeyEventData) {
 		return
 	}
 	
+	// Handle Ctrl commands in minibuffer
+	if event.Ctrl {
+		switch event.Key {
+		case "h":
+			e.minibuffer.DeleteBackward()
+			return
+		case "d":
+			e.minibuffer.DeleteForward()
+			return
+		case "f":
+			e.minibuffer.MoveCursorForward()
+			return
+		case "b":
+			e.minibuffer.MoveCursorBackward()
+			return
+		case "a":
+			e.minibuffer.MoveCursorToBeginning()
+			return
+		case "e":
+			e.minibuffer.MoveCursorToEnd()
+			return
+		}
+	}
+	
 	// Handle Backspace
 	if event.Key == "Backspace" || event.Key == "\x7f" {
 		e.minibuffer.DeleteBackward()
@@ -309,6 +338,30 @@ func (e *Editor) handleFileInput(event events.KeyEventData) {
 	if event.Key == "\x1b" || event.Key == "Escape" {
 		e.minibuffer.Clear()
 		return
+	}
+	
+	// Handle Ctrl commands in minibuffer
+	if event.Ctrl {
+		switch event.Key {
+		case "h":
+			e.minibuffer.DeleteBackward()
+			return
+		case "d":
+			e.minibuffer.DeleteForward()
+			return
+		case "f":
+			e.minibuffer.MoveCursorForward()
+			return
+		case "b":
+			e.minibuffer.MoveCursorBackward()
+			return
+		case "a":
+			e.minibuffer.MoveCursorToBeginning()
+			return
+		case "e":
+			e.minibuffer.MoveCursorToEnd()
+			return
+		}
 	}
 	
 	// Handle Backspace

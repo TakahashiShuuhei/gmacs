@@ -2,7 +2,7 @@
 
 このドキュメントはテストコードから自動抽出されたBDD仕様書です。
 
-**生成日時:** 2025年06月19日 09:06:36
+**生成日時:** 2025年06月19日 09:17:03
 
 ## commands/mx_basic
 
@@ -1363,6 +1363,106 @@
 **結果:** シーケンス状態がリセットされ、その後のC-cでは実行されない
 
 **実装ファイル:** `domain/keybinding.go`, `シーケンス状態管理`
+
+---
+
+## minibuffer/edit_boundary_conditions
+
+### TestMinibufferEditBoundaryConditions
+
+**ファイル:** `test/minibuffer_edit_test.go`
+
+**シナリオ:** ミニバッファ編集の境界条件
+
+**説明:** カーソルが境界位置にある時の編集動作
+
+**前提:** M-xコマンド入力モードで"test"を入力済み
+
+**操作:** 境界位置での削除とカーソル移動を試行
+
+**結果:** エラーなく適切に処理される
+
+**実装ファイル:** `domain/minibuffer.go`, `境界チェック`
+
+---
+
+## minibuffer/edit_cursor_movement
+
+### TestMinibufferCursorMovement
+
+**ファイル:** `test/minibuffer_edit_test.go`
+
+**シナリオ:** ミニバッファでのカーソル移動
+
+**説明:** M-xコマンド入力中にC-f/C-bでカーソルを移動する機能
+
+**前提:** M-xコマンド入力モードで"hello"を入力済み
+
+**操作:** C-a（行頭）、C-f（前進）、C-b（後退）、C-e（行末）を順次実行
+
+**結果:** カーソルが適切な位置に移動する
+
+**実装ファイル:** `domain/minibuffer.go`, `カーソル移動関数`
+
+---
+
+## minibuffer/edit_delete_forward
+
+### TestMinibufferDeleteForward
+
+**ファイル:** `test/minibuffer_edit_test.go`
+
+**シナリオ:** ミニバッファでのC-d文字削除
+
+**説明:** M-xコマンド入力中にC-dで前方の文字を削除する機能
+
+**前提:** M-xコマンド入力モードで"forward"を入力済み、カーソルが"f"の位置
+
+**操作:** C-dキーを押下
+
+**結果:** "f"が削除され"orward"になる
+
+**実装ファイル:** `domain/minibuffer.go`, `DeleteForward関数`
+
+---
+
+## minibuffer/edit_file_input
+
+### TestMinibufferFileInputEdit
+
+**ファイル:** `test/minibuffer_edit_test.go`
+
+**シナリオ:** ファイル入力モードでの編集機能
+
+**説明:** C-x C-fファイル入力中にC-h/C-dで編集する機能
+
+**前提:** C-x C-fファイル入力モードで"/path/to/file.txt"を入力済み
+
+**操作:** カーソル移動と削除コマンドを実行
+
+**結果:** ファイルパスが適切に編集される
+
+**実装ファイル:** `domain/minibuffer.go`, `ファイル入力モード編集`
+
+---
+
+## minibuffer/edit_japanese_characters
+
+### TestMinibufferJapaneseEdit
+
+**ファイル:** `test/minibuffer_edit_test.go`
+
+**シナリオ:** ミニバッファでの日本語文字編集
+
+**説明:** M-xコマンド入力中に日本語文字を含むテキストを編集する機能
+
+**前提:** M-xコマンド入力モードで"aあbいc"を入力済み
+
+**操作:** カーソル移動と削除を行う
+
+**結果:** 日本語文字が適切に処理される
+
+**実装ファイル:** `domain/minibuffer.go`, `UTF-8対応編集`
 
 ---
 

@@ -16,7 +16,7 @@ import (
  * @implementation domain/keybinding.go, キーシーケンス処理システム
  */
 func TestKeySequenceBinding(t *testing.T) {
-	kbm := domain.NewKeyBindingMap()
+	kbm := domain.NewEmptyKeyBindingMap()
 	
 	executed := false
 	testCommand := func(editor *domain.Editor) error {
@@ -73,7 +73,7 @@ func TestKeySequenceBinding(t *testing.T) {
  * @implementation domain/keybinding.go, シーケンス状態管理
  */
 func TestKeySequenceReset(t *testing.T) {
-	kbm := domain.NewKeyBindingMap()
+	kbm := domain.NewEmptyKeyBindingMap()
 	
 	executed := false
 	testCommand := func(editor *domain.Editor) error {
