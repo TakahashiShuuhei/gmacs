@@ -39,6 +39,9 @@ func NewEditor() *Editor {
 	// Register scrolling commands as interactive functions
 	editor.registerScrollCommands()
 	
+	// Register buffer commands as interactive functions
+	editor.registerBufferCommands()
+	
 	log.Info("Editor created with buffer: %s", buffer.Name())
 	return editor
 }
@@ -240,6 +243,9 @@ func (e *Editor) handleMinibufferInput(event events.KeyEventData) bool {
 	case MinibufferFile:
 		e.handleFileInput(event)
 		return true
+	case MinibufferBufferSelection:
+		e.HandleBufferSelectionInput(event)
+		return true
 	case MinibufferMessage:
 		// Any key clears the message, but allow the key to continue being processed
 		e.minibuffer.Clear()
@@ -268,6 +274,18 @@ func (e *Editor) registerScrollCommands() {
 	e.commandRegistry.RegisterFunc("page-up", PageUp)
 	e.commandRegistry.RegisterFunc("page-down", PageDown)
 	e.commandRegistry.RegisterFunc("debug-info", ShowDebugInfo)
+}
+
+func (e *Editor) registerBufferCommands() {
+	// Register buffer commands as M-x interactive functions
+	e.commandRegistry.RegisterFunc("switch-to-buffer", SwitchToBufferInteractive)
+	e.commandRegistry.RegisterFunc("list-buffers", ListBuffersInteractive)
+	e.commandRegistry.RegisterFunc("kill-buffer", KillBufferInteractive)
+	
+	// Set up keybindings for buffer functions
+	e.keyBindings.BindKeySequence("C-x b", SwitchToBufferInteractive)
+	e.keyBindings.BindKeySequence("C-x C-b", ListBuffersInteractive)
+	e.keyBindings.BindKeySequence("C-x k", KillBufferInteractive)
 }
 
 func (e *Editor) handleCommandInput(event events.KeyEventData) {

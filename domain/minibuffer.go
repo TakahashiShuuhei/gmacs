@@ -92,7 +92,7 @@ func (mb *Minibuffer) Clear() {
 
 // InsertChar inserts a character at the cursor position
 func (mb *Minibuffer) InsertChar(ch rune) {
-	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile && mb.mode != MinibufferBufferSelection {
 		return
 	}
 	
@@ -110,7 +110,7 @@ func (mb *Minibuffer) InsertChar(ch rune) {
 
 // DeleteBackward deletes the character before the cursor
 func (mb *Minibuffer) DeleteBackward() {
-	if (mb.mode != MinibufferCommand && mb.mode != MinibufferFile) || mb.cursor == 0 {
+	if (mb.mode != MinibufferCommand && mb.mode != MinibufferFile && mb.mode != MinibufferBufferSelection) || mb.cursor == 0 {
 		return
 	}
 	
@@ -124,7 +124,7 @@ func (mb *Minibuffer) DeleteBackward() {
 
 // DeleteForward deletes the character at the cursor position
 func (mb *Minibuffer) DeleteForward() {
-	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile && mb.mode != MinibufferBufferSelection {
 		return
 	}
 	
@@ -142,7 +142,7 @@ func (mb *Minibuffer) DeleteForward() {
 
 // MoveCursorForward moves cursor one position to the right
 func (mb *Minibuffer) MoveCursorForward() {
-	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile && mb.mode != MinibufferBufferSelection {
 		return
 	}
 	
@@ -154,7 +154,7 @@ func (mb *Minibuffer) MoveCursorForward() {
 
 // MoveCursorBackward moves cursor one position to the left
 func (mb *Minibuffer) MoveCursorBackward() {
-	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile && mb.mode != MinibufferBufferSelection {
 		return
 	}
 	
@@ -165,7 +165,7 @@ func (mb *Minibuffer) MoveCursorBackward() {
 
 // MoveCursorToBeginning moves cursor to the beginning of the line
 func (mb *Minibuffer) MoveCursorToBeginning() {
-	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile && mb.mode != MinibufferBufferSelection {
 		return
 	}
 	
@@ -174,7 +174,7 @@ func (mb *Minibuffer) MoveCursorToBeginning() {
 
 // MoveCursorToEnd moves cursor to the end of the line
 func (mb *Minibuffer) MoveCursorToEnd() {
-	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile && mb.mode != MinibufferBufferSelection {
 		return
 	}
 	
@@ -188,6 +188,8 @@ func (mb *Minibuffer) GetDisplayText() string {
 	case MinibufferCommand:
 		return mb.prompt + mb.content
 	case MinibufferFile:
+		return mb.prompt + mb.content
+	case MinibufferBufferSelection:
 		return mb.prompt + mb.content
 	case MinibufferMessage:
 		return mb.message
