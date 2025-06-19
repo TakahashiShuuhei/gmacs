@@ -186,6 +186,9 @@ func (e *Editor) handleMinibufferInput(event events.KeyEventData) bool {
 	case MinibufferCommand:
 		e.handleCommandInput(event)
 		return true
+	case MinibufferFile:
+		e.handleFileInput(event)
+		return true
 	case MinibufferMessage:
 		// Any key clears the message, but allow the key to continue being processed
 		e.minibuffer.Clear()
@@ -240,6 +243,69 @@ func (e *Editor) handleCommandInput(event events.KeyEventData) {
 	}
 	
 	// Handle Escape - cancel command
+	if event.Key == "\x1b" || event.Key == "Escape" {
+		e.minibuffer.Clear()
+		return
+	}
+	
+	// Handle Backspace
+	if event.Key == "Backspace" || event.Key == "\x7f" {
+		e.minibuffer.DeleteBackward()
+		return
+	}
+	
+	// Handle normal character input
+	if event.Rune != 0 && !event.Ctrl && !event.Meta {
+		e.minibuffer.InsertChar(event.Rune)
+	}
+}
+
+// AddBuffer adds a new buffer to the editor
+func (e *Editor) AddBuffer(buffer *Buffer) {
+	e.buffers = append(e.buffers, buffer)
+}
+
+// SwitchToBuffer switches the current window to the specified buffer
+func (e *Editor) SwitchToBuffer(buffer *Buffer) {
+	window := e.CurrentWindow()
+	if window != nil {
+		window.SetBuffer(buffer)
+		log.Info("Switched to buffer: %s", buffer.Name())
+	}
+}
+
+// FindBuffer finds a buffer by name
+func (e *Editor) FindBuffer(name string) *Buffer {
+	for _, buffer := range e.buffers {
+		if buffer.Name() == name {
+			return buffer
+		}
+	}
+	return nil
+}
+
+// handleFileInput handles file path input for C-x C-f
+func (e *Editor) handleFileInput(event events.KeyEventData) {
+	// Handle Enter - open file
+	if event.Key == "Enter" || event.Key == "Return" {
+		filepath := e.minibuffer.Content()
+		log.Info("Opening file: %s", filepath)
+		
+		// Try to load the file
+		buffer, err := NewBufferFromFile(filepath)
+		if err != nil {
+			log.Error("Failed to open file %s: %v", filepath, err)
+			e.minibuffer.SetMessage("Cannot open file: " + filepath)
+		} else {
+			// Add buffer to editor and switch to it
+			e.AddBuffer(buffer)
+			e.SwitchToBuffer(buffer)
+			e.minibuffer.SetMessage("Opened: " + filepath)
+		}
+		return
+	}
+	
+	// Handle Escape - cancel file input
 	if event.Key == "\x1b" || event.Key == "Escape" {
 		e.minibuffer.Clear()
 		return

@@ -8,6 +8,7 @@ const (
 	MinibufferInactive MinibufferMode = iota
 	MinibufferCommand                 // M-x command input
 	MinibufferMessage                 // Displaying a message
+	MinibufferFile                    // File path input (C-x C-f)
 )
 
 // Minibuffer manages the minibuffer state
@@ -62,6 +63,15 @@ func (mb *Minibuffer) StartCommandInput() {
 	mb.cursor = 0
 }
 
+// StartFileInput starts file path input mode (C-x C-f)
+func (mb *Minibuffer) StartFileInput() {
+	mb.mode = MinibufferFile
+	mb.content = ""
+	mb.prompt = "Find file: "
+	mb.message = ""
+	mb.cursor = 0
+}
+
 // SetMessage displays a message in the minibuffer
 func (mb *Minibuffer) SetMessage(message string) {
 	mb.mode = MinibufferMessage
@@ -82,7 +92,7 @@ func (mb *Minibuffer) Clear() {
 
 // InsertChar inserts a character at the cursor position
 func (mb *Minibuffer) InsertChar(ch rune) {
-	if mb.mode != MinibufferCommand {
+	if mb.mode != MinibufferCommand && mb.mode != MinibufferFile {
 		return
 	}
 	
@@ -100,7 +110,7 @@ func (mb *Minibuffer) InsertChar(ch rune) {
 
 // DeleteBackward deletes the character before the cursor
 func (mb *Minibuffer) DeleteBackward() {
-	if mb.mode != MinibufferCommand || mb.cursor == 0 {
+	if (mb.mode != MinibufferCommand && mb.mode != MinibufferFile) || mb.cursor == 0 {
 		return
 	}
 	
@@ -117,6 +127,8 @@ func (mb *Minibuffer) DeleteBackward() {
 func (mb *Minibuffer) GetDisplayText() string {
 	switch mb.mode {
 	case MinibufferCommand:
+		return mb.prompt + mb.content
+	case MinibufferFile:
 		return mb.prompt + mb.content
 	case MinibufferMessage:
 		return mb.message

@@ -96,6 +96,27 @@ func DeleteChar(editor *Editor) error {
 	return nil
 }
 
+// FindFile command for C-x C-f (find-file)
+func FindFile(editor *Editor) error {
+	editor.minibuffer.StartFileInput()
+	log.Info("Find file command started")
+	return nil
+}
+
+// KeyboardQuit command for C-g (keyboard-quit)
+func KeyboardQuit(editor *Editor) error {
+	// Clear minibuffer if active
+	if editor.minibuffer.IsActive() {
+		editor.minibuffer.Clear()
+		log.Info("Keyboard quit: cleared minibuffer")
+	} else {
+		// Reset any partial key sequences
+		editor.keyBindings.ResetSequence()
+		log.Info("Keyboard quit: reset key sequences")
+	}
+	return nil
+}
+
 func (cr *CommandRegistry) Register(cmd *Command) {
 	cr.commands[cmd.Name()] = cmd
 }

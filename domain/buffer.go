@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"bufio"
+	"os"
 	"strings"
 	"unicode/utf8"
 )
@@ -10,6 +12,7 @@ type Buffer struct {
 	content  []string
 	cursor   Position
 	modified bool
+	filepath string // File path if buffer is associated with a file
 }
 
 type Position struct {
@@ -19,14 +22,57 @@ type Position struct {
 
 func NewBuffer(name string) *Buffer {
 	return &Buffer{
-		name:    name,
-		content: []string{""},
-		cursor:  Position{Row: 0, Col: 0},
+		name:     name,
+		content:  []string{""},
+		cursor:   Position{Row: 0, Col: 0},
+		filepath: "",
 	}
+}
+
+// NewBufferFromFile creates a new buffer and loads content from a file
+func NewBufferFromFile(filepath string) (*Buffer, error) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	
+	var lines []string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+	
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	
+	// If file is empty, ensure at least one empty line
+	if len(lines) == 0 {
+		lines = []string{""}
+	}
+	
+	// Extract filename from path for buffer name
+	name := filepath
+	if lastSlash := strings.LastIndex(filepath, "/"); lastSlash != -1 {
+		name = filepath[lastSlash+1:]
+	}
+	
+	return &Buffer{
+		name:     name,
+		content:  lines,
+		cursor:   Position{Row: 0, Col: 0},
+		modified: false,
+		filepath: filepath,
+	}, nil
 }
 
 func (b *Buffer) Name() string {
 	return b.name
+}
+
+func (b *Buffer) Filepath() string {
+	return b.filepath
 }
 
 func (b *Buffer) Content() []string {

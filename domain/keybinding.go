@@ -65,6 +65,9 @@ func (kbm *KeyBindingMap) registerDefaultBindings() {
 	kbm.BindKeySequence("C-h", DeleteBackwardChar) // C-h: backspace
 	kbm.BindKeySequence("C-d", DeleteChar)         // C-d: delete-char
 	
+	// Cancel/Quit
+	kbm.BindKeySequence("C-g", KeyboardQuit)       // C-g: keyboard-quit
+	
 	// Scrolling
 	kbm.BindKeySequence("C-v", PageDown)        // C-v (page down)
 	kbm.BindRawSequence("\x1b[6~", PageDown)    // Page Down key
@@ -78,6 +81,7 @@ func (kbm *KeyBindingMap) registerDefaultBindings() {
 	
 	// Multi-key sequences
 	kbm.BindKeySequence("C-x C-c", Quit)        // C-x C-c: quit
+	kbm.BindKeySequence("C-x C-f", FindFile)    // C-x C-f: find-file
 }
 
 // BindRawSequence adds a raw key sequence binding (like arrow keys)

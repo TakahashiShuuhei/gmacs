@@ -2,7 +2,7 @@
 
 このドキュメントはテストコードから自動抽出されたBDD仕様書です。
 
-**生成日時:** 2025年06月19日 08:52:44
+**生成日時:** 2025年06月19日 09:06:36
 
 ## commands/mx_basic
 
@@ -846,6 +846,106 @@
 
 ---
 
+## file/find_file_basic
+
+### TestFindFileBasic
+
+**ファイル:** `test/file_test.go`
+
+**シナリオ:** C-x C-f による基本的なファイル開く機能
+
+**説明:** ファイルパスを入力してファイルを開く基本機能
+
+**前提:** 存在するテストファイルを用意
+
+**操作:** C-x C-f コマンドでファイルパスを入力
+
+**結果:** ファイルの内容がバッファに読み込まれ、適切に表示される
+
+**実装ファイル:** `domain/buffer.go`, `NewBufferFromFile関数`
+
+---
+
+## file/find_file_cancel
+
+### TestFindFileCancel
+
+**ファイル:** `test/file_test.go`
+
+**シナリオ:** C-x C-f のキャンセル
+
+**説明:** Escapeキーでファイル入力をキャンセルする機能
+
+**前提:** C-x C-f を実行してファイル入力モードに入る
+
+**操作:** Escapeキーを押す
+
+**結果:** ミニバッファがクリアされ、元の状態に戻る
+
+**実装ファイル:** `domain/editor.go`, `キャンセル処理`
+
+---
+
+## file/find_file_empty
+
+### TestFindFileEmpty
+
+**ファイル:** `test/file_test.go`
+
+**シナリオ:** 空ファイルを開く場合
+
+**説明:** 空のファイルを開いた際の適切な処理
+
+**前提:** 空のファイル
+
+**操作:** C-x C-f コマンドで空ファイルを開く
+
+**結果:** 空行が1行あるバッファが作成される
+
+**実装ファイル:** `domain/buffer.go`, `空ファイル処理`
+
+---
+
+## file/find_file_japanese
+
+### TestFindFileJapanese
+
+**ファイル:** `test/file_test.go`
+
+**シナリオ:** 日本語ファイル名での動作
+
+**説明:** 日本語を含むファイルパスでの正常動作
+
+**前提:** 日本語ファイル名のテストファイル
+
+**操作:** C-x C-f で日本語ファイル名を入力
+
+**結果:** ファイルが正常に開かれる
+
+**実装ファイル:** `domain/buffer.go`, `UTF-8ファイル名対応`
+
+---
+
+## file/find_file_nonexistent
+
+### TestFindFileNonexistent
+
+**ファイル:** `test/file_test.go`
+
+**シナリオ:** 存在しないファイルを開こうとした場合
+
+**説明:** 存在しないファイルパスでC-x C-fを実行した際のエラーハンドリング
+
+**前提:** 存在しないファイルパス
+
+**操作:** C-x C-f コマンドで存在しないファイルパスを入力
+
+**結果:** エラーメッセージが表示され、現在のバッファは変更されない
+
+**実装ファイル:** `domain/editor.go`, `エラーハンドリング`
+
+---
+
 ## キーボード入力機能 (input/basic_text)
 
 ### TestBasicTextInput
@@ -1143,6 +1243,106 @@
 **結果:** それぞれ対応するコマンドが実行される
 
 **実装ファイル:** `domain/keybinding.go`, `複数シーケンス管理`
+
+---
+
+## keyboard/quit_find_file
+
+### TestKeyboardQuitFindFile
+
+**ファイル:** `test/keyboard_quit_test.go`
+
+**シナリオ:** C-x C-f ファイル入力時のC-gキャンセル
+
+**説明:** C-x C-f ファイル入力中にC-gでキャンセルする機能
+
+**前提:** C-x C-f ファイル入力モードでパスを部分的に入力済み
+
+**操作:** C-gキーを押下
+
+**結果:** ミニバッファがクリアされ、元の状態に戻る
+
+**実装ファイル:** `domain/command.go`, `KeyboardQuit関数`
+
+---
+
+## keyboard/quit_key_sequence
+
+### TestKeyboardQuitKeySequence
+
+**ファイル:** `test/keyboard_quit_test.go`
+
+**シナリオ:** 進行中のキーシーケンスのC-gキャンセル
+
+**説明:** C-x 入力後にC-gでキーシーケンスをキャンセルする機能
+
+**前提:** C-x入力済みでキーシーケンスが進行中
+
+**操作:** C-gキーを押下
+
+**結果:** キーシーケンス状態がリセットされる
+
+**実装ファイル:** `domain/command.go`, `KeyboardQuit関数`
+
+---
+
+## keyboard/quit_message_clear
+
+### TestKeyboardQuitMessageClear
+
+**ファイル:** `test/keyboard_quit_test.go`
+
+**シナリオ:** メッセージ表示中のC-gクリア
+
+**説明:** ミニバッファにメッセージが表示されている時のC-g動作
+
+**前提:** ミニバッファにメッセージが表示されている状態
+
+**操作:** C-gキーを押下
+
+**結果:** メッセージがクリアされる
+
+**実装ファイル:** `domain/command.go`, `KeyboardQuit関数`
+
+---
+
+## keyboard/quit_mx_command
+
+### TestKeyboardQuitMxCommand
+
+**ファイル:** `test/keyboard_quit_test.go`
+
+**シナリオ:** M-xコマンド入力時のC-gキャンセル
+
+**説明:** M-xコマンド入力中にC-gでキャンセルする機能
+
+**前提:** M-xコマンド入力モードで部分的にコマンドを入力済み
+
+**操作:** C-gキーを押下
+
+**結果:** ミニバッファがクリアされ、通常モードに戻る
+
+**実装ファイル:** `domain/command.go`, `KeyboardQuit関数`
+
+---
+
+## keyboard/quit_normal_mode
+
+### TestKeyboardQuitNormalMode
+
+**ファイル:** `test/keyboard_quit_test.go`
+
+**シナリオ:** 通常モードでのC-g動作
+
+**説明:** ミニバッファがアクティブでない時のC-g動作
+
+**前提:** 通常編集モード
+
+**操作:** C-gキーを押下
+
+**結果:** 特に何も起こらず、キーシーケンス状態がリセットされる
+
+**実装ファイル:** `domain/command.go`, `KeyboardQuit関数`
 
 ---
 
