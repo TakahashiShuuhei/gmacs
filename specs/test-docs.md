@@ -2,7 +2,7 @@
 
 このドキュメントはテストコードから自動抽出されたBDD仕様書です。
 
-**生成日時:** 2025年06月19日 09:17:03
+**生成日時:** 2025年06月19日 09:23:07
 
 ## commands/mx_basic
 
@@ -564,6 +564,46 @@
 
 ---
 
+## 画面表示機能 (display/key_sequence_cancel)
+
+### TestKeySequenceCancelDisplay
+
+**ファイル:** `test/prefix_key_display_test.go`
+
+**シナリオ:** キーシーケンスキャンセル後の表示
+
+**説明:** Escapeキーでキーシーケンスをキャンセルした後の表示クリア
+
+**前提:** C-x入力でキーシーケンス進行中
+
+**操作:** Escapeキーを押下
+
+**結果:** キーシーケンス表示がクリアされる
+
+**実装ファイル:** `domain/editor.go`, `Escapeキー処理`
+
+---
+
+## 画面表示機能 (display/key_sequence_format)
+
+### TestKeySequenceFormat
+
+**ファイル:** `test/prefix_key_display_test.go`
+
+**シナリオ:** キーシーケンス表示フォーマット
+
+**説明:** 各種修飾キーの組み合わせの正しい表示
+
+**前提:** キーバインディングマップを作成
+
+**操作:** 各種キープレス組み合わせをフォーマット
+
+**結果:** 適切な文字列表記が生成される
+
+**実装ファイル:** `domain/keybinding.go`, `FormatSequence関数`
+
+---
+
 ## 画面表示機能 (display/layout_analysis)
 
 ### TestDisplayLayoutAnalysis
@@ -701,6 +741,26 @@
 **結果:** 2行のコンテンツが正確に表示され、カーソル位置が適切に設定される
 
 **実装ファイル:** `test/mock_display.go`, `改行処理`
+
+---
+
+## 画面表示機能 (display/prefix_key_display)
+
+### TestPrefixKeyDisplay
+
+**ファイル:** `test/prefix_key_display_test.go`
+
+**シナリオ:** プレフィックスキーの表示
+
+**説明:** C-x入力後にミニバッファに"C-x -"のような表示が出る機能
+
+**前提:** エディタを新規作成
+
+**操作:** C-xキーを押下
+
+**結果:** キーシーケンス進行中の表示が"C-x -"になる
+
+**実装ファイル:** `domain/keybinding.go`, `cli/display.go`
 
 ---
 
@@ -1363,6 +1423,26 @@
 **結果:** シーケンス状態がリセットされ、その後のC-cでは実行されない
 
 **実装ファイル:** `domain/keybinding.go`, `シーケンス状態管理`
+
+---
+
+## minibuffer/cursor_position_accuracy
+
+### TestMinibufferCursorPositionAccuracy
+
+**ファイル:** `test/prefix_key_display_test.go`
+
+**シナリオ:** ミニバッファでのカーソル位置精度
+
+**説明:** ミニバッファでの日本語文字を含むテキストでのカーソル位置計算精度
+
+**前提:** M-xコマンド入力モードでマルチバイト文字を入力
+
+**操作:** カーソル移動を行う
+
+**結果:** 正確なバイト位置とルーン位置が計算される
+
+**実装ファイル:** `domain/minibuffer.go`, `カーソル位置計算`
 
 ---
 

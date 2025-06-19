@@ -181,6 +181,12 @@ func (e *Editor) SetMinibufferMessage(message string) {
 	e.minibuffer.SetMessage(message)
 }
 
+// GetKeySequenceInProgress returns the current key sequence in progress, if any
+func (e *Editor) GetKeySequenceInProgress() string {
+	sequence := e.keyBindings.GetCurrentSequence()
+	return FormatSequence(sequence)
+}
+
 func (e *Editor) handleMinibufferInput(event events.KeyEventData) bool {
 	// C-g should always be handled as keyboard-quit, even in minibuffer
 	if event.Ctrl && event.Key == "g" {

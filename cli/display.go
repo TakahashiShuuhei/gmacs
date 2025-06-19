@@ -75,12 +75,20 @@ func (d *Display) Render(editor *domain.Editor) {
 	
 	// Position cursor based on whether minibuffer is active
 	minibuffer := editor.Minibuffer()
-	if minibuffer.IsActive() && minibuffer.Mode() == domain.MinibufferCommand {
+	if minibuffer.IsActive() && (minibuffer.Mode() == domain.MinibufferCommand || minibuffer.Mode() == domain.MinibufferFile) {
 		// Position cursor in minibuffer (last line)
 		promptLen := util.StringWidth(minibuffer.Prompt())
-		cursorPos := promptLen + minibuffer.CursorPosition()
+		
+		// Calculate cursor position within the content up to cursor position
+		content := minibuffer.Content()
+		cursorPosInContent := minibuffer.CursorPosition()
+		contentToCursor := string([]rune(content)[:cursorPosInContent])
+		contentWidth := util.StringWidth(contentToCursor)
+		
+		cursorPos := promptLen + contentWidth
 		terminalHeight := d.height
-		log.Debug("Moving cursor to minibuffer position (%d, %d)", terminalHeight-1, cursorPos)
+		log.Debug("Moving cursor to minibuffer position (%d, %d) - prompt=%q promptLen=%d, cursorInContent=%d, contentWidth=%d", 
+			terminalHeight-1, cursorPos, minibuffer.Prompt(), promptLen, cursorPosInContent, contentWidth)
 		d.MoveCursor(terminalHeight-1, cursorPos)
 	} else {
 		// Position cursor in main window (buffer area)
@@ -123,9 +131,20 @@ func (d *Display) renderMinibuffer(editor *domain.Editor) {
 	
 	fmt.Print("\r\n")
 	
+	var content string
+	
 	if minibuffer.IsActive() {
 		// Show minibuffer content
-		content := minibuffer.GetDisplayText()
+		content = minibuffer.GetDisplayText()
+	} else {
+		// Check if there's a key sequence in progress
+		keySequence := editor.GetKeySequenceInProgress()
+		if keySequence != "" {
+			content = keySequence
+		}
+	}
+	
+	if content != "" {
 		contentWidth := util.StringWidth(content)
 		
 		// Truncate if too long

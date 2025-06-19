@@ -217,3 +217,32 @@ func (kbm *KeyBindingMap) isPrefixOf(sequence []KeyPress) bool {
 func (kbm *KeyBindingMap) ResetSequence() {
 	kbm.currentSequence = make([]KeyPress, 0)
 }
+
+// GetCurrentSequence returns the current key sequence in progress
+func (kbm *KeyBindingMap) GetCurrentSequence() []KeyPress {
+	return kbm.currentSequence
+}
+
+// FormatSequence formats a key sequence as a display string
+func FormatSequence(sequence []KeyPress) string {
+	if len(sequence) == 0 {
+		return ""
+	}
+	
+	parts := make([]string, len(sequence))
+	for i, press := range sequence {
+		var keyStr string
+		if press.Ctrl && press.Meta {
+			keyStr = "C-M-" + press.Key
+		} else if press.Ctrl {
+			keyStr = "C-" + press.Key
+		} else if press.Meta {
+			keyStr = "M-" + press.Key
+		} else {
+			keyStr = press.Key
+		}
+		parts[i] = keyStr
+	}
+	
+	return strings.Join(parts, " ") + " -"
+}
