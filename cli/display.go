@@ -36,6 +36,18 @@ func (d *Display) Clear() {
 	fmt.Print("\033[2J\033[H")
 }
 
+// ClearAndExit clears the screen and prepares for clean exit
+func (d *Display) ClearAndExit() {
+	// Clear entire screen
+	fmt.Print("\033[2J")
+	// Move cursor to top-left
+	fmt.Print("\033[H")
+	// Show cursor (in case it was hidden)
+	fmt.Print("\033[?25h")
+	// Reset terminal attributes
+	fmt.Print("\033[0m")
+}
+
 func (d *Display) MoveCursor(row, col int) {
 	fmt.Printf("\033[%d;%dH", row+1, col+1)
 }

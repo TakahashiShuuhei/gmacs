@@ -76,5 +76,9 @@ func main() {
 		}
 	}
 
+	// Clear screen and reset terminal state before exiting
+	gmacslog.Debug("Clearing screen on exit")
+	display.ClearAndExit()
+
 	gmacslog.Info("gmacs shutting down")
 }

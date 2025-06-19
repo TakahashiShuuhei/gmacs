@@ -2,7 +2,67 @@
 
 このドキュメントはテストコードから自動抽出されたBDD仕様書です。
 
-**生成日時:** 2025年06月19日 09:23:07
+**生成日時:** 2025年06月19日 09:37:09
+
+## application/clean_exit
+
+### TestCleanExit
+
+**ファイル:** `test/clean_exit_test.go`
+
+**シナリオ:** C-x C-c による正常終了
+
+**説明:** C-x C-c コマンドでエディタが正常に終了する機能
+
+**前提:** エディタが実行中の状態
+
+**操作:** C-x C-c キーシーケンスを実行
+
+**結果:** エディタが終了状態になる
+
+**実装ファイル:** `domain/command.go`, `Quit関数`
+
+---
+
+## application/exit_during_input
+
+### TestExitDuringInput
+
+**ファイル:** `test/clean_exit_test.go`
+
+**シナリオ:** 入力中の終了
+
+**説明:** ミニバッファ入力中にC-x C-cで終了する場合
+
+**前提:** M-xコマンド入力中の状態
+
+**操作:** C-x C-c キーシーケンスを実行
+
+**結果:** ミニバッファがクリアされずに終了する（通常の終了が優先される）
+
+**実装ファイル:** `domain/editor.go`, `キー処理優先順位`
+
+---
+
+## application/signal_exit
+
+### TestSignalExit
+
+**ファイル:** `test/clean_exit_test.go`
+
+**シナリオ:** シグナルによる終了
+
+**説明:** SIGINTやSIGTERMシグナルでの終了処理
+
+**前提:** エディタが実行中の状態
+
+**操作:** QuitEventDataを受信
+
+**結果:** エディタが終了状態になる
+
+**実装ファイル:** `events/quit_event.go`, `domain/editor.go`
+
+---
 
 ## commands/mx_basic
 

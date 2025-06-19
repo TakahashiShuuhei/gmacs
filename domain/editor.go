@@ -78,26 +78,54 @@ func (e *Editor) HandleEvent(event events.Event) {
 
 func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	
-	// Handle minibuffer input first if active
-	if e.minibuffer.IsActive() {
-		handled := e.handleMinibufferInput(event)
-		if handled {
-			return
-		}
-		// If not handled, continue processing as normal input
+	// Always process key sequences first to handle multi-key sequences correctly
+	cmd, matched, continuing := e.keyBindings.ProcessKeyPress(event.Key, event.Ctrl, event.Meta)
+	
+	// If we have a continuing sequence, always handle it first
+	if continuing {
+		log.Info("Key sequence in progress")
+		return
 	}
 	
-	// Then check for key sequences (like C-x C-c)
-	if cmd, matched, continuing := e.keyBindings.ProcessKeyPress(event.Key, event.Ctrl, event.Meta); matched {
+	// If we have a matched command, check if it should be handled or deferred to minibuffer
+	if matched {
+		// Special commands that should always execute immediately
+		if event.Ctrl && event.Key == "g" { // C-g (KeyboardQuit)
+			log.Info("Keyboard quit command, executing immediately")
+			err := cmd(e)
+			if err != nil {
+				log.Error("Keyboard quit command failed: %v", err)
+			}
+			return
+		}
+		
+		// Check if this is likely a multi-key sequence command (like C-x C-c)
+		// by seeing if the command is different from basic editing commands
+		// For now, we'll use a simple heuristic: if minibuffer is active and 
+		// this is a single Ctrl+key that could be editing, defer to minibuffer
+		if e.minibuffer.IsActive() && e.isSingleKeyEditCommand(event) {
+			// Try minibuffer input handling first
+			handled := e.handleMinibufferInput(event)
+			if handled {
+				return
+			}
+		}
+		
+		// Execute the matched command
 		log.Info("Key sequence matched, executing command")
 		err := cmd(e)
 		if err != nil {
 			log.Error("Key sequence command failed: %v", err)
 		}
 		return
-	} else if continuing {
-		log.Info("Key sequence in progress")
-		return
+	}
+	
+	// No key sequence match - handle minibuffer input if active
+	if e.minibuffer.IsActive() {
+		handled := e.handleMinibufferInput(event)
+		if handled {
+			return
+		}
 	}
 	
 	// Handle Meta key press detection
@@ -187,12 +215,24 @@ func (e *Editor) GetKeySequenceInProgress() string {
 	return FormatSequence(sequence)
 }
 
-func (e *Editor) handleMinibufferInput(event events.KeyEventData) bool {
-	// C-g should always be handled as keyboard-quit, even in minibuffer
-	if event.Ctrl && event.Key == "g" {
-		return false // Let the keyboard-quit binding handle it
+// isSingleKeyEditCommand checks if this is a single-key editing command that should be handled by minibuffer
+func (e *Editor) isSingleKeyEditCommand(event events.KeyEventData) bool {
+	if !event.Ctrl {
+		return false
 	}
 	
+	// These are single-key editing commands that should be handled by minibuffer when active
+	editKeys := []string{"h", "d", "f", "b", "a", "e"}
+	for _, key := range editKeys {
+		if event.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+
+func (e *Editor) handleMinibufferInput(event events.KeyEventData) bool {
 	switch e.minibuffer.Mode() {
 	case MinibufferCommand:
 		e.handleCommandInput(event)
