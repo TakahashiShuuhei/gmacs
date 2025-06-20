@@ -2,13 +2,13 @@
 
 このドキュメントはテストコードから自動抽出されたBDD仕様書です。
 
-**生成日時:** 2025年06月19日 09:37:09
+**生成日時:** 2025年06月20日 21:25:06
 
 ## application/clean_exit
 
 ### TestCleanExit
 
-**ファイル:** `test/clean_exit_test.go`
+**ファイル:** `e2e-test/clean_exit_test.go`
 
 **シナリオ:** C-x C-c による正常終了
 
@@ -28,7 +28,7 @@
 
 ### TestExitDuringInput
 
-**ファイル:** `test/clean_exit_test.go`
+**ファイル:** `e2e-test/clean_exit_test.go`
 
 **シナリオ:** 入力中の終了
 
@@ -48,7 +48,7 @@
 
 ### TestSignalExit
 
-**ファイル:** `test/clean_exit_test.go`
+**ファイル:** `e2e-test/clean_exit_test.go`
 
 **シナリオ:** シグナルによる終了
 
@@ -64,11 +64,251 @@
 
 ---
 
+## バッファ管理機能 (buffer/kill_buffer_basic)
+
+### TestKillBufferBasic
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** C-x kによる基本的なバッファ削除
+
+**説明:** C-x kキーシーケンスで現在のバッファを削除する機能
+
+**前提:** エディタに複数のバッファが存在し、任意のバッファを選択中
+
+**操作:** C-xを押し、続いてkキーを押下する
+
+**結果:** 現在のバッファが削除され、他のバッファに切り替わる
+
+**実装ファイル:** `domain/buffer_interactive.go`
+
+---
+
+## バッファ管理機能 (buffer/kill_buffer_last)
+
+### TestKillBufferLast
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** 最後のバッファ削除の防止
+
+**説明:** 最後の1つのバッファを削除しようとした場合のエラー処理
+
+**前提:** エディタに1つのバッファのみ存在している状態
+
+**操作:** C-x kキーシーケンスでバッファ削除を試行
+
+**結果:** 削除が拒否され、エラーメッセージが表示される
+
+**実装ファイル:** `domain/buffer_interactive.go`, `エラー処理`
+
+---
+
+## バッファ管理機能 (buffer/list_buffers_basic)
+
+### TestListBuffersBasic
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** C-x C-bによるバッファ一覧表示
+
+**説明:** C-x C-bキーシーケンスでバッファ一覧を表示する機能
+
+**前提:** エディタに複数のバッファが存在している状態
+
+**操作:** C-xを押し、続いてC-bキーを押下する
+
+**結果:** ミニバッファにバッファ一覧と現在のバッファが表示される
+
+**実装ファイル:** `domain/buffer_interactive.go`
+
+---
+
+## バッファ管理機能 (buffer/minibuffer_editing)
+
+### TestBufferMinibufferEditing
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** バッファ選択モードでのミニバッファ編集
+
+**説明:** バッファ選択モードでのカーソル移動と編集機能
+
+**前提:** C-x bでバッファ選択モードを開始し、バッファ名を部分入力済み
+
+**操作:** C-f, C-b, C-a, C-e, C-h, C-dキーで編集操作を実行
+
+**結果:** ミニバッファ内でカーソル移動と文字削除が正常に動作する
+
+**実装ファイル:** `domain/buffer_interactive.go`, `ミニバッファ編集`
+
+---
+
+## バッファ管理機能 (buffer/mx_commands)
+
+### TestBufferMxCommands
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** M-xコマンドによるバッファ操作
+
+**説明:** M-xコマンドでバッファ関連の操作を実行する機能
+
+**前提:** エディタに複数のバッファが存在している状態
+
+**操作:** M-x switch-to-buffer, M-x list-buffers, M-x kill-bufferを実行
+
+**結果:** キーバインドと同等の動作が実行される
+
+**実装ファイル:** `domain/buffer_interactive.go`, `M-xコマンドシステム`
+
+---
+
+## バッファ管理機能 (buffer/switch_to_buffer_basic)
+
+### TestSwitchToBufferBasic
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** C-x bによる基本的なバッファ切り替え
+
+**説明:** C-x bキーシーケンスでバッファ切り替えモードを開始する機能
+
+**前提:** エディタに複数のバッファが存在している状態
+
+**操作:** C-xを押し、続いてbキーを押下する
+
+**結果:** ミニバッファがアクティブになり、"Switch to buffer: "プロンプトが表示される
+
+**実装ファイル:** `domain/buffer_interactive.go`, `domain/editor.go`
+
+---
+
+## バッファ管理機能 (buffer/switch_to_buffer_cancel)
+
+### TestSwitchToBufferCancel
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** C-x bのキャンセル機能
+
+**説明:** Escapeキーでバッファ切り替えをキャンセルする機能
+
+**前提:** C-x bでバッファ切り替えモードを開始し、部分的に名前を入力済み
+
+**操作:** Escapeキーを押下
+
+**結果:** バッファ切り替えがキャンセルされ、ミニバッファがクリアされる
+
+**実装ファイル:** `domain/buffer_interactive.go`
+
+---
+
+## バッファ管理機能 (buffer/switch_to_buffer_empty)
+
+### TestSwitchToBufferEmpty
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** 空文字入力でのバッファ切り替えキャンセル
+
+**説明:** バッファ名を入力せずにEnterを押した場合の動作
+
+**前提:** C-x bでバッファ切り替えモードを開始済み
+
+**操作:** 何も入力せずにEnterキーを押下
+
+**結果:** 現在のバッファのまま変更されず、ミニバッファがクリアされる
+
+**実装ファイル:** `domain/buffer_interactive.go`
+
+---
+
+## バッファ管理機能 (buffer/switch_to_buffer_existing)
+
+### TestSwitchToBufferExisting
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** 既存バッファへの切り替え
+
+**説明:** 存在するバッファ名を入力してバッファを切り替える機能
+
+**前提:** C-x bでバッファ切り替えモードを開始済み
+
+**操作:** 既存のバッファ名"test-buffer"を入力してEnterキーを押下
+
+**結果:** 指定したバッファに切り替わり、成功メッセージが表示される
+
+**実装ファイル:** `domain/buffer_interactive.go`
+
+---
+
+## バッファ管理機能 (buffer/switch_to_buffer_new)
+
+### TestSwitchToBufferNew
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** 新規バッファの作成と切り替え
+
+**説明:** 存在しないバッファ名を入力して新しいバッファを作成する機能
+
+**前提:** C-x bでバッファ切り替えモードを開始済み
+
+**操作:** 存在しないバッファ名"new-buffer"を入力してEnterキーを押下
+
+**結果:** 新しいバッファが作成され、そのバッファに切り替わる
+
+**実装ファイル:** `domain/buffer_interactive.go`
+
+---
+
+## バッファ管理機能 (buffer/tab_completion_multiple)
+
+### TestBufferTabCompletionMultiple
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** バッファ名の複数マッチ補完
+
+**説明:** Tabキーによるバッファ名の自動補完機能（複数マッチ）
+
+**前提:** C-x bでバッファ切り替えモード開始し、複数にマッチする部分文字列を入力済み
+
+**操作:** Tabキーを押下
+
+**結果:** 共通部分まで補完され、マッチした候補一覧が表示される
+
+**実装ファイル:** `domain/buffer_interactive.go`, `補完機能`
+
+---
+
+## バッファ管理機能 (buffer/tab_completion_single)
+
+### TestBufferTabCompletionSingle
+
+**ファイル:** `e2e-test/buffer_interactive_test.go`
+
+**シナリオ:** バッファ名の単一マッチ補完
+
+**説明:** Tabキーによるバッファ名の自動補完機能（単一マッチ）
+
+**前提:** C-x bでバッファ切り替えモード開始し、一意に決まる部分文字列を入力済み
+
+**操作:** Tabキーを押下
+
+**結果:** バッファ名が自動的に完全な名前まで補完される
+
+**実装ファイル:** `domain/buffer_interactive.go`, `補完機能`
+
+---
+
 ## commands/mx_basic
 
 ### TestMxCommandBasic
 
-**ファイル:** `test/mx_command_test.go`
+**ファイル:** `e2e-test/mx_command_test.go`
 
 **シナリオ:** M-xコマンドの基本動作
 
@@ -88,7 +328,7 @@
 
 ### TestMxCancel
 
-**ファイル:** `test/mx_command_test.go`
+**ファイル:** `e2e-test/mx_command_test.go`
 
 **シナリオ:** M-xコマンドのキャンセル
 
@@ -108,7 +348,7 @@
 
 ### TestMxClearBuffer
 
-**ファイル:** `test/mx_command_test.go`
+**ファイル:** `e2e-test/mx_command_test.go`
 
 **シナリオ:** M-x clear-bufferコマンドの実行
 
@@ -128,7 +368,7 @@
 
 ### TestMxListCommands
 
-**ファイル:** `test/mx_command_test.go`
+**ファイル:** `e2e-test/mx_command_test.go`
 
 **シナリオ:** M-x list-commandsコマンドの実行
 
@@ -148,7 +388,7 @@
 
 ### TestMxUnknownCommand
 
-**ファイル:** `test/mx_command_test.go`
+**ファイル:** `e2e-test/mx_command_test.go`
 
 **シナリオ:** 未知のM-xコマンドのエラー処理
 
@@ -168,7 +408,7 @@
 
 ### TestMxVersionCommand
 
-**ファイル:** `test/mx_command_test.go`
+**ファイル:** `e2e-test/mx_command_test.go`
 
 **シナリオ:** M-x versionコマンドの実行
 
@@ -188,7 +428,7 @@
 
 ### TestWrappingToggleCommand
 
-**ファイル:** `test/line_wrapping_cursor_test.go`
+**ファイル:** `e2e-test/line_wrapping_cursor_test.go`
 
 **シナリオ:** 行ラップトグルコマンドの実行
 
@@ -208,7 +448,7 @@
 
 ### TestArrowKeys
 
-**ファイル:** `test/cursor_movement_test.go`
+**ファイル:** `e2e-test/cursor_movement_test.go`
 
 **シナリオ:** 矢印キーによるカーソル移動
 
@@ -228,7 +468,7 @@
 
 ### TestBackwardCharBasic
 
-**ファイル:** `test/cursor_movement_test.go`
+**ファイル:** `e2e-test/cursor_movement_test.go`
 
 **シナリオ:** 後方向文字移動（C-b）
 
@@ -248,7 +488,7 @@
 
 ### TestForwardCharBasic
 
-**ファイル:** `test/cursor_movement_test.go`
+**ファイル:** `e2e-test/cursor_movement_test.go`
 
 **シナリオ:** 前方向文字移動（C-f）
 
@@ -268,7 +508,7 @@
 
 ### TestCursorPositionWithJapanese
 
-**ファイル:** `test/cursor_position_test.go`
+**ファイル:** `e2e-test/cursor_position_test.go`
 
 **シナリオ:** 日本語文字でのカーソル位置計算
 
@@ -288,7 +528,7 @@
 
 ### TestCursorPositionProgression
 
-**ファイル:** `test/cursor_position_test.go`
+**ファイル:** `e2e-test/cursor_position_test.go`
 
 **シナリオ:** 日本語文字連続入力時のカーソル進行
 
@@ -308,7 +548,7 @@
 
 ### TestCursorMovementWithJapanese
 
-**ファイル:** `test/cursor_movement_test.go`
+**ファイル:** `e2e-test/cursor_movement_test.go`
 
 **シナリオ:** 日本語文字を含むカーソル移動
 
@@ -328,7 +568,7 @@
 
 ### TestBeginningEndOfLine
 
-**ファイル:** `test/cursor_movement_test.go`
+**ファイル:** `e2e-test/cursor_movement_test.go`
 
 **シナリオ:** 行頭・行末移動（C-a/C-e）
 
@@ -348,7 +588,7 @@
 
 ### TestCursorPositionWithLineWrapping
 
-**ファイル:** `test/line_wrapping_cursor_test.go`
+**ファイル:** `e2e-test/line_wrapping_cursor_test.go`
 
 **シナリオ:** 行ラップ有効時のカーソル位置
 
@@ -368,7 +608,7 @@
 
 ### TestMixedASCIIJapaneseCursor
 
-**ファイル:** `test/cursor_position_test.go`
+**ファイル:** `e2e-test/cursor_position_test.go`
 
 **シナリオ:** ASCIIと日本語混在カーソル位置
 
@@ -388,7 +628,7 @@
 
 ### TestInteractiveCommands
 
-**ファイル:** `test/cursor_movement_test.go`
+**ファイル:** `e2e-test/cursor_movement_test.go`
 
 **シナリオ:** M-xコマンドによるカーソル移動
 
@@ -408,7 +648,7 @@
 
 ### TestNextPreviousLine
 
-**ファイル:** `test/cursor_movement_test.go`
+**ファイル:** `e2e-test/cursor_movement_test.go`
 
 **シナリオ:** 垂直方向のカーソル移動（C-p/C-n）
 
@@ -428,7 +668,7 @@
 
 ### TestCursorMovementAcrossWrappedLines
 
-**ファイル:** `test/line_wrapping_cursor_test.go`
+**ファイル:** `e2e-test/line_wrapping_cursor_test.go`
 
 **シナリオ:** ラップされた行をまたいだカーソル移動
 
@@ -448,7 +688,7 @@
 
 ### TestDeleteBackwardCharBasic
 
-**ファイル:** `test/delete_test.go`
+**ファイル:** `e2e-test/delete_test.go`
 
 **シナリオ:** C-h による基本的な文字削除
 
@@ -468,7 +708,7 @@
 
 ### TestDeleteBackwardCharJapanese
 
-**ファイル:** `test/delete_test.go`
+**ファイル:** `e2e-test/delete_test.go`
 
 **シナリオ:** 日本語文字のbackspace削除
 
@@ -488,7 +728,7 @@
 
 ### TestDeleteBackwardLineJoin
 
-**ファイル:** `test/delete_test.go`
+**ファイル:** `e2e-test/delete_test.go`
 
 **シナリオ:** 行頭でのbackspaceによる行結合
 
@@ -508,7 +748,7 @@
 
 ### TestDeleteEdgeCases
 
-**ファイル:** `test/delete_test.go`
+**ファイル:** `e2e-test/delete_test.go`
 
 **シナリオ:** 削除のエッジケース
 
@@ -528,7 +768,7 @@
 
 ### TestDeleteCharBasic
 
-**ファイル:** `test/delete_test.go`
+**ファイル:** `e2e-test/delete_test.go`
 
 **シナリオ:** C-d による基本的な文字削除
 
@@ -548,7 +788,7 @@
 
 ### TestDeleteCharJapanese
 
-**ファイル:** `test/delete_test.go`
+**ファイル:** `e2e-test/delete_test.go`
 
 **シナリオ:** 日本語文字のdelete-char削除
 
@@ -568,7 +808,7 @@
 
 ### TestDeleteForwardLineJoin
 
-**ファイル:** `test/delete_test.go`
+**ファイル:** `e2e-test/delete_test.go`
 
 **シナリオ:** 行末でのdelete-charによる行結合
 
@@ -588,7 +828,7 @@
 
 ### TestMockDisplayBasic
 
-**ファイル:** `test/display_test.go`
+**ファイル:** `e2e-test/display_test.go`
 
 **シナリオ:** 基本的なテキスト表示
 
@@ -608,7 +848,7 @@
 
 ### TestMockDisplayJapanese
 
-**ファイル:** `test/display_test.go`
+**ファイル:** `e2e-test/display_test.go`
 
 **シナリオ:** 日本語テキスト表示
 
@@ -628,7 +868,7 @@
 
 ### TestKeySequenceCancelDisplay
 
-**ファイル:** `test/prefix_key_display_test.go`
+**ファイル:** `e2e-test/prefix_key_display_test.go`
 
 **シナリオ:** キーシーケンスキャンセル後の表示
 
@@ -648,7 +888,7 @@
 
 ### TestKeySequenceFormat
 
-**ファイル:** `test/prefix_key_display_test.go`
+**ファイル:** `e2e-test/prefix_key_display_test.go`
 
 **シナリオ:** キーシーケンス表示フォーマット
 
@@ -668,7 +908,7 @@
 
 ### TestDisplayLayoutAnalysis
 
-**ファイル:** `test/display_layout_test.go`
+**ファイル:** `e2e-test/display_layout_test.go`
 
 **シナリオ:** 表示レイアウト解析
 
@@ -688,7 +928,7 @@
 
 ### TestMockDisplayCursorProgression
 
-**ファイル:** `test/display_test.go`
+**ファイル:** `e2e-test/display_test.go`
 
 **シナリオ:** ASCII+日本語混在カーソル進行
 
@@ -708,7 +948,7 @@
 
 ### TestDisplayConsistency
 
-**ファイル:** `test/actual_display_issue_test.go`
+**ファイル:** `e2e-test/actual_display_issue_test.go`
 
 **シナリオ:** MockDisplayと実際のDisplay一貫性確認
 
@@ -728,7 +968,7 @@
 
 ### TestRealVsMockDisplay
 
-**ファイル:** `test/display_layout_test.go`
+**ファイル:** `e2e-test/display_layout_test.go`
 
 **シナリオ:** MockDisplayと実際のDisplay比較
 
@@ -748,7 +988,7 @@
 
 ### TestNewlineAtEndOfLine
 
-**ファイル:** `test/newline_display_test.go`
+**ファイル:** `e2e-test/newline_display_test.go`
 
 **シナリオ:** 複数改行での行末処理
 
@@ -768,7 +1008,7 @@
 
 ### TestMockDisplayMultiline
 
-**ファイル:** `test/display_test.go`
+**ファイル:** `e2e-test/display_test.go`
 
 **シナリオ:** 複数行テキスト表示
 
@@ -788,7 +1028,7 @@
 
 ### TestNewlineDisplay
 
-**ファイル:** `test/newline_display_test.go`
+**ファイル:** `e2e-test/newline_display_test.go`
 
 **シナリオ:** 改行表示のレンダリング
 
@@ -808,7 +1048,7 @@
 
 ### TestPrefixKeyDisplay
 
-**ファイル:** `test/prefix_key_display_test.go`
+**ファイル:** `e2e-test/prefix_key_display_test.go`
 
 **シナリオ:** プレフィックスキーの表示
 
@@ -828,7 +1068,7 @@
 
 ### TestActualDisplayIssue
 
-**ファイル:** `test/actual_display_issue_test.go`
+**ファイル:** `e2e-test/actual_display_issue_test.go`
 
 **シナリオ:** 余分な空行の回避
 
@@ -850,7 +1090,7 @@
 
 ### TestMockDisplayWidthProblem
 
-**ファイル:** `test/display_test.go`
+**ファイル:** `e2e-test/display_test.go`
 
 **シナリオ:** ターミナル幅と文字幅の問題検証
 
@@ -870,7 +1110,7 @@
 
 ### TestEditorStartup
 
-**ファイル:** `test/editor_startup_test.go`
+**ファイル:** `e2e-test/editor_startup_test.go`
 
 **シナリオ:** エディタ初期化と基本状態の確認
 
@@ -890,7 +1130,7 @@
 
 ### TestEventQueueCapacity
 
-**ファイル:** `test/event_system_test.go`
+**ファイル:** `e2e-test/event_system_test.go`
 
 **シナリオ:** イベントキューの容量制限
 
@@ -910,7 +1150,7 @@
 
 ### TestEventQueue
 
-**ファイル:** `test/event_system_test.go`
+**ファイル:** `e2e-test/event_system_test.go`
 
 **シナリオ:** イベントキューの基本操作
 
@@ -930,7 +1170,7 @@
 
 ### TestQuitEvent
 
-**ファイル:** `test/event_system_test.go`
+**ファイル:** `e2e-test/event_system_test.go`
 
 **シナリオ:** 終了イベントの処理
 
@@ -950,7 +1190,7 @@
 
 ### TestResizeEvent
 
-**ファイル:** `test/event_system_test.go`
+**ファイル:** `e2e-test/event_system_test.go`
 
 **シナリオ:** リサイズイベントの処理
 
@@ -970,7 +1210,7 @@
 
 ### TestFindFileBasic
 
-**ファイル:** `test/file_test.go`
+**ファイル:** `e2e-test/file_test.go`
 
 **シナリオ:** C-x C-f による基本的なファイル開く機能
 
@@ -990,7 +1230,7 @@
 
 ### TestFindFileCancel
 
-**ファイル:** `test/file_test.go`
+**ファイル:** `e2e-test/file_test.go`
 
 **シナリオ:** C-x C-f のキャンセル
 
@@ -1010,7 +1250,7 @@
 
 ### TestFindFileEmpty
 
-**ファイル:** `test/file_test.go`
+**ファイル:** `e2e-test/file_test.go`
 
 **シナリオ:** 空ファイルを開く場合
 
@@ -1030,7 +1270,7 @@
 
 ### TestFindFileJapanese
 
-**ファイル:** `test/file_test.go`
+**ファイル:** `e2e-test/file_test.go`
 
 **シナリオ:** 日本語ファイル名での動作
 
@@ -1050,7 +1290,7 @@
 
 ### TestFindFileNonexistent
 
-**ファイル:** `test/file_test.go`
+**ファイル:** `e2e-test/file_test.go`
 
 **シナリオ:** 存在しないファイルを開こうとした場合
 
@@ -1070,7 +1310,7 @@
 
 ### TestBasicTextInput
 
-**ファイル:** `test/text_input_test.go`
+**ファイル:** `e2e-test/text_input_test.go`
 
 **シナリオ:** 基本的なテキスト入力
 
@@ -1090,7 +1330,7 @@
 
 ### TestJapaneseTextInput
 
-**ファイル:** `test/text_input_test.go`
+**ファイル:** `e2e-test/text_input_test.go`
 
 **シナリオ:** 日本語テキスト入力
 
@@ -1110,7 +1350,7 @@
 
 ### TestMultilineTextInput
 
-**ファイル:** `test/text_input_test.go`
+**ファイル:** `e2e-test/text_input_test.go`
 
 **シナリオ:** 複数行テキスト入力
 
@@ -1130,7 +1370,7 @@
 
 ### TestEnterKeyNewline
 
-**ファイル:** `test/text_input_test.go`
+**ファイル:** `e2e-test/text_input_test.go`
 
 **シナリオ:** Enter キーによる改行
 
@@ -1150,7 +1390,7 @@
 
 ### TestNewlineBasic
 
-**ファイル:** `test/newline_test.go`
+**ファイル:** `e2e-test/newline_test.go`
 
 **シナリオ:** 基本的な改行挿入
 
@@ -1170,7 +1410,7 @@
 
 ### TestNewlineAtBeginning
 
-**ファイル:** `test/newline_test.go`
+**ファイル:** `e2e-test/newline_test.go`
 
 **シナリオ:** 行頭での改行挿入
 
@@ -1190,7 +1430,7 @@
 
 ### TestMultipleNewlines
 
-**ファイル:** `test/newline_test.go`
+**ファイル:** `e2e-test/newline_test.go`
 
 **シナリオ:** 連続した改行挿入
 
@@ -1210,7 +1450,7 @@
 
 ### TestNewlineInMiddle
 
-**ファイル:** `test/newline_test.go`
+**ファイル:** `e2e-test/newline_test.go`
 
 **シナリオ:** 行の中間での改行挿入
 
@@ -1230,7 +1470,7 @@
 
 ### TestCtrlCAloneDoesNotQuit
 
-**ファイル:** `test/keyboard_shortcuts_test.go`
+**ファイル:** `e2e-test/keyboard_shortcuts_test.go`
 
 **シナリオ:** C-c単独ではエディタ終了しない
 
@@ -1250,7 +1490,7 @@
 
 ### TestCtrlModifierDoesNotInsertText
 
-**ファイル:** `test/keyboard_shortcuts_test.go`
+**ファイル:** `e2e-test/keyboard_shortcuts_test.go`
 
 **シナリオ:** Ctrl修飾キーのテキスト非挿入
 
@@ -1270,7 +1510,7 @@
 
 ### TestCtrlXCtrlCQuit
 
-**ファイル:** `test/keyboard_shortcuts_test.go`
+**ファイル:** `e2e-test/keyboard_shortcuts_test.go`
 
 **シナリオ:** C-x C-cでのエディタ終了
 
@@ -1290,7 +1530,7 @@
 
 ### TestCtrlXPrefixReset
 
-**ファイル:** `test/keyboard_shortcuts_test.go`
+**ファイル:** `e2e-test/keyboard_shortcuts_test.go`
 
 **シナリオ:** C-x prefix key状態のリセット
 
@@ -1310,7 +1550,7 @@
 
 ### TestKeySequenceBinding
 
-**ファイル:** `test/key_sequence_test.go`
+**ファイル:** `e2e-test/key_sequence_test.go`
 
 **シナリオ:** キーシーケンスバインディングシステム
 
@@ -1330,7 +1570,7 @@
 
 ### TestMetaModifierDoesNotInsertText
 
-**ファイル:** `test/keyboard_shortcuts_test.go`
+**ファイル:** `e2e-test/keyboard_shortcuts_test.go`
 
 **シナリオ:** Meta修飾キーのテキスト非挿入
 
@@ -1350,7 +1590,7 @@
 
 ### TestMultipleKeySequences
 
-**ファイル:** `test/key_sequence_test.go`
+**ファイル:** `e2e-test/key_sequence_test.go`
 
 **シナリオ:** 複数キーシーケンスの同時サポート
 
@@ -1370,7 +1610,7 @@
 
 ### TestKeyboardQuitFindFile
 
-**ファイル:** `test/keyboard_quit_test.go`
+**ファイル:** `e2e-test/keyboard_quit_test.go`
 
 **シナリオ:** C-x C-f ファイル入力時のC-gキャンセル
 
@@ -1390,7 +1630,7 @@
 
 ### TestKeyboardQuitKeySequence
 
-**ファイル:** `test/keyboard_quit_test.go`
+**ファイル:** `e2e-test/keyboard_quit_test.go`
 
 **シナリオ:** 進行中のキーシーケンスのC-gキャンセル
 
@@ -1410,7 +1650,7 @@
 
 ### TestKeyboardQuitMessageClear
 
-**ファイル:** `test/keyboard_quit_test.go`
+**ファイル:** `e2e-test/keyboard_quit_test.go`
 
 **シナリオ:** メッセージ表示中のC-gクリア
 
@@ -1430,7 +1670,7 @@
 
 ### TestKeyboardQuitMxCommand
 
-**ファイル:** `test/keyboard_quit_test.go`
+**ファイル:** `e2e-test/keyboard_quit_test.go`
 
 **シナリオ:** M-xコマンド入力時のC-gキャンセル
 
@@ -1450,7 +1690,7 @@
 
 ### TestKeyboardQuitNormalMode
 
-**ファイル:** `test/keyboard_quit_test.go`
+**ファイル:** `e2e-test/keyboard_quit_test.go`
 
 **シナリオ:** 通常モードでのC-g動作
 
@@ -1470,7 +1710,7 @@
 
 ### TestKeySequenceReset
 
-**ファイル:** `test/key_sequence_test.go`
+**ファイル:** `e2e-test/key_sequence_test.go`
 
 **シナリオ:** キーシーケンス状態のリセット
 
@@ -1490,7 +1730,7 @@
 
 ### TestMinibufferCursorPositionAccuracy
 
-**ファイル:** `test/prefix_key_display_test.go`
+**ファイル:** `e2e-test/prefix_key_display_test.go`
 
 **シナリオ:** ミニバッファでのカーソル位置精度
 
@@ -1510,7 +1750,7 @@
 
 ### TestMinibufferEditBoundaryConditions
 
-**ファイル:** `test/minibuffer_edit_test.go`
+**ファイル:** `e2e-test/minibuffer_edit_test.go`
 
 **シナリオ:** ミニバッファ編集の境界条件
 
@@ -1530,7 +1770,7 @@
 
 ### TestMinibufferCursorMovement
 
-**ファイル:** `test/minibuffer_edit_test.go`
+**ファイル:** `e2e-test/minibuffer_edit_test.go`
 
 **シナリオ:** ミニバッファでのカーソル移動
 
@@ -1550,7 +1790,7 @@
 
 ### TestMinibufferDeleteForward
 
-**ファイル:** `test/minibuffer_edit_test.go`
+**ファイル:** `e2e-test/minibuffer_edit_test.go`
 
 **シナリオ:** ミニバッファでのC-d文字削除
 
@@ -1570,7 +1810,7 @@
 
 ### TestMinibufferFileInputEdit
 
-**ファイル:** `test/minibuffer_edit_test.go`
+**ファイル:** `e2e-test/minibuffer_edit_test.go`
 
 **シナリオ:** ファイル入力モードでの編集機能
 
@@ -1590,7 +1830,7 @@
 
 ### TestMinibufferJapaneseEdit
 
-**ファイル:** `test/minibuffer_edit_test.go`
+**ファイル:** `e2e-test/minibuffer_edit_test.go`
 
 **シナリオ:** ミニバッファでの日本語文字編集
 
@@ -1610,7 +1850,7 @@
 
 ### TestCursorPositionAfterResize
 
-**ファイル:** `test/resize_test.go`
+**ファイル:** `e2e-test/resize_test.go`
 
 **シナリオ:** リサイズ後のカーソル位置保持
 
@@ -1630,7 +1870,7 @@
 
 ### TestMultipleResizes
 
-**ファイル:** `test/resize_test.go`
+**ファイル:** `e2e-test/resize_test.go`
 
 **シナリオ:** 連続的なリサイズ操作
 
@@ -1650,7 +1890,7 @@
 
 ### TestResizeToSmallerSize
 
-**ファイル:** `test/resize_test.go`
+**ファイル:** `e2e-test/resize_test.go`
 
 **シナリオ:** 小さいサイズへのリサイズ
 
@@ -1670,7 +1910,7 @@
 
 ### TestTerminalResize
 
-**ファイル:** `test/resize_test.go`
+**ファイル:** `e2e-test/resize_test.go`
 
 **シナリオ:** ターミナルリサイズ処理
 
@@ -1690,7 +1930,7 @@
 
 ### TestAutoScrollOnTextInsertion
 
-**ファイル:** `test/auto_scroll_test.go`
+**ファイル:** `e2e-test/auto_scroll_test.go`
 
 **シナリオ:** テキスト挿入時の自動スクロール
 
@@ -1710,7 +1950,7 @@
 
 ### TestAutoScrollWhenAddingLines
 
-**ファイル:** `test/auto_scroll_test.go`
+**ファイル:** `e2e-test/auto_scroll_test.go`
 
 **シナリオ:** 行追加時の自動スクロール
 
@@ -1730,7 +1970,7 @@
 
 ### TestAutoScrollWithLongLines
 
-**ファイル:** `test/auto_scroll_test.go`
+**ファイル:** `e2e-test/auto_scroll_test.go`
 
 **シナリオ:** 長い行での自動スクロールと行ラップ
 
@@ -1750,7 +1990,7 @@
 
 ### TestCursorMovementTriggersDisplay
 
-**ファイル:** `test/auto_scroll_test.go`
+**ファイル:** `e2e-test/auto_scroll_test.go`
 
 **シナリオ:** 手動カーソル移動時の表示更新
 
@@ -1770,7 +2010,7 @@
 
 ### TestDebugScrollBehavior
 
-**ファイル:** `test/debug_scroll_test.go`
+**ファイル:** `e2e-test/debug_scroll_test.go`
 
 **シナリオ:** スクロールエッジケースのデバッグ
 
@@ -1790,7 +2030,7 @@
 
 ### TestEnterKeyTimingIssue
 
-**ファイル:** `test/enter_timing_test.go`
+**ファイル:** `e2e-test/enter_timing_test.go`
 
 **シナリオ:** Enterキータイミング問題の検証
 
@@ -1810,7 +2050,7 @@
 
 ### TestExactUserScenario
 
-**ファイル:** `test/exact_user_scenario_test.go`
+**ファイル:** `e2e-test/exact_user_scenario_test.go`
 
 **シナリオ:** ユーザー報告の正確なシナリオ再現
 
@@ -1830,7 +2070,7 @@
 
 ### TestHorizontalBoundaryScroll
 
-**ファイル:** `test/horizontal_scroll_test.go`
+**ファイル:** `e2e-test/horizontal_scroll_test.go`
 
 **シナリオ:** 水平スクロール境界でのスクロール動作
 
@@ -1850,7 +2090,7 @@
 
 ### TestHorizontalScrollCursorFollow
 
-**ファイル:** `test/horizontal_scroll_test.go`
+**ファイル:** `e2e-test/horizontal_scroll_test.go`
 
 **シナリオ:** 水平スクロール時のカーソル追従
 
@@ -1870,7 +2110,7 @@
 
 ### TestHorizontalScrolling
 
-**ファイル:** `test/scrolling_test.go`
+**ファイル:** `e2e-test/scrolling_test.go`
 
 **シナリオ:** 水平スクロール動作
 
@@ -1890,7 +2130,7 @@
 
 ### TestHorizontalToggleWrapState
 
-**ファイル:** `test/horizontal_scroll_test.go`
+**ファイル:** `e2e-test/horizontal_scroll_test.go`
 
 **シナリオ:** 行ラップ切り替え時の水平スクロール状態
 
@@ -1910,7 +2150,7 @@
 
 ### TestScrollCommands
 
-**ファイル:** `test/scrolling_test.go`
+**ファイル:** `e2e-test/scrolling_test.go`
 
 **シナリオ:** 個別スクロールコマンド
 
@@ -1930,7 +2170,7 @@
 
 ### TestLineWrapping
 
-**ファイル:** `test/scrolling_test.go`
+**ファイル:** `e2e-test/scrolling_test.go`
 
 **シナリオ:** 行ラップ機能
 
@@ -1950,7 +2190,7 @@
 
 ### TestPageUpDown
 
-**ファイル:** `test/scrolling_test.go`
+**ファイル:** `e2e-test/scrolling_test.go`
 
 **シナリオ:** ページアップ/ダウンナビゲーション
 
@@ -1970,7 +2210,7 @@
 
 ### TestRealisticTerminalScroll
 
-**ファイル:** `test/realistic_scroll_test.go`
+**ファイル:** `e2e-test/realistic_scroll_test.go`
 
 **シナリオ:** リアルなターミナルサイズでのスクロール
 
@@ -1990,7 +2230,7 @@
 
 ### TestTerminal12LinesDebugSteps
 
-**ファイル:** `test/terminal_12_lines_test.go`
+**ファイル:** `e2e-test/terminal_12_lines_test.go`
 
 **シナリオ:** コンテンツがウィンドウを超えた時のスクロール
 
@@ -2008,7 +2248,7 @@
 
 ### TestTerminal12LinesScenario
 
-**ファイル:** `test/terminal_12_lines_test.go`
+**ファイル:** `e2e-test/terminal_12_lines_test.go`
 
 **シナリオ:** 早すぎるスクロールの回避
 
@@ -2028,7 +2268,7 @@
 
 ### TestUserScenarioStepByStep
 
-**ファイル:** `test/exact_user_scenario_test.go`
+**ファイル:** `e2e-test/exact_user_scenario_test.go`
 
 **シナリオ:** ユーザーシナリオのステップバイステップデバッグ
 
@@ -2048,7 +2288,7 @@
 
 ### TestScrollStartsAtRightTime
 
-**ファイル:** `test/realistic_scroll_test.go`
+**ファイル:** `e2e-test/realistic_scroll_test.go`
 
 **シナリオ:** 異なるウィンドウサイズでのスクロールタイミング検証
 
@@ -2068,7 +2308,7 @@
 
 ### TestToggleLineWrap
 
-**ファイル:** `test/scrolling_test.go`
+**ファイル:** `e2e-test/scrolling_test.go`
 
 **シナリオ:** 行ラップトグルコマンド
 
@@ -2088,7 +2328,7 @@
 
 ### TestUserReportedBehavior
 
-**ファイル:** `test/enter_timing_test.go`
+**ファイル:** `e2e-test/enter_timing_test.go`
 
 **シナリオ:** ユーザー報告された問題の再現
 
@@ -2108,7 +2348,7 @@
 
 ### TestVerticalScrolling
 
-**ファイル:** `test/scrolling_test.go`
+**ファイル:** `e2e-test/scrolling_test.go`
 
 **シナリオ:** 垂直スクロール動作
 
@@ -2128,7 +2368,7 @@
 
 ### TestTerminalWidthIssue
 
-**ファイル:** `test/terminal_width_test.go`
+**ファイル:** `e2e-test/terminal_width_test.go`
 
 **シナリオ:** ターミナル幅計算問題の検証
 
@@ -2148,7 +2388,7 @@
 
 ### TestStringWidthUpTo
 
-**ファイル:** `test/runewidth_test.go`
+**ファイル:** `e2e-test/runewidth_test.go`
 
 **シナリオ:** 部分文字列幅計算機能
 
@@ -2168,7 +2408,7 @@
 
 ### TestRuneWidth
 
-**ファイル:** `test/runewidth_test.go`
+**ファイル:** `e2e-test/runewidth_test.go`
 
 **シナリオ:** 文字幅計算機能
 
@@ -2188,7 +2428,7 @@
 
 ### TestStringWidth
 
-**ファイル:** `test/runewidth_test.go`
+**ファイル:** `e2e-test/runewidth_test.go`
 
 **シナリオ:** 文字列幅計算機能
 

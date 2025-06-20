@@ -27,7 +27,7 @@ type TestDocumentation struct {
 }
 
 var (
-	testDirFlag = flag.String("testdir", "test", "テストファイルディレクトリ")
+	testDirFlag = flag.String("testdir", "e2e-test", "E2Eテストファイルディレクトリ")
 	outputFlag  = flag.String("output", "specs/test-docs.md", "テストドキュメント出力ファイル")
 )
 

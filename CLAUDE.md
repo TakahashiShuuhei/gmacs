@@ -12,7 +12,9 @@ core/
 ├── domain/     # ドメインロジック（Buffer、Window、Editor）
 ├── events/     # イベントシステム
 ├── cli/        # CLI インターフェース（Display、Terminal）
-├── test/       # E2E テスト
+├── e2e-test/   # E2E テスト（BDD形式、日本語アノテーション）
+├── util/       # ユーティリティ関数
+├── log/        # ログ機能
 ├── specs/      # BDD仕様書管理
 │   ├── features/    # 日本語Gherkin仕様書
 │   ├── tools/       # ドキュメント生成ツール
@@ -56,18 +58,39 @@ core/
 
 ## テスト戦略
 
-### E2E テストの分類
+### テスト分類
+#### 1. E2E テスト (`e2e-test/`)
+BDD形式の日本語アノテーション付きエンドツーエンドテスト。
+`test-docs.md`の自動生成対象。
+
+**主要テストファイル:**
 - `editor_startup_test.go`: エディタの起動と基本動作
 - `text_input_test.go`: テキスト入力機能（ASCII、日本語、改行）
 - `keyboard_shortcuts_test.go`: キーボードショートカット
+- `buffer_interactive_test.go`: バッファ管理機能
 - `event_system_test.go`: イベントシステムとパフォーマンス
+
+#### 2. 単体テスト (各パッケージ内)
+通常のGoテスト形式で、各パッケージのディレクトリ内に配置。
+`test-docs.md`には含まれない。
+
+**配置ルール:**
+```
+domain/
+├── buffer.go
+├── buffer_test.go          # bufferの単体テスト
+├── window.go
+├── window_test.go          # windowの単体テスト
+└── ...
+```
 
 ### テスト実行
 ```bash
-make test                       # 全テスト実行
-make test-pattern PATTERN=名前  # 特定テストのみ実行
-go test ./test/ -v              # 詳細モード
-go test ./test/ -bench=.        # ベンチマーク実行
+make test                       # 全E2Eテスト実行
+make test-pattern PATTERN=名前  # 特定E2Eテストのみ実行
+go test ./e2e-test/ -v          # E2Eテスト詳細モード
+go test ./domain/ -v            # 単体テスト実行例
+go test ./... -v                # 全テスト（E2E + 単体）実行
 ```
 
 ## ビルドと実行

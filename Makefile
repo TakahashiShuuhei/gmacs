@@ -9,13 +9,13 @@ all: build test docs
 build:
 	go build -o gmacs
 
-# Run all tests
+# Run all E2E tests
 test:
-	go test ./test/ -v
+	go test ./e2e-test/ -v
 
-# Run specific test pattern
+# Run specific E2E test pattern
 test-pattern:
-	go test ./test/ -v -run $(PATTERN)
+	go test ./e2e-test/ -v -run $(PATTERN)
 
 # Generate test documentation from test code annotations
 docs:
@@ -43,8 +43,8 @@ dev: build test docs
 help:
 	@echo "gmacs Makefile ターゲット一覧:"
 	@echo "  build         - gmacsバイナリをビルド"
-	@echo "  test          - 全テストを実行"
-	@echo "  test-pattern  - パターンに一致するテストを実行 (例: make test-pattern PATTERN=TestName)"
+	@echo "  test          - 全E2Eテストを実行"
+	@echo "  test-pattern  - パターンに一致するE2Eテストを実行 (例: make test-pattern PATTERN=TestName)"
 	@echo "  docs          - テストコードからドキュメントを抽出"
 	@echo "  test-docs     - docsのエイリアス"
 	@echo "  clean         - ビルド成果物とドキュメントを削除"
