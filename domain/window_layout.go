@@ -39,21 +39,29 @@ type WindowLayout struct {
 
 // NewWindowLayout creates a new window layout with a single window
 func NewWindowLayout(window *Window, width, height int) *WindowLayout {
+	// Reserve 1 line for minibuffer at the bottom
+	contentArea := height - 1
+	
 	node := &WindowLayoutNode{
 		SplitType: SplitNone,
 		Window:    window,
 		X:         0,
 		Y:         0,
 		Width:     width,
-		Height:    height,
+		Height:    contentArea, // This will be further adjusted by calculateLayout
 	}
 	
-	return &WindowLayout{
+	layout := &WindowLayout{
 		root:        node,
 		activeNode:  node,
 		totalWidth:  width,
 		totalHeight: height,
 	}
+	
+	// Calculate initial layout
+	layout.calculateLayout()
+	
+	return layout
 }
 
 // CurrentWindow returns the currently active window
@@ -111,7 +119,9 @@ func (wl *WindowLayout) Resize(width, height int) {
 // calculateLayout recursively calculates position and size for all nodes
 func (wl *WindowLayout) calculateLayout() {
 	if wl.root != nil {
-		wl.calculateNodeLayout(wl.root, 0, 0, wl.totalWidth, wl.totalHeight)
+		// Reserve 1 line for minibuffer at the bottom
+		contentArea := wl.totalHeight - 1
+		wl.calculateNodeLayout(wl.root, 0, 0, wl.totalWidth, contentArea)
 	}
 }
 
@@ -124,8 +134,9 @@ func (wl *WindowLayout) calculateNodeLayout(node *WindowLayoutNode, x, y, width,
 	
 	if node.IsLeaf() {
 		// Leaf node: resize the window
-		// Reserve 2 lines for mode line and minibuffer
-		contentHeight := height - 2
+		// Each window reserves 1 line for its mode line
+		// The minibuffer is shared at the bottom of screen
+		contentHeight := height - 1 // -1 for mode line
 		if contentHeight < 1 {
 			contentHeight = 1
 		}

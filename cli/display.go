@@ -64,15 +64,15 @@ func (d *Display) Render(editor *domain.Editor) {
 	windowNodes := layout.GetAllWindowNodes()
 	currentWindow := editor.CurrentWindow()
 	
-	// Render all windows
+	// Render all windows with their individual mode lines
 	for _, node := range windowNodes {
 		if node.Window != nil {
 			d.renderWindow(node)
+			d.renderWindowModeLine(node)
 		}
 	}
 	
-	// Render single mode line (for current buffer) and minibuffer at bottom
-	d.renderModeLine(editor)
+	// Render minibuffer at bottom
 	d.renderMinibuffer(editor)
 	
 	// Position cursor based on whether minibuffer is active
@@ -232,12 +232,16 @@ func (d *Display) renderWindow(node *domain.WindowLayoutNode) {
 }
 
 // renderWindowModeLine renders the mode line for a specific window
-func (d *Display) renderWindowModeLine(node *domain.WindowLayoutNode, modeLineRow int) {
+func (d *Display) renderWindowModeLine(node *domain.WindowLayoutNode) {
 	if node.Window == nil || node.Window.Buffer() == nil {
 		return
 	}
 	
 	buffer := node.Window.Buffer()
+	_, windowContentHeight := node.Window.Size()
+	
+	// Mode line appears right after the window content
+	modeLineRow := node.Y + windowContentHeight
 	
 	// Position cursor at the mode line position for this window
 	d.MoveCursor(modeLineRow, node.X)
