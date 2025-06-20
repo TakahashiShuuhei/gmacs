@@ -8,11 +8,13 @@ import (
 )
 
 type Buffer struct {
-	name     string
-	content  []string
-	cursor   Position
-	modified bool
-	filepath string // File path if buffer is associated with a file
+	name       string
+	content    []string
+	cursor     Position
+	modified   bool
+	filepath   string // File path if buffer is associated with a file
+	majorMode  MajorMode
+	minorModes []MinorMode
 }
 
 type Position struct {
@@ -22,10 +24,12 @@ type Position struct {
 
 func NewBuffer(name string) *Buffer {
 	return &Buffer{
-		name:     name,
-		content:  []string{""},
-		cursor:   Position{Row: 0, Col: 0},
-		filepath: "",
+		name:       name,
+		content:    []string{""},
+		cursor:     Position{Row: 0, Col: 0},
+		filepath:   "",
+		majorMode:  nil, // Will be set by mode manager
+		minorModes: make([]MinorMode, 0),
 	}
 }
 
@@ -59,11 +63,13 @@ func NewBufferFromFile(filepath string) (*Buffer, error) {
 	}
 	
 	return &Buffer{
-		name:     name,
-		content:  lines,
-		cursor:   Position{Row: 0, Col: 0},
-		modified: false,
-		filepath: filepath,
+		name:       name,
+		content:    lines,
+		cursor:     Position{Row: 0, Col: 0},
+		modified:   false,
+		filepath:   filepath,
+		majorMode:  nil, // Will be set by mode manager
+		minorModes: make([]MinorMode, 0),
 	}, nil
 }
 
@@ -267,4 +273,62 @@ func (b *Buffer) DeleteForward() {
 			}
 		}
 	}
+}
+
+// MajorMode returns the current major mode
+func (b *Buffer) MajorMode() MajorMode {
+	return b.majorMode
+}
+
+// SetMajorMode sets the major mode (should only be called by ModeManager)
+func (b *Buffer) SetMajorMode(mode MajorMode) {
+	b.majorMode = mode
+}
+
+// MinorModes returns all minor modes
+func (b *Buffer) MinorModes() []MinorMode {
+	return b.minorModes
+}
+
+// EnableMinorMode enables a minor mode
+func (b *Buffer) EnableMinorMode(mode MinorMode) {
+	// Check if already enabled
+	for _, m := range b.minorModes {
+		if m.Name() == mode.Name() {
+			return // Already enabled
+		}
+	}
+	
+	// Add to list
+	b.minorModes = append(b.minorModes, mode)
+	
+	// Sort by priority (higher priority first)
+	for i := 0; i < len(b.minorModes)-1; i++ {
+		for j := i + 1; j < len(b.minorModes); j++ {
+			if b.minorModes[i].Priority() < b.minorModes[j].Priority() {
+				b.minorModes[i], b.minorModes[j] = b.minorModes[j], b.minorModes[i]
+			}
+		}
+	}
+}
+
+// DisableMinorMode disables a minor mode
+func (b *Buffer) DisableMinorMode(modeName string) {
+	for i, mode := range b.minorModes {
+		if mode.Name() == modeName {
+			// Remove from slice
+			b.minorModes = append(b.minorModes[:i], b.minorModes[i+1:]...)
+			return
+		}
+	}
+}
+
+// getEnabledMinorModes returns enabled minor modes (used by ModeManager)
+func (b *Buffer) getEnabledMinorModes() []MinorMode {
+	return b.minorModes
+}
+
+// SetFilepath sets the file path for the buffer (for testing)
+func (b *Buffer) SetFilepath(filepath string) {
+	b.filepath = filepath
 }

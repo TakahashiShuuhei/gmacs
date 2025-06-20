@@ -14,6 +14,7 @@ type Editor struct {
 	commandRegistry *CommandRegistry
 	keyBindings     *KeyBindingMap
 	metaPressed     bool
+	modeManager     *ModeManager
 }
 
 func NewEditor() *Editor {
@@ -30,6 +31,7 @@ func NewEditor() *Editor {
 		commandRegistry: NewCommandRegistry(),
 		keyBindings:     NewKeyBindingMap(),
 		metaPressed:     false,
+		modeManager:     NewModeManager(),
 	}
 	
 	// Register cursor movement commands as interactive functions
@@ -43,6 +45,12 @@ func NewEditor() *Editor {
 	
 	// Register window commands as interactive functions
 	editor.registerWindowCommands()
+	
+	// Initialize buffer with fundamental mode
+	err := editor.modeManager.SetMajorMode(buffer, "fundamental-mode")
+	if err != nil {
+		log.Error("Failed to set fundamental mode: %v", err)
+	}
 	
 	log.Info("Editor created with buffer: %s", buffer.Name())
 	return editor
@@ -372,6 +380,19 @@ func (e *Editor) handleCommandInput(event events.KeyEventData) {
 // AddBuffer adds a new buffer to the editor
 func (e *Editor) AddBuffer(buffer *Buffer) {
 	e.buffers = append(e.buffers, buffer)
+	
+	// Auto-detect and set major mode for new buffer
+	if buffer.MajorMode() == nil {
+		mode, err := e.modeManager.AutoDetectMajorMode(buffer)
+		if err != nil {
+			log.Error("Failed to auto-detect major mode: %v", err)
+		} else {
+			err = e.modeManager.SetMajorMode(buffer, mode.Name())
+			if err != nil {
+				log.Error("Failed to set major mode: %v", err)
+			}
+		}
+	}
 }
 
 // SwitchToBuffer switches the current window to the specified buffer
@@ -454,4 +475,9 @@ func (e *Editor) handleFileInput(event events.KeyEventData) {
 	if event.Rune != 0 && !event.Ctrl && !event.Meta {
 		e.minibuffer.InsertChar(event.Rune)
 	}
+}
+
+// ModeManager returns the mode manager
+func (e *Editor) ModeManager() *ModeManager {
+	return e.modeManager
 }
