@@ -63,6 +63,10 @@ func (e *Editor) CurrentWindow() *Window {
 	return nil
 }
 
+func (e *Editor) Layout() *WindowLayout {
+	return e.layout
+}
+
 func (e *Editor) EventQueue() *events.EventQueue {
 	return e.eventQueue
 }

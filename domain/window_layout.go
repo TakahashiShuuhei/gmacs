@@ -384,3 +384,25 @@ func (wl *WindowLayout) findFirstLeaf(node *WindowLayoutNode) *WindowLayoutNode 
 	
 	return wl.findFirstLeaf(node.Right)
 }
+
+// GetAllWindowNodes returns all window nodes (leaf nodes) for rendering
+func (wl *WindowLayout) GetAllWindowNodes() []*WindowLayoutNode {
+	var nodes []*WindowLayoutNode
+	wl.collectWindowNodes(wl.root, &nodes)
+	return nodes
+}
+
+// collectWindowNodes recursively collects all leaf nodes
+func (wl *WindowLayout) collectWindowNodes(node *WindowLayoutNode, nodes *[]*WindowLayoutNode) {
+	if node == nil {
+		return
+	}
+	
+	if node.IsLeaf() {
+		*nodes = append(*nodes, node)
+		return
+	}
+	
+	wl.collectWindowNodes(node.Left, nodes)
+	wl.collectWindowNodes(node.Right, nodes)
+}

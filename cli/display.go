@@ -55,33 +55,23 @@ func (d *Display) MoveCursor(row, col int) {
 func (d *Display) Render(editor *domain.Editor) {
 	d.Clear()
 	
-	window := editor.CurrentWindow()
-	if window == nil {
+	layout := editor.Layout()
+	if layout == nil {
 		return
 	}
 	
-	lines := window.VisibleLines()
-	width, windowContentHeight := window.Size()
+	// Get all window nodes for rendering
+	windowNodes := layout.GetAllWindowNodes()
+	currentWindow := editor.CurrentWindow()
 	
-	// Render buffer content (window content area is already adjusted for mode line and minibuffer)
-	for i := 0; i < windowContentHeight; i++ {
-		if i < len(lines) {
-			line := lines[i]
-			
-			// Truncate by display width, not rune count
-			if util.StringWidth(line) > width {
-				line = truncateToWidth(line, width)
-				log.Debug("Truncated line %d to width %d: %q", i, width, line)
-			}
-			fmt.Print(line)
-		}
-		// Add newline after each line (to position cursor for next line)
-		if i < windowContentHeight-1 {
-			fmt.Print("\r\n")
+	// Render all windows
+	for _, node := range windowNodes {
+		if node.Window != nil {
+			d.renderWindow(node)
 		}
 	}
 	
-	// Render mode line and minibuffer
+	// Render single mode line (for current buffer) and minibuffer at bottom
 	d.renderModeLine(editor)
 	d.renderMinibuffer(editor)
 	
@@ -102,18 +92,9 @@ func (d *Display) Render(editor *domain.Editor) {
 		log.Debug("Moving cursor to minibuffer position (%d, %d) - prompt=%q promptLen=%d, cursorInContent=%d, contentWidth=%d", 
 			terminalHeight-1, cursorPos, minibuffer.Prompt(), promptLen, cursorPosInContent, contentWidth)
 		d.MoveCursor(terminalHeight-1, cursorPos)
-	} else {
-		// Position cursor in main window (buffer area)
-		cursorRow, cursorCol := window.CursorPosition()
-		// Window content area is height-2 (excluding mode line and minibuffer)
-		// But we need to get the actual window content height from the window itself
-		_, windowContentHeight := window.Size()
-		if cursorRow >= 0 && cursorRow < windowContentHeight {
-			log.Debug("Moving cursor to screen position (%d, %d)", cursorRow, cursorCol)
-			d.MoveCursor(cursorRow, cursorCol)
-		} else {
-			log.Debug("Cursor outside visible area: screen row %d, content height %d", cursorRow, windowContentHeight)
-		}
+	} else if currentWindow != nil {
+		// Position cursor in current window (buffer area)
+		d.positionCursorInWindow(currentWindow, layout)
 	}
 }
 
@@ -210,4 +191,105 @@ func truncateToWidth(s string, maxWidth int) string {
 	}
 	
 	return s
+}
+
+// renderWindow renders a single window at its designated position
+func (d *Display) renderWindow(node *domain.WindowLayoutNode) {
+	if node.Window == nil {
+		return
+	}
+	
+	window := node.Window
+	lines := window.VisibleLines()
+	_, windowContentHeight := window.Size()
+	
+	// Render each line of the window content
+	for i := 0; i < windowContentHeight; i++ {
+		// Position cursor at the start of this line
+		d.MoveCursor(node.Y+i, node.X)
+		
+		if i < len(lines) {
+			line := lines[i]
+			
+			// Truncate line to fit window width
+			if util.StringWidth(line) > node.Width {
+				line = truncateToWidth(line, node.Width)
+			}
+			
+			// Pad line to window width to clear any previous content
+			lineWidth := util.StringWidth(line)
+			if lineWidth < node.Width {
+				padding := strings.Repeat(" ", node.Width-lineWidth)
+				line = line + padding
+			}
+			
+			fmt.Print(line)
+		} else {
+			// Empty line - fill with spaces
+			fmt.Print(strings.Repeat(" ", node.Width))
+		}
+	}
+}
+
+// renderWindowModeLine renders the mode line for a specific window
+func (d *Display) renderWindowModeLine(node *domain.WindowLayoutNode, modeLineRow int) {
+	if node.Window == nil || node.Window.Buffer() == nil {
+		return
+	}
+	
+	buffer := node.Window.Buffer()
+	
+	// Position cursor at the mode line position for this window
+	d.MoveCursor(modeLineRow, node.X)
+	
+	// Create mode line content
+	modeLine := fmt.Sprintf(" %s ", buffer.Name())
+	modeLineWidth := util.StringWidth(modeLine)
+	
+	// Calculate padding to fill window width
+	paddingLength := node.Width - modeLineWidth
+	if paddingLength < 0 {
+		// Mode line too long, truncate
+		modeLine = truncateToWidth(modeLine, node.Width)
+		paddingLength = 0
+	}
+	
+	padding := strings.Repeat("-", paddingLength)
+	fmt.Printf("%s%s", modeLine, padding)
+}
+
+// positionCursorInWindow positions the cursor in the current window
+func (d *Display) positionCursorInWindow(currentWindow *domain.Window, layout *domain.WindowLayout) {
+	// Find the window node for the current window
+	windowNodes := layout.GetAllWindowNodes()
+	var currentNode *domain.WindowLayoutNode
+	
+	for _, node := range windowNodes {
+		if node.Window == currentWindow {
+			currentNode = node
+			break
+		}
+	}
+	
+	if currentNode == nil {
+		return
+	}
+	
+	// Get cursor position relative to window content
+	cursorRow, cursorCol := currentWindow.CursorPosition()
+	_, windowContentHeight := currentWindow.Size()
+	
+	// Check if cursor is within visible area
+	if cursorRow >= 0 && cursorRow < windowContentHeight && cursorCol >= 0 {
+		// Convert to absolute screen position
+		absoluteRow := currentNode.Y + cursorRow
+		absoluteCol := currentNode.X + cursorCol
+		
+		log.Debug("Moving cursor to window position (%d, %d) -> screen (%d, %d)", 
+			cursorRow, cursorCol, absoluteRow, absoluteCol)
+		d.MoveCursor(absoluteRow, absoluteCol)
+	} else {
+		log.Debug("Cursor outside visible area: window cursor (%d, %d), content height %d", 
+			cursorRow, cursorCol, windowContentHeight)
+	}
 }
