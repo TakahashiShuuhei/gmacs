@@ -200,9 +200,9 @@ func (wl *WindowLayout) SplitWindowRight() *Window {
 		return nil
 	}
 	
-	// Create new buffer and window
-	newBuffer := NewBuffer("*scratch*")
-	newWindow := NewWindow(newBuffer, 0, 0) // Size will be calculated later
+	// Create new window sharing the same buffer as current window
+	currentBuffer := wl.activeNode.Window.Buffer()
+	newWindow := NewWindow(currentBuffer, 0, 0) // Size will be calculated later
 	
 	// Create new node for the new window
 	newNode := &WindowLayoutNode{
@@ -239,9 +239,9 @@ func (wl *WindowLayout) SplitWindowBelow() *Window {
 		return nil
 	}
 	
-	// Create new buffer and window
-	newBuffer := NewBuffer("*scratch*")
-	newWindow := NewWindow(newBuffer, 0, 0) // Size will be calculated later
+	// Create new window sharing the same buffer as current window
+	currentBuffer := wl.activeNode.Window.Buffer()
+	newWindow := NewWindow(currentBuffer, 0, 0) // Size will be calculated later
 	
 	// Create new node for the new window
 	newNode := &WindowLayoutNode{

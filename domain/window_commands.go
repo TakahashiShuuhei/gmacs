@@ -17,11 +17,10 @@ func SplitWindowRight(editor *Editor) error {
 		return nil
 	}
 	
-	// Add the new buffer to editor's buffer list
-	newBuffer := newWindow.Buffer()
-	if newBuffer != nil {
-		editor.AddBuffer(newBuffer)
-		log.Info("Split window right - created new window with buffer: %s", newBuffer.Name())
+	// New window shares the same buffer, no need to add to buffer list
+	currentBuffer := newWindow.Buffer()
+	if currentBuffer != nil {
+		log.Info("Split window right - sharing buffer: %s", currentBuffer.Name())
 	}
 	
 	return nil
@@ -40,11 +39,10 @@ func SplitWindowBelow(editor *Editor) error {
 		return nil
 	}
 	
-	// Add the new buffer to editor's buffer list
-	newBuffer := newWindow.Buffer()
-	if newBuffer != nil {
-		editor.AddBuffer(newBuffer)
-		log.Info("Split window below - created new window with buffer: %s", newBuffer.Name())
+	// New window shares the same buffer, no need to add to buffer list
+	currentBuffer := newWindow.Buffer()
+	if currentBuffer != nil {
+		log.Info("Split window below - sharing buffer: %s", currentBuffer.Name())
 	}
 	
 	return nil
