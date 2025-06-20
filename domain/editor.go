@@ -7,8 +7,7 @@ import (
 
 type Editor struct {
 	buffers         []*Buffer
-	windows         []*Window
-	currentWin      int
+	layout          *WindowLayout
 	eventQueue      *events.EventQueue
 	running         bool
 	minibuffer      *Minibuffer
@@ -20,11 +19,11 @@ type Editor struct {
 func NewEditor() *Editor {
 	buffer := NewBuffer("*scratch*")
 	window := NewWindow(buffer, 80, 22) // 24-2 for mode line and minibuffer
+	layout := NewWindowLayout(window, 80, 24) // Total terminal size
 	
 	editor := &Editor{
 		buffers:         []*Buffer{buffer},
-		windows:         []*Window{window},
-		currentWin:      0,
+		layout:          layout,
 		eventQueue:      events.NewEventQueue(100),
 		running:         true,
 		minibuffer:      NewMinibuffer(),
@@ -42,6 +41,9 @@ func NewEditor() *Editor {
 	// Register buffer commands as interactive functions
 	editor.registerBufferCommands()
 	
+	// Register window commands as interactive functions
+	editor.registerWindowCommands()
+	
 	log.Info("Editor created with buffer: %s", buffer.Name())
 	return editor
 }
@@ -55,8 +57,8 @@ func (e *Editor) CurrentBuffer() *Buffer {
 }
 
 func (e *Editor) CurrentWindow() *Window {
-	if e.currentWin >= 0 && e.currentWin < len(e.windows) {
-		return e.windows[e.currentWin]
+	if e.layout != nil {
+		return e.layout.CurrentWindow()
 	}
 	return nil
 }
@@ -183,16 +185,10 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 
 func (e *Editor) handleResizeEvent(event events.ResizeEventData) {
 	log.Info("Window resize: %dx%d", event.Width, event.Height)
-	window := e.CurrentWindow()
-	if window != nil {
-		// Reserve 2 lines for mode line and minibuffer
-		contentHeight := event.Height - 2
-		if contentHeight < 1 {
-			contentHeight = 1
-		}
-		window.Resize(event.Width, contentHeight)
+	if e.layout != nil {
+		e.layout.Resize(event.Width, event.Height)
 	} else {
-		log.Warn("No current window for resize event")
+		log.Warn("No layout for resize event")
 	}
 }
 
@@ -286,6 +282,22 @@ func (e *Editor) registerBufferCommands() {
 	e.keyBindings.BindKeySequence("C-x b", SwitchToBufferInteractive)
 	e.keyBindings.BindKeySequence("C-x C-b", ListBuffersInteractive)
 	e.keyBindings.BindKeySequence("C-x k", KillBufferInteractive)
+}
+
+func (e *Editor) registerWindowCommands() {
+	// Register window commands as M-x interactive functions
+	e.commandRegistry.RegisterFunc("split-window-right", SplitWindowRight)
+	e.commandRegistry.RegisterFunc("split-window-below", SplitWindowBelow)
+	e.commandRegistry.RegisterFunc("other-window", OtherWindow)
+	e.commandRegistry.RegisterFunc("delete-window", DeleteWindow)
+	e.commandRegistry.RegisterFunc("delete-other-windows", DeleteOtherWindows)
+	
+	// Set up keybindings for window functions
+	e.keyBindings.BindKeySequence("C-x 3", SplitWindowRight)
+	e.keyBindings.BindKeySequence("C-x 2", SplitWindowBelow)
+	e.keyBindings.BindKeySequence("C-x o", OtherWindow)
+	e.keyBindings.BindKeySequence("C-x 0", DeleteWindow)
+	e.keyBindings.BindKeySequence("C-x 1", DeleteOtherWindows)
 }
 
 func (e *Editor) handleCommandInput(event events.KeyEventData) {
