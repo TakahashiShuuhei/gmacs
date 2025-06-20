@@ -148,15 +148,17 @@ func (wl *WindowLayout) calculateNodeLayout(node *WindowLayoutNode, x, y, width,
 	
 	// Split node: calculate child sizes
 	if node.SplitType == SplitVertical {
-		// Left-right split
-		leftWidth := int(float64(width) * node.SplitRatio)
-		rightWidth := width - leftWidth
+		// Left-right split with 1 column reserved for border
+		availableWidth := width - 1 // Reserve 1 column for border
+		leftWidth := int(float64(availableWidth) * node.SplitRatio)
+		rightWidth := availableWidth - leftWidth
 		
 		if node.Left != nil {
 			wl.calculateNodeLayout(node.Left, x, y, leftWidth, height)
 		}
 		if node.Right != nil {
-			wl.calculateNodeLayout(node.Right, x+leftWidth, y, rightWidth, height)
+			// Right window starts after left window + border (1 column)
+			wl.calculateNodeLayout(node.Right, x+leftWidth+1, y, rightWidth, height)
 		}
 	} else if node.SplitType == SplitHorizontal {
 		// Top-bottom split
@@ -170,6 +172,11 @@ func (wl *WindowLayout) calculateNodeLayout(node *WindowLayoutNode, x, y, width,
 			wl.calculateNodeLayout(node.Right, x, y+topHeight, width, bottomHeight)
 		}
 	}
+}
+
+// Root returns the root node of the layout tree
+func (wl *WindowLayout) Root() *WindowLayoutNode {
+	return wl.root
 }
 
 // GetAllWindows returns all windows in the layout

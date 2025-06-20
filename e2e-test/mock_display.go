@@ -34,40 +34,30 @@ func NewMockDisplay(width, height int) *MockDisplay {
 func (d *MockDisplay) Render(editor *domain.Editor) {
 	d.renderCount++
 	
-	window := editor.CurrentWindow()
-	if window == nil {
+	layout := editor.Layout()
+	if layout == nil {
 		return
 	}
 	
-	lines := window.VisibleLines()
-	
-	// Clear content
+	// Initialize content to terminal size
+	d.content = make([]string, d.height)
 	for i := range d.content {
-		d.content[i] = ""
+		d.content[i] = strings.Repeat(" ", d.width)
 	}
 	
-	// Render buffer lines using window content height (to match actual Display)
-	_, windowContentHeight := window.Size()
+	// Get all window nodes for rendering
+	windowNodes := layout.GetAllWindowNodes()
 	
-	// Make sure our content array can hold the window content
-	if len(d.content) < windowContentHeight {
-		// Resize content array to match window content height
-		d.content = make([]string, windowContentHeight)
-	}
-	
-	for i := 0; i < windowContentHeight; i++ {
-		if i < len(lines) {
-			line := lines[i]
-			
-			// Truncate by display width, not rune count
-			if util.StringWidth(line) > d.width {
-				line = truncateToWidthMock(line, d.width)
-			}
-			d.content[i] = line
-		} else {
-			d.content[i] = ""  // Empty line for unused content area
+	// Render all windows
+	for _, node := range windowNodes {
+		if node.Window != nil {
+			d.renderWindow(node)
+			d.renderWindowModeLine(node)
 		}
 	}
+	
+	// Render window borders
+	d.renderWindowBorders(layout)
 	
 	// Always render mode line
 	buffer := editor.CurrentBuffer()
@@ -114,8 +104,21 @@ func (d *MockDisplay) Render(editor *domain.Editor) {
 		d.cursorRow = d.height - 1
 		d.cursorCol = promptLen + minibuffer.CursorPosition()
 	} else {
-		// Position cursor in main window (buffer area)
-		d.cursorRow, d.cursorCol = window.CursorPosition()
+		// Position cursor in current window
+		currentWindow := editor.CurrentWindow()
+		if currentWindow != nil {
+			// Find the window node for the current window
+			for _, node := range windowNodes {
+				if node.Window == currentWindow {
+					// Get cursor position relative to window content
+					cursorRow, cursorCol := currentWindow.CursorPosition()
+					// Convert to absolute screen position
+					d.cursorRow = node.Y + cursorRow
+					d.cursorCol = node.X + cursorCol
+					break
+				}
+			}
+		}
 	}
 }
 
@@ -241,4 +244,151 @@ func truncateToWidthMock(s string, maxWidth int) string {
 	}
 	
 	return s
+}
+
+// renderWindow renders a single window at its designated position
+func (d *MockDisplay) renderWindow(node *domain.WindowLayoutNode) {
+	if node.Window == nil {
+		return
+	}
+	
+	window := node.Window
+	lines := window.VisibleLines()
+	_, windowContentHeight := window.Size()
+	
+	// Render each line of the window content
+	for i := 0; i < windowContentHeight; i++ {
+		row := node.Y + i
+		if row >= d.height {
+			break
+		}
+		
+		if i < len(lines) {
+			line := lines[i]
+			
+			// Truncate line to fit window width
+			if util.StringWidth(line) > node.Width {
+				line = truncateToWidthMock(line, node.Width)
+			}
+			
+			// Insert the line into the display content at the correct position
+			d.insertStringAt(row, node.X, line, node.Width)
+		}
+	}
+}
+
+// renderWindowModeLine renders the mode line for a specific window
+func (d *MockDisplay) renderWindowModeLine(node *domain.WindowLayoutNode) {
+	if node.Window == nil || node.Window.Buffer() == nil {
+		return
+	}
+	
+	buffer := node.Window.Buffer()
+	_, windowContentHeight := node.Window.Size()
+	
+	// Mode line appears right after the window content
+	modeLineRow := node.Y + windowContentHeight
+	if modeLineRow >= d.height {
+		return
+	}
+	
+	// Create mode line content
+	modeLine := fmt.Sprintf(" %s ", buffer.Name())
+	modeLineWidth := util.StringWidth(modeLine)
+	
+	// Calculate padding to fill window width
+	paddingLength := node.Width - modeLineWidth
+	if paddingLength < 0 {
+		// Mode line too long, truncate
+		modeLine = truncateToWidthMock(modeLine, node.Width)
+		paddingLength = 0
+	}
+	
+	padding := strings.Repeat("-", paddingLength)
+	fullModeLine := modeLine + padding
+	
+	// Insert the mode line into the display content
+	d.insertStringAt(modeLineRow, node.X, fullModeLine, node.Width)
+}
+
+// renderWindowBorders renders borders between split windows
+func (d *MockDisplay) renderWindowBorders(layout *domain.WindowLayout) {
+	d.renderBordersForNode(layout.Root())
+}
+
+// renderBordersForNode recursively renders borders for split nodes
+func (d *MockDisplay) renderBordersForNode(node *domain.WindowLayoutNode) {
+	if node == nil {
+		return
+	}
+	
+	// Render borders for child nodes first
+	if node.Left != nil {
+		d.renderBordersForNode(node.Left)
+	}
+	if node.Right != nil {
+		d.renderBordersForNode(node.Right)
+	}
+	
+	// If this is a split node, render the border between children
+	if node.SplitType == domain.SplitVertical && node.Left != nil && node.Right != nil {
+		// Vertical split: draw vertical line between left and right
+		borderX := node.Left.X + node.Left.Width
+		if borderX >= d.width {
+			return
+		}
+		
+		for y := node.Y; y < node.Y+node.Height-1 && y < d.height; y++ { // -1 to avoid overwriting mode line
+			d.insertCharAt(y, borderX, '│')
+		}
+	} else if node.SplitType == domain.SplitHorizontal && node.Left != nil && node.Right != nil {
+		// Horizontal split: mode lines provide sufficient visual separation
+		// No additional horizontal line needed (was obscuring bottom window content)
+	}
+}
+
+// insertStringAt inserts a string at the specified position in the display content
+func (d *MockDisplay) insertStringAt(row, col int, text string, maxWidth int) {
+	if row < 0 || row >= len(d.content) || col < 0 || col >= d.width {
+		return
+	}
+	
+	// Convert the existing line to runes for proper character handling
+	existingRunes := []rune(d.content[row])
+	textRunes := []rune(text)
+	
+	// Ensure we have enough space in the existing line
+	for len(existingRunes) < d.width {
+		existingRunes = append(existingRunes, ' ')
+	}
+	
+	// Insert the text, respecting width limits
+	insertedWidth := 0
+	for i, r := range textRunes {
+		if col+i >= d.width || insertedWidth >= maxWidth {
+			break
+		}
+		existingRunes[col+i] = r
+		insertedWidth += util.RuneWidth(r)
+	}
+	
+	d.content[row] = string(existingRunes)
+}
+
+// insertCharAt inserts a single character at the specified position
+func (d *MockDisplay) insertCharAt(row, col int, char rune) {
+	if row < 0 || row >= len(d.content) || col < 0 || col >= d.width {
+		return
+	}
+	
+	// Convert the existing line to runes for proper character handling
+	existingRunes := []rune(d.content[row])
+	
+	// Ensure we have enough space in the existing line
+	for len(existingRunes) <= col {
+		existingRunes = append(existingRunes, ' ')
+	}
+	
+	existingRunes[col] = char
+	d.content[row] = string(existingRunes)
 }

@@ -72,6 +72,9 @@ func (d *Display) Render(editor *domain.Editor) {
 		}
 	}
 	
+	// Render window borders for split windows
+	d.renderWindowBorders(layout)
+	
 	// Render minibuffer at bottom
 	d.renderMinibuffer(editor)
 	
@@ -98,31 +101,16 @@ func (d *Display) Render(editor *domain.Editor) {
 	}
 }
 
-func (d *Display) renderModeLine(editor *domain.Editor) {
-	buffer := editor.CurrentBuffer()
-	if buffer == nil {
-		return
-	}
-	
-	fmt.Print("\r\n")
-	
-	// Always show mode line
-	modeLine := fmt.Sprintf(" %s ", buffer.Name())
-	// Calculate padding based on display width, not rune count
-	modeLineWidth := util.StringWidth(modeLine)
-	paddingLength := d.width - modeLineWidth
-	if paddingLength < 0 {
-		paddingLength = 0
-	}
-	padding := strings.Repeat("-", paddingLength)
-	
-	fmt.Printf("%s%s", modeLine, padding)
-}
+// renderModeLine - Legacy function, replaced by renderWindowModeLine
+// func (d *Display) renderModeLine(editor *domain.Editor) {
+//   This function is no longer used in the multi-window layout system
+// }
 
 func (d *Display) renderMinibuffer(editor *domain.Editor) {
 	minibuffer := editor.Minibuffer()
 	
-	fmt.Print("\r\n")
+	// Position cursor at the minibuffer line (last line of terminal)
+	d.MoveCursor(d.height-1, 0)
 	
 	var content string
 	
@@ -259,7 +247,9 @@ func (d *Display) renderWindowModeLine(node *domain.WindowLayoutNode) {
 	}
 	
 	padding := strings.Repeat("-", paddingLength)
-	fmt.Printf("%s%s", modeLine, padding)
+	
+	// Apply reverse video (black text on white background) for mode line
+	fmt.Printf("\033[7m%s%s\033[0m", modeLine, padding)
 }
 
 // positionCursorInWindow positions the cursor in the current window
@@ -295,5 +285,40 @@ func (d *Display) positionCursorInWindow(currentWindow *domain.Window, layout *d
 	} else {
 		log.Debug("Cursor outside visible area: window cursor (%d, %d), content height %d", 
 			cursorRow, cursorCol, windowContentHeight)
+	}
+}
+
+// renderWindowBorders renders borders between split windows
+func (d *Display) renderWindowBorders(layout *domain.WindowLayout) {
+	// Get all split nodes and render their borders
+	d.renderBordersForNode(layout.Root())
+}
+
+// renderBordersForNode recursively renders borders for split nodes
+func (d *Display) renderBordersForNode(node *domain.WindowLayoutNode) {
+	if node == nil {
+		return
+	}
+	
+	// Render borders for child nodes first
+	if node.Left != nil {
+		d.renderBordersForNode(node.Left)
+	}
+	if node.Right != nil {
+		d.renderBordersForNode(node.Right)
+	}
+	
+	// If this is a split node, render the border between children
+	if node.SplitType == domain.SplitVertical && node.Left != nil && node.Right != nil {
+		// Vertical split: draw vertical line between left and right
+		borderX := node.Left.X + node.Left.Width
+		for y := node.Y; y < node.Y+node.Height-1; y++ { // -1 to avoid overwriting mode line
+			d.MoveCursor(y, borderX)
+			fmt.Print("│")
+		}
+	} else if node.SplitType == domain.SplitHorizontal && node.Left != nil && node.Right != nil {
+		// Horizontal split: the mode line already serves as the border
+		// No additional separator line needed - mode lines provide clear visual separation
+		// (Previously drew a horizontal line here, but it obscured content in the bottom window)
 	}
 }

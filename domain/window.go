@@ -166,12 +166,16 @@ func (w *Window) wrapLine(line string) []string {
 }
 
 func (w *Window) applyHorizontalScroll(line string) string {
+	lineWidth := util.StringWidth(line)
+	
 	if w.scrollLeft == 0 {
-		// No horizontal scrolling, just truncate to window width
-		if util.StringWidth(line) <= w.width {
+		// No horizontal scrolling
+		if lineWidth <= w.width {
 			return line
 		}
-		return w.truncateToWidth(line, w.width)
+		// Line continues beyond window width - show continuation indicator
+		truncated := w.truncateToWidth(line, w.width-1)
+		return truncated + "\\"
 	}
 	
 	// Apply horizontal scrolling
@@ -192,16 +196,54 @@ func (w *Window) applyHorizontalScroll(line string) string {
 	
 	end := start
 	displayWidth := 0
-	for end < len(runes) && displayWidth < w.width {
+	availableWidth := w.width
+	
+	// If there's content before scroll position, show left indicator
+	showLeftIndicator := w.scrollLeft > 0
+	if showLeftIndicator {
+		availableWidth-- // Reserve space for left continuation indicator
+	}
+	
+	// Check if there's content after what we can display
+	hasContentAfter := false
+	tempEnd := start
+	tempWidth := 0
+	for tempEnd < len(runes) {
+		charWidth := util.RuneWidth(runes[tempEnd])
+		if tempWidth+charWidth > availableWidth {
+			hasContentAfter = true
+			break
+		}
+		tempWidth += charWidth
+		tempEnd++
+	}
+	
+	// If there's content after, reserve space for right indicator
+	if hasContentAfter {
+		availableWidth--
+	}
+	
+	// Now build the actual display line
+	for end < len(runes) && displayWidth < availableWidth {
 		charWidth := util.RuneWidth(runes[end])
-		if displayWidth+charWidth > w.width {
+		if displayWidth+charWidth > availableWidth {
 			break
 		}
 		displayWidth += charWidth
 		end++
 	}
 	
-	return string(runes[start:end])
+	result := string(runes[start:end])
+	
+	// Add continuation indicators
+	if showLeftIndicator {
+		result = "\\" + result
+	}
+	if hasContentAfter {
+		result = result + "\\"
+	}
+	
+	return result
 }
 
 func (w *Window) truncateToWidth(s string, maxWidth int) string {

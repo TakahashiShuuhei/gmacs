@@ -101,13 +101,18 @@ func TestHorizontalScrolling(t *testing.T) {
 	}
 
 	// The visible line should be a substring starting from position 5
+	// With continuation indicators: \ at start (for left scroll) and \ at end (if content continues)
 	expectedSubstring := longLine[5:] // Skip first 5 characters
-	if len(expectedSubstring) > 10 {
-		expectedSubstring = expectedSubstring[:10] // Truncate to window width
+	
+	// Account for continuation indicators in the expected result
+	availableWidth := 10 - 2 // Subtract 2 for left (\) and right (\) indicators
+	if len(expectedSubstring) > availableWidth {
+		expectedSubstring = expectedSubstring[:availableWidth]
 	}
+	expectedWithIndicators := "\\" + expectedSubstring + "\\"
 
-	if visible[0] != expectedSubstring {
-		t.Errorf("Expected visible line after horizontal scroll to be %q, got %q", expectedSubstring, visible[0])
+	if visible[0] != expectedWithIndicators {
+		t.Errorf("Expected visible line after horizontal scroll to be %q, got %q", expectedWithIndicators, visible[0])
 	}
 }
 
