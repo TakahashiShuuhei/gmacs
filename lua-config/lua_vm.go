@@ -92,7 +92,8 @@ func (vm *LuaVM) CallFunction(fn lua.LValue, args ...lua.LValue) error {
 }
 
 // GetState returns the underlying Lua state (for API bindings)
-func (vm *LuaVM) GetState() *lua.LState {
+// Implements domain.VM interface
+func (vm *LuaVM) GetState() interface{} {
 	return vm.state
 }
 

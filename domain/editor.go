@@ -3,8 +3,19 @@ package domain
 import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 	"github.com/TakahashiShuuhei/gmacs/core/log"
-	luaconfig "github.com/TakahashiShuuhei/gmacs/core/lua-config"
 )
+
+// ConfigLoader interface for Lua configuration loading
+type ConfigLoader interface {
+	LoadConfig(configPath string) error
+	Close()
+}
+
+// HookManager interface for event hooks  
+type HookManager interface {
+	AddHook(event string, fn func(...interface{}) error)
+	TriggerHook(event string, args ...interface{})
+}
 
 type Editor struct {
 	buffers         []*Buffer
@@ -16,14 +27,15 @@ type Editor struct {
 	keyBindings     *KeyBindingMap
 	metaPressed     bool
 	modeManager     *ModeManager
-	configLoader    *luaconfig.ConfigLoader
-	hookManager     *luaconfig.HookManager
+	configLoader    ConfigLoader
+	hookManager     HookManager
 	options         map[string]interface{}
 }
 
 // EditorConfig holds configuration options for editor initialization
 type EditorConfig struct {
-	ConfigPath string // Path to Lua config file (empty means no config)
+	ConfigLoader ConfigLoader // Optional Lua config loader
+	HookManager  HookManager  // Optional hook manager
 }
 
 // NewEditor creates a new editor without loading any configuration file
@@ -31,10 +43,11 @@ func NewEditor() *Editor {
 	return newEditorWithConfig(EditorConfig{})
 }
 
-// NewEditorWithConfig creates a new editor and loads the specified configuration file
-func NewEditorWithConfig(configPath string) *Editor {
+// NewEditorWithConfig creates a new editor with the specified configuration
+func NewEditorWithConfig(configLoader ConfigLoader, hookManager HookManager) *Editor {
 	return newEditorWithConfig(EditorConfig{
-		ConfigPath: configPath,
+		ConfigLoader: configLoader,
+		HookManager:  hookManager,
 	})
 }
 
@@ -54,24 +67,13 @@ func newEditorWithConfig(config EditorConfig) *Editor {
 		keyBindings:     NewKeyBindingMap(),
 		metaPressed:     false,
 		modeManager:     NewModeManager(),
-		configLoader:    nil, // Will be initialized if config is loaded
-		hookManager:     luaconfig.NewHookManager(),
+		configLoader:    config.ConfigLoader,
+		hookManager:     config.HookManager,
 		options:         make(map[string]interface{}),
 	}
 	
 	// Register all built-in commands
 	editor.registerBuiltinCommands()
-	
-	// Load configuration if specified
-	if config.ConfigPath != "" {
-		err := editor.loadConfig(config.ConfigPath)
-		if err != nil {
-			log.Error("Failed to load config from %s: %v", config.ConfigPath, err)
-			// Continue without config rather than failing
-		} else {
-			log.Info("Successfully applied config from: %s", config.ConfigPath)
-		}
-	}
 	
 	// Initialize buffer with fundamental mode
 	err := editor.modeManager.SetMajorMode(buffer, "fundamental-mode")
@@ -92,34 +94,6 @@ func (e *Editor) registerBuiltinCommands() {
 	e.registerMinorModeCommands()
 }
 
-// loadConfig loads a Lua configuration file
-func (e *Editor) loadConfig(configPath string) error {
-	log.Info("Starting to load config from: %s", configPath)
-	
-	// Initialize config loader
-	e.configLoader = luaconfig.NewConfigLoader()
-	
-	// Register API bindings first
-	apiBindings := luaconfig.NewAPIBindings(e, e.configLoader.GetVM())
-	err := apiBindings.RegisterGmacsAPI()
-	if err != nil {
-		e.configLoader.Close()
-		e.configLoader = nil
-		return err
-	}
-	log.Info("Registered gmacs API successfully")
-	
-	// Load the configuration file
-	err = e.configLoader.LoadConfig(configPath)
-	if err != nil {
-		e.configLoader.Close()
-		e.configLoader = nil
-		return err
-	}
-	
-	log.Info("Successfully loaded and executed Lua configuration")
-	return nil
-}
 
 // Cleanup closes any resources when the editor is shutting down
 func (e *Editor) Cleanup() {
@@ -149,9 +123,38 @@ func (e *Editor) BindKey(sequence, command string) error {
 
 // LocalBindKey implements mode-specific key binding
 func (e *Editor) LocalBindKey(modeName, sequence, command string) error {
-	// TODO: Implement mode-specific key bindings
-	// For now, just use global bindings
-	return e.BindKey(sequence, command)
+	// Check if command exists
+	cmd, exists := e.commandRegistry.Get(command)
+	if !exists {
+		return &ConfigError{Message: "Unknown command: " + command}
+	}
+	
+	// Convert command to function
+	cmdFunc := func(editor *Editor) error {
+		return cmd.Execute(editor)
+	}
+	
+	// Try to find major mode first
+	if majorMode, exists := e.modeManager.GetMajorModeByName(modeName); exists {
+		keyBindings := majorMode.KeyBindings()
+		if keyBindings != nil {
+			keyBindings.BindKeySequence(sequence, cmdFunc)
+			log.Info("Bound key %s to %s in major mode %s", sequence, command, modeName)
+			return nil
+		}
+	}
+	
+	// Try to find minor mode
+	if minorMode, exists := e.modeManager.GetMinorModeByName(modeName); exists {
+		keyBindings := minorMode.KeyBindings()
+		if keyBindings != nil {
+			keyBindings.BindKeySequence(sequence, cmdFunc)
+			log.Info("Bound key %s to %s in minor mode %s", sequence, command, modeName)
+			return nil
+		}
+	}
+	
+	return &ConfigError{Message: "Unknown mode: " + modeName}
 }
 
 // RegisterCommand implements custom command registration
@@ -197,13 +200,17 @@ func (e *Editor) RegisterMinorMode(name string, config map[string]interface{}) e
 
 // AddHook implements hook registration
 func (e *Editor) AddHook(event string, fn func(...interface{}) error) error {
-	e.hookManager.AddHook(event, fn)
+	if e.hookManager != nil {
+		e.hookManager.AddHook(event, fn)
+	}
 	return nil
 }
 
 // TriggerHook triggers hooks for an event
 func (e *Editor) TriggerHook(event string, args ...interface{}) {
-	e.hookManager.TriggerHook(event, args...)
+	if e.hookManager != nil {
+		e.hookManager.TriggerHook(event, args...)
+	}
 }
 
 // ConfigError represents a configuration error

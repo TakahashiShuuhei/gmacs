@@ -11,24 +11,24 @@ type HookFunction func(args ...interface{}) error
 
 // HookManager manages event hooks for Lua configuration
 type HookManager struct {
-	hooks map[string][]HookFunction
+	hooks map[string][]func(...interface{}) error
 	mutex sync.RWMutex
 }
 
 // NewHookManager creates a new hook manager
 func NewHookManager() *HookManager {
 	return &HookManager{
-		hooks: make(map[string][]HookFunction),
+		hooks: make(map[string][]func(...interface{}) error),
 	}
 }
 
 // AddHook adds a hook function for the specified event
-func (hm *HookManager) AddHook(event string, fn HookFunction) {
+func (hm *HookManager) AddHook(event string, fn func(...interface{}) error) {
 	hm.mutex.Lock()
 	defer hm.mutex.Unlock()
 	
 	if hm.hooks[event] == nil {
-		hm.hooks[event] = make([]HookFunction, 0)
+		hm.hooks[event] = make([]func(...interface{}) error, 0)
 	}
 	
 	hm.hooks[event] = append(hm.hooks[event], fn)
@@ -104,7 +104,7 @@ var StandardEvents = []string{
 }
 
 // LuaHookWrapper creates a hook function that calls a Lua function
-func LuaHookWrapper(L *lua.LState, fn lua.LValue) HookFunction {
+func LuaHookWrapper(L *lua.LState, fn lua.LValue) func(...interface{}) error {
 	return func(args ...interface{}) error {
 		// Convert Go arguments to Lua values
 		luaArgs := make([]lua.LValue, len(args))

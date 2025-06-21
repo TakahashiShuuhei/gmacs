@@ -16,6 +16,7 @@ import (
 	"os"
 
 	"github.com/TakahashiShuuhei/gmacs/core/domain"
+	luaconfig "github.com/TakahashiShuuhei/gmacs/core/lua-config"
 	gmacslog "github.com/TakahashiShuuhei/gmacs/core/log"
 )
 
@@ -37,9 +38,26 @@ func TestLuaConfigurationLoading(t *testing.T) {
 		t.Fatalf("Test config file does not exist: %s", testConfigPath)
 	}
 
-	// Create editor with test configuration
-	t.Logf("Loading config from: %s", testConfigPath)
-	editor := domain.NewEditorWithConfig(testConfigPath)
+	// Create config loader and load the test configuration
+	configLoader := luaconfig.NewConfigLoader()
+	defer configLoader.Close()
+	
+	hookManager := luaconfig.NewHookManager()
+	editor := domain.NewEditorWithConfig(configLoader, hookManager)
+	
+	// Register API bindings and load config
+	apiBindings := luaconfig.NewAPIBindings(editor, configLoader.GetVM())
+	apiErr := apiBindings.RegisterGmacsAPI()
+	if apiErr != nil {
+		t.Fatalf("Failed to register gmacs API: %v", apiErr)
+	}
+	
+	err = configLoader.LoadConfig(testConfigPath)
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+	
+	t.Logf("Loaded config from: %s", testConfigPath)
 	if editor == nil {
 		t.Fatal("Failed to create editor with config")
 	}
@@ -95,14 +113,18 @@ func TestInvalidConfigFile(t *testing.T) {
 	defer gmacslog.Close()
 
 	// Try to create editor with non-existent config file
-	editor := domain.NewEditorWithConfig("/non/existent/path.lua")
+	configLoader := luaconfig.NewConfigLoader()
+	defer configLoader.Close()
+	
+	hookManager := luaconfig.NewHookManager()
+	editor := domain.NewEditorWithConfig(configLoader, hookManager)
 	if editor == nil {
-		t.Fatal("Editor should still be created even with invalid config")
+		t.Fatal("Editor should be created even without config")
 	}
 	defer editor.Cleanup()
 
-	// Editor should still be running (config loading failure should not prevent startup)
+	// Editor should be running even without config loading
 	if !editor.IsRunning() {
-		t.Error("Editor should be running even when config loading fails")
+		t.Error("Editor should be running even without config")
 	}
 }

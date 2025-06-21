@@ -2,17 +2,19 @@ package domain
 
 // AutoAMode is a simple minor mode that automatically adds 'a' after each newline
 type AutoAMode struct {
-	name     string
-	priority int
-	enabled  map[*Buffer]bool
+	name        string
+	priority    int
+	enabled     map[*Buffer]bool
+	keyBindings *KeyBindingMap
 }
 
 // NewAutoAMode creates a new AutoAMode instance
 func NewAutoAMode() *AutoAMode {
 	return &AutoAMode{
-		name:     "auto-a-mode",
-		priority: 10, // Medium priority
-		enabled:  make(map[*Buffer]bool),
+		name:        "auto-a-mode",
+		priority:    10, // Medium priority
+		enabled:     make(map[*Buffer]bool),
+		keyBindings: NewEmptyKeyBindingMap(),
 	}
 }
 
@@ -21,9 +23,9 @@ func (am *AutoAMode) Name() string {
 	return am.name
 }
 
-// KeyBindings returns nil (no special key bindings)
+// KeyBindings returns the key bindings for this mode
 func (am *AutoAMode) KeyBindings() *KeyBindingMap {
-	return nil
+	return am.keyBindings
 }
 
 // Commands returns mode-specific commands

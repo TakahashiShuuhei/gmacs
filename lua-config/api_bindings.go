@@ -46,7 +46,11 @@ func (api *APIBindings) RegisterGmacsAPI() error {
 		return &ConfigError{Message: "Lua VM is not available"}
 	}
 	
-	L := api.vm.GetState()
+	state := api.vm.GetState()
+	L, ok := state.(*lua.LState)
+	if !ok {
+		return &ConfigError{Message: "Invalid Lua state"}
+	}
 	
 	// Create gmacs table
 	gmacsTable := L.NewTable()
@@ -73,8 +77,8 @@ func (api *APIBindings) luaBindKey(L *lua.LState) int {
 	
 	err := api.editor.BindKey(sequence, command)
 	if err != nil {
-		L.Push(lua.LString("Error: " + err.Error()))
-		return 1
+		L.RaiseError("Error: " + err.Error())
+		return 0 // This line won't be reached
 	}
 	
 	log.Info("Lua: Bound key %s to %s", sequence, command)
@@ -89,8 +93,8 @@ func (api *APIBindings) luaLocalBindKey(L *lua.LState) int {
 	
 	err := api.editor.LocalBindKey(modeName, sequence, command)
 	if err != nil {
-		L.Push(lua.LString("Error: " + err.Error()))
-		return 1
+		L.RaiseError("Error: " + err.Error())
+		return 0 // This line won't be reached
 	}
 	
 	log.Info("Lua: Bound key %s to %s in mode %s", sequence, command, modeName)

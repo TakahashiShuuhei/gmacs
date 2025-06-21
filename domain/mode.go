@@ -80,6 +80,18 @@ func (mm *ModeManager) RegisterMinorMode(mode MinorMode) {
 	mm.minorModes[mode.Name()] = mode
 }
 
+// GetMajorModeByName returns a major mode by name
+func (mm *ModeManager) GetMajorModeByName(name string) (MajorMode, bool) {
+	mode, exists := mm.majorModes[name]
+	return mode, exists
+}
+
+// GetMinorModeByName returns a minor mode by name
+func (mm *ModeManager) GetMinorModeByName(name string) (MinorMode, bool) {
+	mode, exists := mm.minorModes[name]
+	return mode, exists
+}
+
 // SetMajorMode sets the major mode for a buffer
 func (mm *ModeManager) SetMajorMode(buffer *Buffer, modeName string) error {
 	mode, exists := mm.majorModes[modeName]
