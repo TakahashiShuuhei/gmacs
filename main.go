@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/TakahashiShuuhei/gmacs/core/cli"
@@ -28,8 +30,22 @@ func main() {
 	}
 	defer terminal.Restore()
 
-	// Create editor and set initial size from display
-	editor := domain.NewEditor()
+	// Search for configuration file
+	configPath := findConfigFile()
+	
+	// Create editor with or without configuration
+	var editor *domain.Editor
+	if configPath != "" {
+		gmacslog.Info("Loading config: %s", configPath)
+		editor = domain.NewEditorWithConfig(configPath)
+	} else {
+		gmacslog.Info("No config file found, starting with defaults")
+		editor = domain.NewEditor()
+	}
+	
+	// Ensure cleanup on exit
+	defer editor.Cleanup()
+	
 	width, height := display.Size()
 	resizeEvent := events.ResizeEventData{
 		Width:  width,
@@ -81,4 +97,30 @@ func main() {
 	display.ClearAndExit()
 
 	gmacslog.Info("gmacs shutting down")
+}
+
+// findConfigFile searches for a configuration file in standard locations
+func findConfigFile() string {
+	// Get user home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		gmacslog.Warn("Could not get user home directory: %v", err)
+		return ""
+	}
+	
+	// Check standard config file locations
+	configPaths := []string{
+		filepath.Join(homeDir, ".gmacs", "init.lua"),
+		filepath.Join(homeDir, ".gmacs.lua"),
+	}
+	
+	for _, path := range configPaths {
+		if _, err := os.Stat(path); err == nil {
+			gmacslog.Info("Found config file: %s", path)
+			return path
+		}
+	}
+	
+	gmacslog.Info("No config file found in standard locations")
+	return ""
 }

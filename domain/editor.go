@@ -3,6 +3,7 @@ package domain
 import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 	"github.com/TakahashiShuuhei/gmacs/core/log"
+	luaconfig "github.com/TakahashiShuuhei/gmacs/core/lua-config"
 )
 
 type Editor struct {
@@ -15,9 +16,30 @@ type Editor struct {
 	keyBindings     *KeyBindingMap
 	metaPressed     bool
 	modeManager     *ModeManager
+	configLoader    *luaconfig.ConfigLoader
+	hookManager     *luaconfig.HookManager
+	options         map[string]interface{}
 }
 
+// EditorConfig holds configuration options for editor initialization
+type EditorConfig struct {
+	ConfigPath string // Path to Lua config file (empty means no config)
+}
+
+// NewEditor creates a new editor without loading any configuration file
 func NewEditor() *Editor {
+	return newEditorWithConfig(EditorConfig{})
+}
+
+// NewEditorWithConfig creates a new editor and loads the specified configuration file
+func NewEditorWithConfig(configPath string) *Editor {
+	return newEditorWithConfig(EditorConfig{
+		ConfigPath: configPath,
+	})
+}
+
+// newEditorWithConfig is the internal constructor that handles configuration
+func newEditorWithConfig(config EditorConfig) *Editor {
 	buffer := NewBuffer("*scratch*")
 	window := NewWindow(buffer, 80, 22) // 24-2 for mode line and minibuffer
 	layout := NewWindowLayout(window, 80, 24) // Total terminal size
@@ -32,22 +54,24 @@ func NewEditor() *Editor {
 		keyBindings:     NewKeyBindingMap(),
 		metaPressed:     false,
 		modeManager:     NewModeManager(),
+		configLoader:    nil, // Will be initialized if config is loaded
+		hookManager:     luaconfig.NewHookManager(),
+		options:         make(map[string]interface{}),
 	}
 	
-	// Register cursor movement commands as interactive functions
-	editor.registerCursorCommands()
+	// Register all built-in commands
+	editor.registerBuiltinCommands()
 	
-	// Register scrolling commands as interactive functions
-	editor.registerScrollCommands()
-	
-	// Register buffer commands as interactive functions
-	editor.registerBufferCommands()
-	
-	// Register window commands as interactive functions
-	editor.registerWindowCommands()
-	
-	// Register minor mode commands
-	editor.registerMinorModeCommands()
+	// Load configuration if specified
+	if config.ConfigPath != "" {
+		err := editor.loadConfig(config.ConfigPath)
+		if err != nil {
+			log.Error("Failed to load config from %s: %v", config.ConfigPath, err)
+			// Continue without config rather than failing
+		} else {
+			log.Info("Successfully applied config from: %s", config.ConfigPath)
+		}
+	}
 	
 	// Initialize buffer with fundamental mode
 	err := editor.modeManager.SetMajorMode(buffer, "fundamental-mode")
@@ -57,6 +81,138 @@ func NewEditor() *Editor {
 	
 	log.Info("Editor created with buffer: %s", buffer.Name())
 	return editor
+}
+
+// registerBuiltinCommands registers all built-in editor commands
+func (e *Editor) registerBuiltinCommands() {
+	e.registerCursorCommands()
+	e.registerScrollCommands()
+	e.registerBufferCommands()
+	e.registerWindowCommands()
+	e.registerMinorModeCommands()
+}
+
+// loadConfig loads a Lua configuration file
+func (e *Editor) loadConfig(configPath string) error {
+	log.Info("Starting to load config from: %s", configPath)
+	
+	// Initialize config loader
+	e.configLoader = luaconfig.NewConfigLoader()
+	
+	// Register API bindings first
+	apiBindings := luaconfig.NewAPIBindings(e, e.configLoader.GetVM())
+	err := apiBindings.RegisterGmacsAPI()
+	if err != nil {
+		e.configLoader.Close()
+		e.configLoader = nil
+		return err
+	}
+	log.Info("Registered gmacs API successfully")
+	
+	// Load the configuration file
+	err = e.configLoader.LoadConfig(configPath)
+	if err != nil {
+		e.configLoader.Close()
+		e.configLoader = nil
+		return err
+	}
+	
+	log.Info("Successfully loaded and executed Lua configuration")
+	return nil
+}
+
+// Cleanup closes any resources when the editor is shutting down
+func (e *Editor) Cleanup() {
+	if e.configLoader != nil {
+		e.configLoader.Close()
+		e.configLoader = nil
+	}
+}
+
+// EditorInterface implementation for Lua API
+
+// BindKey implements global key binding
+func (e *Editor) BindKey(sequence, command string) error {
+	cmd, exists := e.commandRegistry.Get(command)
+	if !exists {
+		return &ConfigError{Message: "Unknown command: " + command}
+	}
+	
+	// Convert command to function
+	cmdFunc := func(editor *Editor) error {
+		return cmd.Execute(editor)
+	}
+	
+	e.keyBindings.BindKeySequence(sequence, cmdFunc)
+	return nil
+}
+
+// LocalBindKey implements mode-specific key binding
+func (e *Editor) LocalBindKey(modeName, sequence, command string) error {
+	// TODO: Implement mode-specific key bindings
+	// For now, just use global bindings
+	return e.BindKey(sequence, command)
+}
+
+// RegisterCommand implements custom command registration
+func (e *Editor) RegisterCommand(name string, fn func() error) error {
+	// Convert to CommandFunc
+	cmdFunc := func(editor *Editor) error {
+		return fn()
+	}
+	
+	e.commandRegistry.RegisterFunc(name, cmdFunc)
+	return nil
+}
+
+// SetOption implements option setting
+func (e *Editor) SetOption(name string, value interface{}) error {
+	e.options[name] = value
+	log.Info("Set option %s = %v", name, value)
+	return nil
+}
+
+// GetOption implements option getting
+func (e *Editor) GetOption(name string) (interface{}, error) {
+	value, exists := e.options[name]
+	if !exists {
+		return nil, &ConfigError{Message: "Unknown option: " + name}
+	}
+	return value, nil
+}
+
+// RegisterMajorMode implements major mode registration
+func (e *Editor) RegisterMajorMode(name string, config map[string]interface{}) error {
+	// TODO: Implement dynamic major mode registration
+	log.Info("Major mode registration not yet implemented: %s", name)
+	return nil
+}
+
+// RegisterMinorMode implements minor mode registration
+func (e *Editor) RegisterMinorMode(name string, config map[string]interface{}) error {
+	// TODO: Implement dynamic minor mode registration
+	log.Info("Minor mode registration not yet implemented: %s", name)
+	return nil
+}
+
+// AddHook implements hook registration
+func (e *Editor) AddHook(event string, fn func(...interface{}) error) error {
+	e.hookManager.AddHook(event, fn)
+	return nil
+}
+
+// TriggerHook triggers hooks for an event
+func (e *Editor) TriggerHook(event string, args ...interface{}) {
+	e.hookManager.TriggerHook(event, args...)
+}
+
+// ConfigError represents a configuration error
+type ConfigError struct {
+	Message string
+}
+
+func (e *ConfigError) Error() string {
+	return e.Message
 }
 
 func (e *Editor) CurrentBuffer() *Buffer {
