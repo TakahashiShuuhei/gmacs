@@ -34,9 +34,11 @@ func TestMinibufferDeleteForward(t *testing.T) {
 		editor.HandleEvent(event)
 	}
 	
-	// カーソルを先頭に移動（"f"の位置）
+	// カーソルを先頭に移動（"f"の位置） - C-a を使用
+	ctrlAEvent := events.KeyEventData{Key: "a", Ctrl: true}
+	editor.HandleEvent(ctrlAEvent)
+	
 	minibuffer := editor.Minibuffer()
-	minibuffer.MoveCursorToBeginning()
 	
 	if minibuffer.Content() != "forward" {
 		t.Errorf("Expected 'forward', got %q", minibuffer.Content())

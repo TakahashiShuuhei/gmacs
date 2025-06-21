@@ -121,6 +121,11 @@ func (e *Editor) registerBufferCommands() {
 	e.commandRegistry.RegisterFunc("switch-to-buffer", SwitchToBufferInteractive)
 	e.commandRegistry.RegisterFunc("list-buffers", ListBuffersInteractive)
 	e.commandRegistry.RegisterFunc("kill-buffer", KillBufferInteractive)
+	
+	// Set up keybindings for buffer functions (for backward compatibility)
+	e.keyBindings.BindKeySequence("C-x b", SwitchToBufferInteractive)
+	e.keyBindings.BindKeySequence("C-x C-b", ListBuffersInteractive)
+	e.keyBindings.BindKeySequence("C-x k", KillBufferInteractive)
 }
 
 func (e *Editor) registerWindowCommands() {
@@ -130,6 +135,13 @@ func (e *Editor) registerWindowCommands() {
 	e.commandRegistry.RegisterFunc("other-window", OtherWindow)
 	e.commandRegistry.RegisterFunc("delete-window", DeleteWindow)
 	e.commandRegistry.RegisterFunc("delete-other-windows", DeleteOtherWindows)
+	
+	// Set up keybindings for window functions (for backward compatibility)
+	e.keyBindings.BindKeySequence("C-x 3", SplitWindowRight)
+	e.keyBindings.BindKeySequence("C-x 2", SplitWindowBelow)
+	e.keyBindings.BindKeySequence("C-x o", OtherWindow)
+	e.keyBindings.BindKeySequence("C-x 0", DeleteWindow)
+	e.keyBindings.BindKeySequence("C-x 1", DeleteOtherWindows)
 }
 
 // Cleanup closes any resources when the editor is shutting down
@@ -300,26 +312,27 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 		return
 	}
 	
-	// If we have a matched command, check if it should be handled or deferred to minibuffer
-	if matched {
+	// Handle minibuffer input first if active (except for special cases)
+	if e.minibuffer.IsActive() {
 		// Special commands that should always execute immediately
 		if event.Ctrl && event.Key == "g" { // C-g (KeyboardQuit)
-			cmd(e)
+			if matched {
+				cmd(e)
+			}
 			return
 		}
 		
-		// Execute the matched command
-		// Key sequences always take priority over minibuffer input
-		cmd(e)
-		return
-	}
-	
-	// No key sequence match - handle minibuffer input if active
-	if e.minibuffer.IsActive() {
+		// Try minibuffer handling first
 		handled := e.handleMinibufferInput(event)
 		if handled {
 			return
 		}
+	}
+	
+	// If not handled by minibuffer, check for matched global commands
+	if matched {
+		cmd(e)
+		return
 	}
 	
 	// Handle Meta key press detection
