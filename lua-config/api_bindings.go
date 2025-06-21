@@ -2,38 +2,19 @@ package luaconfig
 
 import (
 	lua "github.com/yuin/gopher-lua"
+	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/log"
 )
 
-// EditorInterface defines the interface that the Editor must implement for Lua integration
-type EditorInterface interface {
-	// Key binding methods
-	BindKey(sequence, command string) error
-	LocalBindKey(modeName, sequence, command string) error
-	
-	// Command registration
-	RegisterCommand(name string, fn func() error) error
-	
-	// Option management
-	SetOption(name string, value interface{}) error
-	GetOption(name string) (interface{}, error)
-	
-	// Mode management
-	RegisterMajorMode(name string, config map[string]interface{}) error
-	RegisterMinorMode(name string, config map[string]interface{}) error
-	
-	// Hook management
-	AddHook(event string, fn func(...interface{}) error) error
-}
 
 // APIBindings manages the Lua API bindings for gmacs
 type APIBindings struct {
-	editor EditorInterface
+	editor *domain.Editor
 	vm     *LuaVM
 }
 
 // NewAPIBindings creates new API bindings
-func NewAPIBindings(editor EditorInterface, vm *LuaVM) *APIBindings {
+func NewAPIBindings(editor *domain.Editor, vm *LuaVM) *APIBindings {
 	return &APIBindings{
 		editor: editor,
 		vm:     vm,
@@ -65,6 +46,9 @@ func (api *APIBindings) RegisterGmacsAPI() error {
 	L.SetField(gmacsTable, "major_mode", L.NewFunction(api.luaMajorMode))
 	L.SetField(gmacsTable, "minor_mode", L.NewFunction(api.luaMinorMode))
 	L.SetField(gmacsTable, "add_hook", L.NewFunction(api.luaAddHook))
+	
+	// Register all built-in commands
+	api.registerBuiltinCommands()
 	
 	log.Info("Registered gmacs Lua API")
 	return nil
@@ -263,6 +247,67 @@ func (api *APIBindings) luaAddHook(L *lua.LState) int {
 	
 	log.Info("Lua: Added hook for event %s", event)
 	return 0
+}
+
+// registerBuiltinCommands registers all built-in commands that were previously in editor.go
+func (api *APIBindings) registerBuiltinCommands() {
+	// Register cursor movement commands
+	api.editor.RegisterCommand("forward-char", func() error { return domain.ForwardChar(api.editor) })
+	api.editor.RegisterCommand("backward-char", func() error { return domain.BackwardChar(api.editor) })
+	api.editor.RegisterCommand("next-line", func() error { return domain.NextLine(api.editor) })
+	api.editor.RegisterCommand("previous-line", func() error { return domain.PreviousLine(api.editor) })
+	api.editor.RegisterCommand("beginning-of-line", func() error { return domain.BeginningOfLine(api.editor) })
+	api.editor.RegisterCommand("end-of-line", func() error { return domain.EndOfLine(api.editor) })
+	
+	// Register scrolling commands
+	api.editor.RegisterCommand("scroll-up", func() error { return domain.ScrollUp(api.editor) })
+	api.editor.RegisterCommand("scroll-down", func() error { return domain.ScrollDown(api.editor) })
+	api.editor.RegisterCommand("page-up", func() error { return domain.PageUp(api.editor) })
+	api.editor.RegisterCommand("page-down", func() error { return domain.PageDown(api.editor) })
+	api.editor.RegisterCommand("toggle-truncate-lines", func() error { return domain.ToggleLineWrap(api.editor) })
+	api.editor.RegisterCommand("debug-info", func() error { return domain.ShowDebugInfo(api.editor) })
+	
+	// Register buffer commands
+	api.editor.RegisterCommand("switch-to-buffer", func() error { return domain.SwitchToBufferInteractive(api.editor) })
+	api.editor.RegisterCommand("list-buffers", func() error { return domain.ListBuffersInteractive(api.editor) })
+	api.editor.RegisterCommand("kill-buffer", func() error { return domain.KillBufferInteractive(api.editor) })
+	
+	// Register window commands
+	api.editor.RegisterCommand("split-window-right", func() error { return domain.SplitWindowRight(api.editor) })
+	api.editor.RegisterCommand("split-window-below", func() error { return domain.SplitWindowBelow(api.editor) })
+	api.editor.RegisterCommand("other-window", func() error { return domain.OtherWindow(api.editor) })
+	api.editor.RegisterCommand("delete-window", func() error { return domain.DeleteWindow(api.editor) })
+	api.editor.RegisterCommand("delete-other-windows", func() error { return domain.DeleteOtherWindows(api.editor) })
+	
+	// Register minor mode commands
+	api.registerMinorModeCommands()
+	
+	log.Info("Registered built-in commands via Lua API")
+}
+
+// registerMinorModeCommands registers minor mode commands
+func (api *APIBindings) registerMinorModeCommands() {
+	api.editor.RegisterCommand("auto-a-mode", func() error {
+		buffer := api.editor.CurrentBuffer()
+		if buffer == nil {
+			return &domain.ModeError{Message: "No current buffer"}
+		}
+		
+		// Check if already enabled
+		modeManager := api.editor.ModeManager()
+		autoAMode, exists := modeManager.GetMinorModeByName("auto-a-mode")
+		if !exists {
+			return &domain.ModeError{Message: "auto-a-mode not available"}
+		}
+		
+		if autoAMode.IsEnabled(buffer) {
+			api.editor.SetMinibufferMessage("Auto-A mode disabled")
+		} else {
+			api.editor.SetMinibufferMessage("Auto-A mode enabled")
+		}
+		
+		return modeManager.ToggleMinorMode(buffer, "auto-a-mode")
+	})
 }
 
 // Helper functions for type conversion

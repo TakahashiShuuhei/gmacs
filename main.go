@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"log"
 	"os"
 	"path/filepath"
@@ -10,7 +11,11 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 	gmacslog "github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/core/lua-config"
 )
+
+//go:embed lua-config/default.lua
+var defaultConfig string
 
 func main() {
 	if err := gmacslog.Init(); err != nil {
@@ -30,17 +35,30 @@ func main() {
 	}
 	defer terminal.Restore()
 
-	// Search for configuration file
-	configPath := findConfigFile()
+	// Always create editor with Lua configuration support
+	configLoader := luaconfig.NewConfigLoader()
+	hookManager := luaconfig.NewHookManager()
+	editor := domain.NewEditorWithConfig(configLoader, hookManager)
 	
-	// Create editor with or without configuration
-	var editor *domain.Editor
+	// Register Lua API
+	apiBindings := luaconfig.NewAPIBindings(editor, configLoader.GetVM())
+	apiBindings.RegisterGmacsAPI()
+	
+	// Load default configuration first
+	gmacslog.Info("Loading default configuration")
+	if err := configLoader.GetVM().ExecuteString(defaultConfig); err != nil {
+		gmacslog.Error("Failed to load default config: %v", err)
+	}
+	
+	// Then load user configuration if available
+	configPath := findConfigFile()
 	if configPath != "" {
-		gmacslog.Info("Loading config: %s", configPath)
-		editor = domain.NewEditorWithConfig(configPath)
+		gmacslog.Info("Loading user config: %s", configPath)
+		if err := configLoader.LoadConfig(configPath); err != nil {
+			gmacslog.Error("Failed to load user config: %v", err)
+		}
 	} else {
-		gmacslog.Info("No config file found, starting with defaults")
-		editor = domain.NewEditor()
+		gmacslog.Info("No user config file found, using defaults only")
 	}
 	
 	// Ensure cleanup on exit

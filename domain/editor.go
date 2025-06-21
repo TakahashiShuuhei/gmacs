@@ -2,7 +2,6 @@ package domain
 
 import (
 	"github.com/TakahashiShuuhei/gmacs/core/events"
-	"github.com/TakahashiShuuhei/gmacs/core/log"
 )
 
 // ConfigLoader interface for Lua configuration loading
@@ -38,9 +37,14 @@ type EditorConfig struct {
 	HookManager  HookManager  // Optional hook manager
 }
 
-// NewEditor creates a new editor without loading any configuration file
+// NewEditor creates a new editor with default configuration
 func NewEditor() *Editor {
-	return newEditorWithConfig(EditorConfig{})
+	editor := newEditorWithConfig(EditorConfig{})
+	
+	// Register built-in commands directly for backward compatibility
+	editor.registerBuiltinCommands()
+	
+	return editor
 }
 
 // NewEditorWithConfig creates a new editor with the specified configuration
@@ -72,20 +76,18 @@ func newEditorWithConfig(config EditorConfig) *Editor {
 		options:         make(map[string]interface{}),
 	}
 	
-	// Register all built-in commands
-	editor.registerBuiltinCommands()
+	// Built-in commands are now registered via Lua configuration
 	
 	// Initialize buffer with fundamental mode
 	err := editor.modeManager.SetMajorMode(buffer, "fundamental-mode")
 	if err != nil {
-		log.Error("Failed to set fundamental mode: %v", err)
+		// TODO: Handle error appropriately
 	}
 	
-	log.Info("Editor created with buffer: %s", buffer.Name())
 	return editor
 }
 
-// registerBuiltinCommands registers all built-in editor commands
+// registerBuiltinCommands registers all built-in editor commands for backward compatibility
 func (e *Editor) registerBuiltinCommands() {
 	e.registerCursorCommands()
 	e.registerScrollCommands()
@@ -94,6 +96,53 @@ func (e *Editor) registerBuiltinCommands() {
 	e.registerMinorModeCommands()
 }
 
+func (e *Editor) registerCursorCommands() {
+	// Register cursor movement commands as M-x interactive functions
+	e.commandRegistry.RegisterFunc("forward-char", ForwardChar)
+	e.commandRegistry.RegisterFunc("backward-char", BackwardChar)
+	e.commandRegistry.RegisterFunc("next-line", NextLine)
+	e.commandRegistry.RegisterFunc("previous-line", PreviousLine)
+	e.commandRegistry.RegisterFunc("beginning-of-line", BeginningOfLine)
+	e.commandRegistry.RegisterFunc("end-of-line", EndOfLine)
+}
+
+func (e *Editor) registerScrollCommands() {
+	// Register scrolling commands as M-x interactive functions
+	e.commandRegistry.RegisterFunc("scroll-up", ScrollUp)
+	e.commandRegistry.RegisterFunc("scroll-down", ScrollDown)
+	e.commandRegistry.RegisterFunc("page-up", PageUp)
+	e.commandRegistry.RegisterFunc("page-down", PageDown)
+	e.commandRegistry.RegisterFunc("toggle-truncate-lines", ToggleLineWrap)
+	e.commandRegistry.RegisterFunc("debug-info", ShowDebugInfo)
+}
+
+func (e *Editor) registerBufferCommands() {
+	// Register buffer commands as M-x interactive functions
+	e.commandRegistry.RegisterFunc("switch-to-buffer", SwitchToBufferInteractive)
+	e.commandRegistry.RegisterFunc("list-buffers", ListBuffersInteractive)
+	e.commandRegistry.RegisterFunc("kill-buffer", KillBufferInteractive)
+	
+	// Set up keybindings for buffer functions
+	e.keyBindings.BindKeySequence("C-x b", SwitchToBufferInteractive)
+	e.keyBindings.BindKeySequence("C-x C-b", ListBuffersInteractive)
+	e.keyBindings.BindKeySequence("C-x k", KillBufferInteractive)
+}
+
+func (e *Editor) registerWindowCommands() {
+	// Register window commands as M-x interactive functions
+	e.commandRegistry.RegisterFunc("split-window-right", SplitWindowRight)
+	e.commandRegistry.RegisterFunc("split-window-below", SplitWindowBelow)
+	e.commandRegistry.RegisterFunc("other-window", OtherWindow)
+	e.commandRegistry.RegisterFunc("delete-window", DeleteWindow)
+	e.commandRegistry.RegisterFunc("delete-other-windows", DeleteOtherWindows)
+	
+	// Set up keybindings for window functions
+	e.keyBindings.BindKeySequence("C-x 3", SplitWindowRight)
+	e.keyBindings.BindKeySequence("C-x 2", SplitWindowBelow)
+	e.keyBindings.BindKeySequence("C-x o", OtherWindow)
+	e.keyBindings.BindKeySequence("C-x 0", DeleteWindow)
+	e.keyBindings.BindKeySequence("C-x 1", DeleteOtherWindows)
+}
 
 // Cleanup closes any resources when the editor is shutting down
 func (e *Editor) Cleanup() {
@@ -139,7 +188,6 @@ func (e *Editor) LocalBindKey(modeName, sequence, command string) error {
 		keyBindings := majorMode.KeyBindings()
 		if keyBindings != nil {
 			keyBindings.BindKeySequence(sequence, cmdFunc)
-			log.Info("Bound key %s to %s in major mode %s", sequence, command, modeName)
 			return nil
 		}
 	}
@@ -149,7 +197,6 @@ func (e *Editor) LocalBindKey(modeName, sequence, command string) error {
 		keyBindings := minorMode.KeyBindings()
 		if keyBindings != nil {
 			keyBindings.BindKeySequence(sequence, cmdFunc)
-			log.Info("Bound key %s to %s in minor mode %s", sequence, command, modeName)
 			return nil
 		}
 	}
@@ -171,7 +218,6 @@ func (e *Editor) RegisterCommand(name string, fn func() error) error {
 // SetOption implements option setting
 func (e *Editor) SetOption(name string, value interface{}) error {
 	e.options[name] = value
-	log.Info("Set option %s = %v", name, value)
 	return nil
 }
 
@@ -187,14 +233,12 @@ func (e *Editor) GetOption(name string) (interface{}, error) {
 // RegisterMajorMode implements major mode registration
 func (e *Editor) RegisterMajorMode(name string, config map[string]interface{}) error {
 	// TODO: Implement dynamic major mode registration
-	log.Info("Major mode registration not yet implemented: %s", name)
 	return nil
 }
 
 // RegisterMinorMode implements minor mode registration
 func (e *Editor) RegisterMinorMode(name string, config map[string]interface{}) error {
 	// TODO: Implement dynamic minor mode registration
-	log.Info("Minor mode registration not yet implemented: %s", name)
 	return nil
 }
 
@@ -252,10 +296,9 @@ func (e *Editor) HandleEvent(event events.Event) {
 	case events.ResizeEventData:
 		e.handleResizeEvent(ev)
 	case events.QuitEventData:
-		log.Info("Quit event received")
 		e.running = false
 	default:
-		log.Warn("Unknown event type: %T", event)
+		// Unknown event type
 	}
 }
 
@@ -266,7 +309,6 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	
 	// If we have a continuing sequence, always handle it first
 	if continuing {
-		log.Info("Key sequence in progress")
 		return
 	}
 	
@@ -274,32 +316,13 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	if matched {
 		// Special commands that should always execute immediately
 		if event.Ctrl && event.Key == "g" { // C-g (KeyboardQuit)
-			log.Info("Keyboard quit command, executing immediately")
-			err := cmd(e)
-			if err != nil {
-				log.Error("Keyboard quit command failed: %v", err)
-			}
+			cmd(e)
 			return
 		}
 		
-		// Check if this is likely a multi-key sequence command (like C-x C-c)
-		// by seeing if the command is different from basic editing commands
-		// For now, we'll use a simple heuristic: if minibuffer is active and 
-		// this is a single Ctrl+key that could be editing, defer to minibuffer
-		if e.minibuffer.IsActive() && e.isSingleKeyEditCommand(event) {
-			// Try minibuffer input handling first
-			handled := e.handleMinibufferInput(event)
-			if handled {
-				return
-			}
-		}
-		
 		// Execute the matched command
-		log.Info("Key sequence matched, executing command")
-		err := cmd(e)
-		if err != nil {
-			log.Error("Key sequence command failed: %v", err)
-		}
+		// Key sequences always take priority over minibuffer input
+		cmd(e)
 		return
 	}
 	
@@ -334,24 +357,19 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 	// Check for any remaining key bindings through the unified system
 	// (single keys and raw sequences that weren't caught by sequence processing)
 	if cmd, found := e.keyBindings.LookupSequence(event.Key); found {
-		err := cmd(e)
-		if err != nil {
-			log.Error("Key sequence command failed: %v", err)
-		}
+		cmd(e)
 		return
 	}
 	
 	// Regular text input
 	buffer := e.CurrentBuffer()
 	if buffer == nil {
-		log.Warn("No current buffer for key event")
 		return
 	}
 	
 	if event.Rune != 0 && !event.Ctrl && !event.Meta {
 		if event.Key == "Enter" || event.Key == "Return" {
 			buffer.InsertChar('\n')
-			log.Info("SCROLL_TIMING: Text inserted (newline), calling EnsureCursorVisible at cursor (%d,%d)", buffer.Cursor().Row, buffer.Cursor().Col)
 			
 			// Check for auto-a-mode and add 'a' if enabled
 			e.processMinorModeHooks(buffer, "newline")
@@ -359,18 +377,14 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 			EnsureCursorVisible(e)
 		} else {
 			buffer.InsertChar(event.Rune)
-			log.Info("SCROLL_TIMING: Text inserted (char %c), calling EnsureCursorVisible at cursor (%d,%d)", event.Rune, buffer.Cursor().Row, buffer.Cursor().Col)
 			EnsureCursorVisible(e)
 		}
 	}
 }
 
 func (e *Editor) handleResizeEvent(event events.ResizeEventData) {
-	log.Info("Window resize: %dx%d", event.Width, event.Height)
 	if e.layout != nil {
 		e.layout.Resize(event.Width, event.Height)
-	} else {
-		log.Warn("No layout for resize event")
 	}
 }
 
@@ -396,31 +410,14 @@ func (e *Editor) GetKeySequenceInProgress() string {
 	return FormatSequence(sequence)
 }
 
-// isSingleKeyEditCommand checks if this is a single-key editing command that should be handled by minibuffer
-func (e *Editor) isSingleKeyEditCommand(event events.KeyEventData) bool {
-	if !event.Ctrl {
-		return false
-	}
-	
-	// These are single-key editing commands that should be handled by minibuffer when active
-	editKeys := []string{"h", "d", "f", "b", "a", "e"}
-	for _, key := range editKeys {
-		if event.Key == key {
-			return true
-		}
-	}
-	return false
-}
 
 
 func (e *Editor) handleMinibufferInput(event events.KeyEventData) bool {
 	switch e.minibuffer.Mode() {
 	case MinibufferCommand:
-		e.handleCommandInput(event)
-		return true
+		return e.handleMinibufferAsBuffer(event, e.executeMinibufferCommand)
 	case MinibufferFile:
-		e.handleFileInput(event)
-		return true
+		return e.handleMinibufferAsBuffer(event, e.executeFileOpen)
 	case MinibufferBufferSelection:
 		e.HandleBufferSelectionInput(event)
 		return true
@@ -432,120 +429,126 @@ func (e *Editor) handleMinibufferInput(event events.KeyEventData) bool {
 	return false
 }
 
-func (e *Editor) registerCursorCommands() {
-	// Register cursor movement commands as M-x interactive functions
-	e.commandRegistry.RegisterFunc("forward-char", ForwardChar)
-	e.commandRegistry.RegisterFunc("backward-char", BackwardChar)
-	e.commandRegistry.RegisterFunc("next-line", NextLine)
-	e.commandRegistry.RegisterFunc("previous-line", PreviousLine)
-	e.commandRegistry.RegisterFunc("beginning-of-line", BeginningOfLine)
-	e.commandRegistry.RegisterFunc("end-of-line", EndOfLine)
-}
-
-func (e *Editor) registerScrollCommands() {
-	// Register scrolling commands as M-x interactive functions
-	e.commandRegistry.RegisterFunc("scroll-up", ScrollUp)
-	e.commandRegistry.RegisterFunc("scroll-down", ScrollDown)
-	e.commandRegistry.RegisterFunc("scroll-left", ScrollLeftChar)
-	e.commandRegistry.RegisterFunc("scroll-right", ScrollRightChar)
-	e.commandRegistry.RegisterFunc("toggle-truncate-lines", ToggleLineWrap)
-	e.commandRegistry.RegisterFunc("page-up", PageUp)
-	e.commandRegistry.RegisterFunc("page-down", PageDown)
-	e.commandRegistry.RegisterFunc("debug-info", ShowDebugInfo)
-}
-
-func (e *Editor) registerBufferCommands() {
-	// Register buffer commands as M-x interactive functions
-	e.commandRegistry.RegisterFunc("switch-to-buffer", SwitchToBufferInteractive)
-	e.commandRegistry.RegisterFunc("list-buffers", ListBuffersInteractive)
-	e.commandRegistry.RegisterFunc("kill-buffer", KillBufferInteractive)
-	
-	// Set up keybindings for buffer functions
-	e.keyBindings.BindKeySequence("C-x b", SwitchToBufferInteractive)
-	e.keyBindings.BindKeySequence("C-x C-b", ListBuffersInteractive)
-	e.keyBindings.BindKeySequence("C-x k", KillBufferInteractive)
-}
-
-func (e *Editor) registerWindowCommands() {
-	// Register window commands as M-x interactive functions
-	e.commandRegistry.RegisterFunc("split-window-right", SplitWindowRight)
-	e.commandRegistry.RegisterFunc("split-window-below", SplitWindowBelow)
-	e.commandRegistry.RegisterFunc("other-window", OtherWindow)
-	e.commandRegistry.RegisterFunc("delete-window", DeleteWindow)
-	e.commandRegistry.RegisterFunc("delete-other-windows", DeleteOtherWindows)
-	
-	// Set up keybindings for window functions
-	e.keyBindings.BindKeySequence("C-x 3", SplitWindowRight)
-	e.keyBindings.BindKeySequence("C-x 2", SplitWindowBelow)
-	e.keyBindings.BindKeySequence("C-x o", OtherWindow)
-	e.keyBindings.BindKeySequence("C-x 0", DeleteWindow)
-	e.keyBindings.BindKeySequence("C-x 1", DeleteOtherWindows)
-}
-
-func (e *Editor) handleCommandInput(event events.KeyEventData) {
-	// Handle Enter - execute command
+// handleMinibufferAsBuffer treats minibuffer like a regular buffer, using unified commands
+func (e *Editor) handleMinibufferAsBuffer(event events.KeyEventData, onEnter func()) bool {
+	// Handle Enter - execute the completion action
 	if event.Key == "Enter" || event.Key == "Return" {
-		commandName := e.minibuffer.Content()
-		log.Info("Executing command: %s", commandName)
-		
-		if cmd, exists := e.commandRegistry.Get(commandName); exists {
-			// Clear command input first
-			e.minibuffer.Clear()
-			
-			// Execute command (command can set its own message)
-			err := cmd.Execute(e)
-			if err != nil {
-				log.Error("Command execution failed: %v", err)
-				e.minibuffer.SetMessage("Command failed: " + err.Error())
-			}
-		} else {
-			log.Warn("Unknown command: %s", commandName)
-			e.minibuffer.SetMessage("Unknown command: " + commandName)
-		}
-		return
+		onEnter()
+		return true
 	}
 	
-	// Handle Escape - cancel command
+	// Handle Escape - cancel
 	if event.Key == "\x1b" || event.Key == "Escape" {
 		e.minibuffer.Clear()
-		return
+		return true
 	}
 	
-	// Handle Ctrl commands in minibuffer
+	// Handle Backspace as delete-backward-char
+	if event.Key == "Backspace" || event.Key == "\x7f" {
+		e.executeCommandOnMinibuffer("delete-backward-char")
+		return true
+	}
+	
+	// Handle Ctrl commands using the unified command system
 	if event.Ctrl {
 		switch event.Key {
 		case "h":
-			e.minibuffer.DeleteBackward()
-			return
+			e.executeCommandOnMinibuffer("delete-backward-char")
+			return true
 		case "d":
-			e.minibuffer.DeleteForward()
-			return
+			e.executeCommandOnMinibuffer("delete-forward-char")
+			return true
 		case "f":
-			e.minibuffer.MoveCursorForward()
-			return
+			e.executeCommandOnMinibuffer("forward-char")
+			return true
 		case "b":
-			e.minibuffer.MoveCursorBackward()
-			return
+			e.executeCommandOnMinibuffer("backward-char")
+			return true
 		case "a":
-			e.minibuffer.MoveCursorToBeginning()
-			return
+			e.executeCommandOnMinibuffer("beginning-of-line")
+			return true
 		case "e":
-			e.minibuffer.MoveCursorToEnd()
-			return
+			e.executeCommandOnMinibuffer("end-of-line")
+			return true
 		}
-	}
-	
-	// Handle Backspace
-	if event.Key == "Backspace" || event.Key == "\x7f" {
-		e.minibuffer.DeleteBackward()
-		return
 	}
 	
 	// Handle normal character input
 	if event.Rune != 0 && !event.Ctrl && !event.Meta {
-		e.minibuffer.InsertChar(event.Rune)
+		e.executeCommandOnMinibuffer("self-insert-command", event.Rune)
+		return true
+	}
+	
+	return false
+}
+
+// executeCommandOnMinibuffer executes a command in the context of the minibuffer
+func (e *Editor) executeCommandOnMinibuffer(commandName string, rune ...rune) {
+	// Handle special minibuffer-specific commands first
+	switch commandName {
+	case "delete-backward-char":
+		e.minibuffer.DeleteBackward()
+	case "delete-forward-char":
+		e.minibuffer.DeleteForward()
+	case "forward-char":
+		e.minibuffer.MoveCursorForward()
+	case "backward-char":
+		e.minibuffer.MoveCursorBackward()
+	case "beginning-of-line":
+		e.minibuffer.MoveCursorToBeginning()
+	case "end-of-line":
+		e.minibuffer.MoveCursorToEnd()
+	case "self-insert-command":
+		if len(rune) > 0 {
+			e.minibuffer.InsertChar(rune[0])
+		}
+	default:
+		// Try to execute as a regular command if it exists
+		if cmd, exists := e.commandRegistry.Get(commandName); exists {
+			// Execute command - this allows minibuffer to use same commands as main buffer
+			cmd.Execute(e)
+		}
 	}
 }
+
+// executeMinibufferCommand handles M-x command execution
+func (e *Editor) executeMinibufferCommand() {
+	commandName := e.minibuffer.Content()
+	
+	if cmd, exists := e.commandRegistry.Get(commandName); exists {
+		// Clear command input first
+		e.minibuffer.Clear()
+		
+		// Execute command (command can set its own message)
+		err := cmd.Execute(e)
+		if err != nil {
+			e.minibuffer.SetMessage("Command failed: " + err.Error())
+		}
+	} else {
+		e.minibuffer.SetMessage("Unknown command: " + commandName)
+	}
+}
+
+// executeFileOpen handles C-x C-f file opening
+func (e *Editor) executeFileOpen() {
+	filepath := e.minibuffer.Content()
+	
+	// Try to load the file
+	buffer, err := NewBufferFromFile(filepath)
+	if err != nil {
+		e.minibuffer.SetMessage("Cannot open file: " + filepath)
+	} else {
+		// Add buffer to editor and switch to it
+		e.AddBuffer(buffer)
+		e.SwitchToBuffer(buffer)
+		e.minibuffer.SetMessage("Opened: " + filepath)
+	}
+}
+
+
+
+
+
 
 // AddBuffer adds a new buffer to the editor
 func (e *Editor) AddBuffer(buffer *Buffer) {
@@ -554,13 +557,8 @@ func (e *Editor) AddBuffer(buffer *Buffer) {
 	// Auto-detect and set major mode for new buffer
 	if buffer.MajorMode() == nil {
 		mode, err := e.modeManager.AutoDetectMajorMode(buffer)
-		if err != nil {
-			log.Error("Failed to auto-detect major mode: %v", err)
-		} else {
-			err = e.modeManager.SetMajorMode(buffer, mode.Name())
-			if err != nil {
-				log.Error("Failed to set major mode: %v", err)
-			}
+		if err == nil {
+			e.modeManager.SetMajorMode(buffer, mode.Name())
 		}
 	}
 }
@@ -570,7 +568,6 @@ func (e *Editor) SwitchToBuffer(buffer *Buffer) {
 	window := e.CurrentWindow()
 	if window != nil {
 		window.SetBuffer(buffer)
-		log.Info("Switched to buffer: %s", buffer.Name())
 	}
 }
 
@@ -584,68 +581,6 @@ func (e *Editor) FindBuffer(name string) *Buffer {
 	return nil
 }
 
-// handleFileInput handles file path input for C-x C-f
-func (e *Editor) handleFileInput(event events.KeyEventData) {
-	// Handle Enter - open file
-	if event.Key == "Enter" || event.Key == "Return" {
-		filepath := e.minibuffer.Content()
-		log.Info("Opening file: %s", filepath)
-		
-		// Try to load the file
-		buffer, err := NewBufferFromFile(filepath)
-		if err != nil {
-			log.Error("Failed to open file %s: %v", filepath, err)
-			e.minibuffer.SetMessage("Cannot open file: " + filepath)
-		} else {
-			// Add buffer to editor and switch to it
-			e.AddBuffer(buffer)
-			e.SwitchToBuffer(buffer)
-			e.minibuffer.SetMessage("Opened: " + filepath)
-		}
-		return
-	}
-	
-	// Handle Escape - cancel file input
-	if event.Key == "\x1b" || event.Key == "Escape" {
-		e.minibuffer.Clear()
-		return
-	}
-	
-	// Handle Ctrl commands in minibuffer
-	if event.Ctrl {
-		switch event.Key {
-		case "h":
-			e.minibuffer.DeleteBackward()
-			return
-		case "d":
-			e.minibuffer.DeleteForward()
-			return
-		case "f":
-			e.minibuffer.MoveCursorForward()
-			return
-		case "b":
-			e.minibuffer.MoveCursorBackward()
-			return
-		case "a":
-			e.minibuffer.MoveCursorToBeginning()
-			return
-		case "e":
-			e.minibuffer.MoveCursorToEnd()
-			return
-		}
-	}
-	
-	// Handle Backspace
-	if event.Key == "Backspace" || event.Key == "\x7f" {
-		e.minibuffer.DeleteBackward()
-		return
-	}
-	
-	// Handle normal character input
-	if event.Rune != 0 && !event.Ctrl && !event.Meta {
-		e.minibuffer.InsertChar(event.Rune)
-	}
-}
 
 // ModeManager returns the mode manager
 func (e *Editor) ModeManager() *ModeManager {

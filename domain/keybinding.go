@@ -223,6 +223,34 @@ func (kbm *KeyBindingMap) GetCurrentSequence() []KeyPress {
 	return kbm.currentSequence
 }
 
+// HasKeySequenceBinding checks if a key sequence binding exists
+func (kbm *KeyBindingMap) HasKeySequenceBinding(keySequence string) (CommandFunc, bool) {
+	sequence := parseKeySequence(keySequence)
+	
+	for _, binding := range kbm.sequenceBindings {
+		if kbm.sequencesEqual(binding.Sequence, sequence) {
+			return binding.Command, true
+		}
+	}
+	return nil, false
+}
+
+// sequencesEqual checks if two key sequences are equal
+func (kbm *KeyBindingMap) sequencesEqual(seq1, seq2 []KeyPress) bool {
+	if len(seq1) != len(seq2) {
+		return false
+	}
+	
+	for i, press := range seq1 {
+		if press.Key != seq2[i].Key || 
+		   press.Ctrl != seq2[i].Ctrl || 
+		   press.Meta != seq2[i].Meta {
+			return false
+		}
+	}
+	return true
+}
+
 // FormatSequence formats a key sequence as a display string
 func FormatSequence(sequence []KeyPress) string {
 	if len(sequence) == 0 {
