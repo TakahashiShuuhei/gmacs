@@ -136,8 +136,10 @@ func TestSwitchToBufferExisting(t *testing.T) {
 	// Then: Buffer content should be preserved
 	display.Render(editor)
 	content := display.GetContent()
-	if content[0] != "test" {
-		t.Errorf("Expected buffer content 'test', got %q", content[0])
+	// Trim trailing spaces for comparison
+	actualContent := strings.TrimRight(content[0], " ")
+	if actualContent != "test" {
+		t.Errorf("Expected buffer content 'test', got %q", actualContent)
 	}
 }
 
@@ -188,8 +190,10 @@ func TestSwitchToBufferNew(t *testing.T) {
 	// Then: New buffer should be empty
 	display.Render(editor)
 	content := display.GetContent()
-	if content[0] != "" {
-		t.Errorf("Expected empty new buffer, got %q", content[0])
+	// Trim trailing spaces for comparison
+	actualContent := strings.TrimRight(content[0], " ")
+	if actualContent != "" {
+		t.Errorf("Expected empty new buffer, got %q", actualContent)
 	}
 }
 

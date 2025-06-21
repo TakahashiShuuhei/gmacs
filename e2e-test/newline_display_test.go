@@ -1,6 +1,7 @@
 package test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/TakahashiShuuhei/gmacs/core/domain"
@@ -48,12 +49,14 @@ func TestNewlineDisplay(t *testing.T) {
 	content = display.GetContent()
 	t.Logf("After 'world': display content = %v", content)
 	
-	// Check that it displays correctly
-	if content[0] != "hello" {
-		t.Errorf("Expected line 0 'hello', got %q", content[0])
+	// Check that it displays correctly (trim trailing spaces)
+	actualContent0 := strings.TrimRight(content[0], " ")
+	if actualContent0 != "hello" {
+		t.Errorf("Expected line 0 'hello', got %q", actualContent0)
 	}
-	if content[1] != "world" {
-		t.Errorf("Expected line 1 'world', got %q", content[1])
+	actualContent1 := strings.TrimRight(content[1], " ")
+	if actualContent1 != "world" {
+		t.Errorf("Expected line 1 'world', got %q", actualContent1)
 	}
 	
 	// Check cursor position

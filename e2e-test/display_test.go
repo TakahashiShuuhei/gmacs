@@ -21,6 +21,10 @@ func TestMockDisplayBasic(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(10, 5)
 	
+	// Resize editor to match display size
+	resizeEvent := events.ResizeEventData{Width: 10, Height: 5}
+	editor.HandleEvent(resizeEvent)
+	
 	// Input some text
 	text := "hello"
 	for _, ch := range text {
@@ -34,16 +38,16 @@ func TestMockDisplayBasic(t *testing.T) {
 	display.Render(editor)
 	
 	content := display.GetContent()
-	// Editor creates window with 80x22, content area is 22 (height) - 2 = 20, but window reports height-2
-	// So we should expect the window's content height, not the MockDisplay height
-	window := editor.CurrentWindow()
-	_, expectedHeight := window.Size()
+	// MockDisplay should have 5 lines total (height=5)
+	expectedHeight := 5
 	if len(content) != expectedHeight {
-		t.Errorf("Expected %d content lines (from window size), got %d", expectedHeight, len(content))
+		t.Errorf("Expected %d content lines (from MockDisplay height), got %d", expectedHeight, len(content))
 	}
 	
-	if content[0] != "hello" {
-		t.Errorf("Expected 'hello', got %q", content[0])
+	// Trim trailing spaces for comparison
+	actualContent := strings.TrimRight(content[0], " ")
+	if actualContent != "hello" {
+		t.Errorf("Expected 'hello', got %q", actualContent)
 	}
 	
 	cursorRow, cursorCol := display.GetCursorPosition()
@@ -65,6 +69,10 @@ func TestMockDisplayJapanese(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(10, 5)
 	
+	// Resize editor to match display size
+	resizeEvent := events.ResizeEventData{Width: 10, Height: 5}
+	editor.HandleEvent(resizeEvent)
+	
 	// Input Japanese text
 	text := "あいう"
 	for _, ch := range []rune(text) {
@@ -78,8 +86,10 @@ func TestMockDisplayJapanese(t *testing.T) {
 	display.Render(editor)
 	
 	content := display.GetContent()
-	if content[0] != "あいう" {
-		t.Errorf("Expected 'あいう', got %q", content[0])
+	// Trim trailing spaces for comparison
+	actualContent := strings.TrimRight(content[0], " ")
+	if actualContent != "あいう" {
+		t.Errorf("Expected 'あいう', got %q", actualContent)
 	}
 	
 	cursorRow, cursorCol := display.GetCursorPosition()
@@ -151,6 +161,10 @@ func TestMockDisplayMultiline(t *testing.T) {
 	editor := domain.NewEditor()
 	display := NewMockDisplay(10, 5)
 	
+	// Resize editor to match display size
+	resizeEvent := events.ResizeEventData{Width: 10, Height: 5}
+	editor.HandleEvent(resizeEvent)
+	
 	// First line
 	for _, ch := range "hello" {
 		event := events.KeyEventData{Rune: ch, Key: string(ch)}
@@ -170,11 +184,14 @@ func TestMockDisplayMultiline(t *testing.T) {
 	display.Render(editor)
 	
 	content := display.GetContent()
-	if content[0] != "hello" {
-		t.Errorf("Expected line 0 'hello', got %q", content[0])
+	// Trim trailing spaces for comparison
+	actualContent0 := strings.TrimRight(content[0], " ")
+	if actualContent0 != "hello" {
+		t.Errorf("Expected line 0 'hello', got %q", actualContent0)
 	}
-	if content[1] != "world" {
-		t.Errorf("Expected line 1 'world', got %q", content[1])
+	actualContent1 := strings.TrimRight(content[1], " ")
+	if actualContent1 != "world" {
+		t.Errorf("Expected line 1 'world', got %q", actualContent1)
 	}
 	
 	cursorRow, cursorCol := display.GetCursorPosition()

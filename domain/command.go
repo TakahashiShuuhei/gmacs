@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"sort"
 	"strings"
 	"github.com/TakahashiShuuhei/gmacs/core/log"
 )
@@ -136,5 +137,6 @@ func (cr *CommandRegistry) List() []string {
 	for name := range cr.commands {
 		names = append(names, name)
 	}
+	sort.Strings(names) // Sort alphabetically for consistent order
 	return names
 }

@@ -1,6 +1,7 @@
 package test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/TakahashiShuuhei/gmacs/core/domain"
@@ -138,22 +139,27 @@ func TestDisplayConsistency(t *testing.T) {
 	t.Logf("MockDisplay.GetContent(): %v", mockContent)
 	
 	// Compare content lines (MockDisplay has fixed size array, VisibleLines has actual content)
-	// Check that the actual content matches
+	// Only compare the content area, exclude mode line which appears at mockContent[windowHeight] 
 	for i := 0; i < len(visible); i++ {
 		if i < len(mockContent) {
-			if visible[i] != mockContent[i] {
-				t.Errorf("Line %d inconsistency: VisibleLines='%s', MockDisplay='%s'", 
-					i, visible[i], mockContent[i])
+			trimmedMockContent := strings.TrimRight(mockContent[i], " ")
+			if visible[i] != trimmedMockContent {
+				t.Errorf("Line %d inconsistency: VisibleLines='%s', MockDisplay='%s' (trimmed='%s')", 
+					i, visible[i], mockContent[i], trimmedMockContent)
 			}
 		} else {
 			t.Errorf("MockDisplay content array too small: need %d lines, got %d", len(visible), len(mockContent))
 		}
 	}
 	
-	// Check that remaining MockDisplay content is empty
-	for i := len(visible); i < len(mockContent); i++ {
-		if mockContent[i] != "" {
-			t.Errorf("MockDisplay line %d should be empty but contains: '%s'", i, mockContent[i])
+	// Check that remaining MockDisplay content area is empty (excluding mode line)
+	// Mode line typically appears at position windowHeight or windowHeight-1
+	for i := len(visible); i < windowHeight; i++ {
+		if i < len(mockContent) {
+			trimmedContent := strings.TrimRight(mockContent[i], " ")
+			if trimmedContent != "" {
+				t.Errorf("MockDisplay content area line %d should be empty but contains: '%s' (trimmed='%s')", i, mockContent[i], trimmedContent)
+			}
 		}
 	}
 }

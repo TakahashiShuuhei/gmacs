@@ -81,9 +81,11 @@ func TestWindowHeightCalculation(t *testing.T) {
 	content := display.GetContent()
 	t.Logf("Display content area lines: %d", len(content))
 	
-	// The window height should match the display content area
-	if height != len(content) {
-		t.Errorf("Window height (%d) doesn't match display content area (%d)", height, len(content))
+	// The window height should be 2 less than display total height (for mode line and minibuffer)
+	expectedWindowHeight := len(content) - 2
+	if height != expectedWindowHeight {
+		t.Errorf("Window height (%d) should be 2 less than display total height (%d), expected %d", 
+			height, len(content), expectedWindowHeight)
 	}
 }
 

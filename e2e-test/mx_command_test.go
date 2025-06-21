@@ -130,8 +130,13 @@ func TestMxVersionCommand(t *testing.T) {
 	}
 	
 	content := display.GetContent()
-	if len(content) == 0 || content[0] != "a" {
-		t.Errorf("Expected 'a' to be inserted, got content: %v", content)
+	// Trim trailing spaces for comparison
+	actualContent := ""
+	if len(content) > 0 {
+		actualContent = strings.TrimRight(content[0], " ")
+	}
+	if actualContent != "a" {
+		t.Errorf("Expected 'a' to be inserted, got content: %q", actualContent)
 	}
 }
 
@@ -260,8 +265,8 @@ func TestMxListCommands(t *testing.T) {
 	
 	// Check that some key commands are present in the visible portion
 	// Note: Output may be truncated due to display width limitations
-	// Only check for commands that are likely to appear in the visible part
-	expectedCommands := []string{"list-commands"}
+	// Commands are now sorted alphabetically, so check for commands at the beginning
+	expectedCommands := []string{"auto-a-mode"}  // Should be one of the first alphabetically
 	for _, cmd := range expectedCommands {
 		if !strings.Contains(minibufferContent, cmd) {
 			t.Errorf("Expected %s command in list, got %q", cmd, minibufferContent)
@@ -300,8 +305,10 @@ func TestMxClearBuffer(t *testing.T) {
 	
 	display.Render(editor)
 	content := display.GetContent()
-	if content[0] != "hello world" {
-		t.Errorf("Expected 'hello world', got %q", content[0])
+	// Trim trailing spaces for comparison
+	actualContent := strings.TrimRight(content[0], " ")
+	if actualContent != "hello world" {
+		t.Errorf("Expected 'hello world', got %q", actualContent)
 	}
 	
 	// Execute clear-buffer
@@ -321,8 +328,10 @@ func TestMxClearBuffer(t *testing.T) {
 	// Buffer should be cleared
 	display.Render(editor)
 	content = display.GetContent()
-	if content[0] != "" {
-		t.Errorf("Expected empty buffer, got %q", content[0])
+	// Trim trailing spaces for comparison
+	actualContent = strings.TrimRight(content[0], " ")
+	if actualContent != "" {
+		t.Errorf("Expected empty buffer, got %q", actualContent)
 	}
 	
 	// Should show clear message

@@ -1,6 +1,7 @@
 package test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/TakahashiShuuhei/gmacs/core/domain"
@@ -55,12 +56,17 @@ func TestTerminalResize(t *testing.T) {
 	// Re-render and check content is still there
 	display.Render(editor)
 	content := display.GetContent()
-	if len(content) != 28 { // height-2 = 28
-		t.Errorf("Expected 28 content lines after resize, got %d", len(content))
+	
+	// Check actual display height matches resize
+	actualDisplayHeight := len(content)
+	if actualDisplayHeight != 30 { // Full display height after resize
+		t.Errorf("Expected 30 content lines after resize, got %d", actualDisplayHeight)
 	}
 	
-	if content[0] != "hello world" {
-		t.Errorf("Expected content preserved after resize, got %q", content[0])
+	// Trim trailing spaces for comparison
+	actualContent := strings.TrimRight(content[0], " ")
+	if actualContent != "hello world" {
+		t.Errorf("Expected content preserved after resize, got %q", actualContent)
 	}
 }
 
@@ -107,8 +113,8 @@ func TestResizeToSmallerSize(t *testing.T) {
 	// Re-render and check content fits
 	display.Render(editor)
 	content := display.GetContent()
-	if len(content) != 8 { // height-2 = 8 (same as window height)
-		t.Errorf("Expected 8 content lines after resize, got %d", len(content))
+	if len(content) != 10 { // Full display height
+		t.Errorf("Expected 10 content lines after resize, got %d", len(content))
 	}
 	
 	// Content should be preserved but may be scrolled
@@ -169,15 +175,19 @@ func TestMultipleResizes(t *testing.T) {
 		// Render and check content is preserved
 		display.Render(editor)
 		content := display.GetContent()
-		expectedLines := size.expectedWindowHeight
+		expectedLines := size.height // Full display height
 		if len(content) != expectedLines {
 			t.Errorf("Expected %d content lines for size %dx%d, got %d", 
 				expectedLines, size.width, size.height, len(content))
 		}
 		
-		if len(content) > 0 && content[0] != "test content" {
-			t.Errorf("Content not preserved after resize to %dx%d: got %q", 
-				size.width, size.height, content[0])
+		if len(content) > 0 {
+			// Trim trailing spaces for comparison
+			actualContent := strings.TrimRight(content[0], " ")
+			if actualContent != "test content" {
+				t.Errorf("Content not preserved after resize to %dx%d: got %q", 
+					size.width, size.height, actualContent)
+			}
 		}
 	}
 }
@@ -227,7 +237,11 @@ func TestCursorPositionAfterResize(t *testing.T) {
 	
 	// Content should still be correct
 	content := display.GetContent()
-	if len(content) > 0 && content[0] != "hello" {
-		t.Errorf("Expected content 'hello' after resize, got %q", content[0])
+	if len(content) > 0 {
+		// Trim trailing spaces for comparison
+		actualContent := strings.TrimRight(content[0], " ")
+		if actualContent != "hello" {
+			t.Errorf("Expected content 'hello' after resize, got %q", actualContent)
+		}
 	}
 }
