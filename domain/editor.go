@@ -42,7 +42,7 @@ func NewEditor() *Editor {
 	editor := newEditorWithConfig(EditorConfig{})
 	
 	// Register built-in commands directly for backward compatibility
-	editor.registerBuiltinCommands()
+	editor.RegisterBuiltinCommands()
 	
 	return editor
 }
@@ -87,13 +87,23 @@ func newEditorWithConfig(config EditorConfig) *Editor {
 	return editor
 }
 
-// registerBuiltinCommands registers all built-in editor commands for backward compatibility
-func (e *Editor) registerBuiltinCommands() {
+// RegisterBuiltinCommands registers all built-in editor commands for backward compatibility
+func (e *Editor) RegisterBuiltinCommands() {
+	e.registerCoreCommands()
 	e.registerCursorCommands()
 	e.registerScrollCommands()
 	e.registerBufferCommands()
 	e.registerWindowCommands()
 	e.registerMinorModeCommands()
+}
+
+func (e *Editor) registerCoreCommands() {
+	// Register core system commands
+	e.commandRegistry.RegisterFunc("quit", Quit)
+	e.commandRegistry.RegisterFunc("keyboard-quit", KeyboardQuit)
+	e.commandRegistry.RegisterFunc("find-file", FindFile)
+	e.commandRegistry.RegisterFunc("delete-backward-char", DeleteBackwardChar)
+	e.commandRegistry.RegisterFunc("delete-char", DeleteChar)
 }
 
 func (e *Editor) registerCursorCommands() {
@@ -121,11 +131,6 @@ func (e *Editor) registerBufferCommands() {
 	e.commandRegistry.RegisterFunc("switch-to-buffer", SwitchToBufferInteractive)
 	e.commandRegistry.RegisterFunc("list-buffers", ListBuffersInteractive)
 	e.commandRegistry.RegisterFunc("kill-buffer", KillBufferInteractive)
-	
-	// Set up keybindings for buffer functions (for backward compatibility)
-	e.keyBindings.BindKeySequence("C-x b", SwitchToBufferInteractive)
-	e.keyBindings.BindKeySequence("C-x C-b", ListBuffersInteractive)
-	e.keyBindings.BindKeySequence("C-x k", KillBufferInteractive)
 }
 
 func (e *Editor) registerWindowCommands() {
@@ -135,13 +140,6 @@ func (e *Editor) registerWindowCommands() {
 	e.commandRegistry.RegisterFunc("other-window", OtherWindow)
 	e.commandRegistry.RegisterFunc("delete-window", DeleteWindow)
 	e.commandRegistry.RegisterFunc("delete-other-windows", DeleteOtherWindows)
-	
-	// Set up keybindings for window functions (for backward compatibility)
-	e.keyBindings.BindKeySequence("C-x 3", SplitWindowRight)
-	e.keyBindings.BindKeySequence("C-x 2", SplitWindowBelow)
-	e.keyBindings.BindKeySequence("C-x o", OtherWindow)
-	e.keyBindings.BindKeySequence("C-x 0", DeleteWindow)
-	e.keyBindings.BindKeySequence("C-x 1", DeleteOtherWindows)
 }
 
 // Cleanup closes any resources when the editor is shutting down

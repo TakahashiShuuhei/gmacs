@@ -17,7 +17,7 @@ import (
  * @implementation domain/minibuffer.go, DeleteForward関数
  */
 func TestMinibufferDeleteForward(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// M-x を実行
 	event1 := events.KeyEventData{Key: "\x1b"} // Escape for Meta
@@ -70,7 +70,7 @@ func TestMinibufferDeleteForward(t *testing.T) {
  * @implementation domain/minibuffer.go, カーソル移動関数
  */
 func TestMinibufferCursorMovement(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// M-x を実行
 	event1 := events.KeyEventData{Key: "\x1b"} // Escape for Meta
@@ -140,7 +140,7 @@ func TestMinibufferCursorMovement(t *testing.T) {
  * @implementation domain/minibuffer.go, ファイル入力モード編集
  */
 func TestMinibufferFileInputEdit(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// C-x C-f を実行
 	event1 := events.KeyEventData{Key: "x", Ctrl: true}
@@ -209,7 +209,7 @@ func TestMinibufferFileInputEdit(t *testing.T) {
  * @implementation domain/minibuffer.go, UTF-8対応編集
  */
 func TestMinibufferJapaneseEdit(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// M-x を実行
 	event1 := events.KeyEventData{Key: "\x1b"} // Escape for Meta
@@ -270,7 +270,7 @@ func TestMinibufferJapaneseEdit(t *testing.T) {
  * @implementation domain/minibuffer.go, 境界チェック
  */
 func TestMinibufferEditBoundaryConditions(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// M-x を実行
 	event1 := events.KeyEventData{Key: "\x1b"} // Escape for Meta

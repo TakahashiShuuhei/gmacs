@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -18,7 +17,7 @@ import (
  * @implementation domain/window_layout.go, cli/display.go
  */
 func TestVerticalSplitDisplay(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 10)
 	
 	// Setup terminal size
@@ -135,7 +134,7 @@ func TestVerticalSplitDisplay(t *testing.T) {
  * @implementation cli/display.go, renderWindowBorders
  */
 func TestWindowBorderPositioning(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 10)
 	
 	// Setup terminal size
@@ -221,7 +220,7 @@ func TestWindowBorderPositioning(t *testing.T) {
  * @implementation domain/window.go, cli/display.go
  */
 func TestContentBorderOverlap(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(60, 8) // Smaller terminal to make issues more apparent
 	
 	// Setup terminal size
