@@ -32,7 +32,7 @@ type MajorMode interface {
 	Name() string
 	FilePattern() *regexp.Regexp
 	KeyBindings() *KeyBindingMap
-	Commands() map[string]Command
+	Commands() map[string]*Command
 	IndentFunction() IndentFunc
 	SyntaxHighlighting() SyntaxHighlighter
 	Initialize(buffer *Buffer) error
@@ -44,7 +44,7 @@ type MajorMode interface {
 type MinorMode interface {
 	Name() string
 	KeyBindings() *KeyBindingMap
-	Commands() map[string]Command
+	Commands() map[string]*Command
 	Enable(buffer *Buffer) error
 	Disable(buffer *Buffer) error
 	IsEnabled(buffer *Buffer) bool
@@ -185,6 +185,9 @@ func (mm *ModeManager) registerDefaultModes() {
 	
 	// Register text mode
 	mm.RegisterMajorMode(NewTextMode())
+	
+	// Register minor modes
+	mm.RegisterMinorMode(NewAutoAMode())
 }
 
 // ModeError represents an error in mode operations

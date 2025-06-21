@@ -8,7 +8,7 @@ import (
 type FundamentalMode struct {
 	name        string
 	keyBindings *KeyBindingMap
-	commands    map[string]Command
+	commands    map[string]*Command
 }
 
 // NewFundamentalMode creates a new fundamental mode instance
@@ -16,7 +16,7 @@ func NewFundamentalMode() *FundamentalMode {
 	mode := &FundamentalMode{
 		name:        "fundamental-mode",
 		keyBindings: NewEmptyKeyBindingMap(),
-		commands:    make(map[string]Command),
+		commands:    make(map[string]*Command),
 	}
 	
 	// Register basic commands
@@ -44,7 +44,7 @@ func (fm *FundamentalMode) KeyBindings() *KeyBindingMap {
 }
 
 // Commands returns the commands for this mode
-func (fm *FundamentalMode) Commands() map[string]Command {
+func (fm *FundamentalMode) Commands() map[string]*Command {
 	return fm.commands
 }
 

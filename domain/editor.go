@@ -46,6 +46,9 @@ func NewEditor() *Editor {
 	// Register window commands as interactive functions
 	editor.registerWindowCommands()
 	
+	// Register minor mode commands
+	editor.registerMinorModeCommands()
+	
 	// Initialize buffer with fundamental mode
 	err := editor.modeManager.SetMajorMode(buffer, "fundamental-mode")
 	if err != nil {
@@ -186,6 +189,10 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 		if event.Key == "Enter" || event.Key == "Return" {
 			buffer.InsertChar('\n')
 			log.Info("SCROLL_TIMING: Text inserted (newline), calling EnsureCursorVisible at cursor (%d,%d)", buffer.Cursor().Row, buffer.Cursor().Col)
+			
+			// Check for auto-a-mode and add 'a' if enabled
+			e.processMinorModeHooks(buffer, "newline")
+			
 			EnsureCursorVisible(e)
 		} else {
 			buffer.InsertChar(event.Rune)
@@ -480,4 +487,40 @@ func (e *Editor) handleFileInput(event events.KeyEventData) {
 // ModeManager returns the mode manager
 func (e *Editor) ModeManager() *ModeManager {
 	return e.modeManager
+}
+
+func (e *Editor) registerMinorModeCommands() {
+	// Register auto-a-mode command
+	e.commandRegistry.RegisterFunc("auto-a-mode", func(editor *Editor) error {
+		buffer := editor.CurrentBuffer()
+		if buffer == nil {
+			return &ModeError{Message: "No current buffer"}
+		}
+		
+		// Check if already enabled
+		modeManager := editor.ModeManager()
+		autoAMode := modeManager.minorModes["auto-a-mode"]
+		if autoAMode == nil {
+			return &ModeError{Message: "auto-a-mode not available"}
+		}
+		
+		if autoAMode.IsEnabled(buffer) {
+			editor.SetMinibufferMessage("Auto-A mode disabled")
+		} else {
+			editor.SetMinibufferMessage("Auto-A mode enabled")
+		}
+		
+		return modeManager.ToggleMinorMode(buffer, "auto-a-mode")
+	})
+}
+
+func (e *Editor) processMinorModeHooks(buffer *Buffer, event string) {
+	// Process minor mode hooks for specific events
+	minorModes := buffer.MinorModes()
+	
+	for _, mode := range minorModes {
+		if autoAMode, ok := mode.(*AutoAMode); ok && event == "newline" {
+			autoAMode.ProcessNewline(buffer)
+		}
+	}
 }

@@ -234,12 +234,26 @@ func (d *Display) renderWindowModeLine(node *domain.WindowLayoutNode) {
 	// Position cursor at the mode line position for this window
 	d.MoveCursor(modeLineRow, node.X)
 	
-	// Create mode line content with major mode
+	// Create mode line content with major mode and minor modes
 	majorModeName := "Fundamental"
 	if buffer.MajorMode() != nil {
 		majorModeName = buffer.MajorMode().Name()
 	}
-	modeLine := fmt.Sprintf(" %s (%s) ", buffer.Name(), majorModeName)
+	
+	// Add minor modes
+	minorModeNames := ""
+	minorModes := buffer.MinorModes()
+	if len(minorModes) > 0 {
+		for i, mode := range minorModes {
+			if i > 0 {
+				minorModeNames += " "
+			}
+			minorModeNames += mode.Name()
+		}
+		minorModeNames = " [" + minorModeNames + "]"
+	}
+	
+	modeLine := fmt.Sprintf(" %s (%s)%s ", buffer.Name(), majorModeName, minorModeNames)
 	modeLineWidth := util.StringWidth(modeLine)
 	
 	// Calculate padding to fill window width

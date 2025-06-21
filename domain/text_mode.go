@@ -8,7 +8,7 @@ import (
 type TextMode struct {
 	name        string
 	keyBindings *KeyBindingMap
-	commands    map[string]Command
+	commands    map[string]*Command
 	filePattern *regexp.Regexp
 }
 
@@ -17,7 +17,7 @@ func NewTextMode() *TextMode {
 	mode := &TextMode{
 		name:        "text-mode",
 		keyBindings: NewEmptyKeyBindingMap(),
-		commands:    make(map[string]Command),
+		commands:    make(map[string]*Command),
 		filePattern: regexp.MustCompile(`\.(txt|text|md|markdown|org)$`),
 	}
 	
@@ -46,7 +46,7 @@ func (tm *TextMode) KeyBindings() *KeyBindingMap {
 }
 
 // Commands returns the commands for this mode
-func (tm *TextMode) Commands() map[string]Command {
+func (tm *TextMode) Commands() map[string]*Command {
 	return tm.commands
 }
 
