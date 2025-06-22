@@ -16,6 +16,62 @@ type HookManager interface {
 	TriggerHook(event string, args ...interface{})
 }
 
+// PluginManagerInterface for plugin management
+type PluginManagerInterface interface {
+	LoadPlugin(name string) error
+	UnloadPlugin(name string) error
+	GetPlugin(name string) (PluginInterface, bool)
+	ListPlugins() []PluginInfo
+	Shutdown() error
+}
+
+// PluginInterface represents a loaded plugin
+type PluginInterface interface {
+	Name() string
+	Version() string
+	Description() string
+	GetCommands() []CommandSpec
+	GetMajorModes() []MajorModeSpec
+	GetMinorModes() []MinorModeSpec
+	GetKeyBindings() []KeyBindingSpec
+}
+
+// Plugin-related data structures
+type CommandSpec struct {
+	Name        string
+	Description string
+	Interactive bool
+	Handler     string
+}
+
+type MajorModeSpec struct {
+	Name         string
+	Extensions   []string
+	Description  string
+	KeyBindings  []KeyBindingSpec
+}
+
+type MinorModeSpec struct {
+	Name        string
+	Description string
+	Global      bool
+	KeyBindings []KeyBindingSpec
+}
+
+type KeyBindingSpec struct {
+	Sequence string
+	Command  string
+	Mode     string
+}
+
+type PluginInfo struct {
+	Name        string
+	Version     string
+	Description string
+	State       int
+	Enabled     bool
+}
+
 type Editor struct {
 	buffers         []*Buffer
 	layout          *WindowLayout
@@ -29,12 +85,14 @@ type Editor struct {
 	configLoader    ConfigLoader
 	hookManager     HookManager
 	options         map[string]interface{}
+	pluginManager   PluginManagerInterface // プラグインマネージャー
 }
 
 // EditorConfig holds configuration options for editor initialization
 type EditorConfig struct {
-	ConfigLoader ConfigLoader // Optional Lua config loader
-	HookManager  HookManager  // Optional hook manager
+	ConfigLoader  ConfigLoader            // Optional Lua config loader
+	HookManager   HookManager             // Optional hook manager
+	PluginManager PluginManagerInterface  // Optional plugin manager
 }
 
 // NewEditor creates a new editor with default configuration
@@ -74,6 +132,7 @@ func newEditorWithConfig(config EditorConfig) *Editor {
 		configLoader:    config.ConfigLoader,
 		hookManager:     config.HookManager,
 		options:         make(map[string]interface{}),
+		pluginManager:   config.PluginManager,
 	}
 
 	// Built-in commands are now registered via Lua configuration
@@ -147,6 +206,11 @@ func (e *Editor) Cleanup() {
 	if e.configLoader != nil {
 		e.configLoader.Close()
 		e.configLoader = nil
+	}
+	
+	if e.pluginManager != nil {
+		e.pluginManager.Shutdown()
+		e.pluginManager = nil
 	}
 }
 
@@ -451,6 +515,54 @@ func (e *Editor) FindBuffer(name string) *Buffer {
 // ModeManager returns the mode manager
 func (e *Editor) ModeManager() *ModeManager {
 	return e.modeManager
+}
+
+// PluginManager returns the plugin manager
+func (e *Editor) PluginManager() PluginManagerInterface {
+	return e.pluginManager
+}
+
+// SetPluginManager sets the plugin manager
+func (e *Editor) SetPluginManager(pm PluginManagerInterface) {
+	e.pluginManager = pm
+}
+
+// RegisterPluginCommands registers all commands from a loaded plugin
+func (e *Editor) RegisterPluginCommands(plugin PluginInterface) error {
+	commands := plugin.GetCommands()
+	
+	for _, cmdSpec := range commands {
+		// Convert plugin command handler string to actual command function
+		cmdFunc := func(editor *Editor) error {
+			// Here we would call the plugin's command handler
+			// For now, we'll create a placeholder that shows the command info
+			message := "Plugin command: " + cmdSpec.Name + " from " + plugin.Name()
+			editor.SetMinibufferMessage(message)
+			return nil
+		}
+		
+		// Register the command in the editor's command registry
+		e.commandRegistry.RegisterFunc(cmdSpec.Name, cmdFunc)
+	}
+	
+	return nil
+}
+
+// UnregisterPluginCommands removes all commands from an unloaded plugin
+func (e *Editor) UnregisterPluginCommands(plugin PluginInterface) error {
+	commands := plugin.GetCommands()
+	
+	for _, cmdSpec := range commands {
+		// Remove the command from the registry
+		delete(e.commandRegistry.commands, cmdSpec.Name)
+	}
+	
+	return nil
+}
+
+// CommandRegistry returns the command registry (for plugin integration)
+func (e *Editor) CommandRegistry() *CommandRegistry {
+	return e.commandRegistry
 }
 
 func (e *Editor) registerMinorModeCommands() {
