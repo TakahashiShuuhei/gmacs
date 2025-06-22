@@ -58,6 +58,13 @@ func (api *APIBindings) RegisterGmacsAPI() error {
 	L.SetField(gmacsTable, "list_plugins", L.NewFunction(api.luaListPlugins))
 	L.SetField(gmacsTable, "plugin_loaded", L.NewFunction(api.luaPluginLoaded))
 	
+	// Plugin configuration functions
+	L.SetField(gmacsTable, "setup_plugin", L.NewFunction(api.luaSetupPlugin))
+	L.SetField(gmacsTable, "enable_plugin", L.NewFunction(api.luaEnablePlugin))
+	L.SetField(gmacsTable, "disable_plugin", L.NewFunction(api.luaDisablePlugin))
+	L.SetField(gmacsTable, "get_plugin_config", L.NewFunction(api.luaGetPluginConfig))
+	L.SetField(gmacsTable, "set_plugin_config", L.NewFunction(api.luaSetPluginConfig))
+	
 	// Register all built-in commands
 	api.registerBuiltinCommands()
 	
@@ -456,6 +463,183 @@ func (api *APIBindings) luaPluginLoaded(L *lua.LState) int {
 	return 1
 }
 
+// Plugin configuration Lua functions
+
+// luaSetupPlugin implements gmacs.setup_plugin(name, config)
+func (api *APIBindings) luaSetupPlugin(L *lua.LState) int {
+	pluginName := L.CheckString(1)
+	configTable := L.CheckTable(2)
+	
+	pluginManager := api.editor.PluginManager()
+	if pluginManager == nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("Plugin manager not available"))
+		return 2
+	}
+	
+	// Convert Lua table to Go map
+	config := make(map[string]interface{})
+	configTable.ForEach(func(key, value lua.LValue) {
+		if keyStr, ok := key.(lua.LString); ok {
+			config[string(keyStr)] = luaValueToGo(value)
+		}
+	})
+	
+	// Set plugin configuration (first try to get plugin manager adapter)
+	if pm, ok := pluginManager.(interface{ SetPluginConfig(string, map[string]interface{}) error }); ok {
+		err := pm.SetPluginConfig(pluginName, config)
+		if err != nil {
+			log.Error("Lua: Failed to setup plugin %s: %v", pluginName, err)
+			L.Push(lua.LBool(false))
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+	} else {
+		log.Warn("Lua: Plugin manager does not support configuration")
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("Plugin configuration not supported"))
+		return 2
+	}
+	
+	log.Info("Lua: Successfully configured plugin %s", pluginName)
+	L.Push(lua.LBool(true))
+	return 1
+}
+
+// luaEnablePlugin implements gmacs.enable_plugin(name)
+func (api *APIBindings) luaEnablePlugin(L *lua.LState) int {
+	pluginName := L.CheckString(1)
+	
+	pluginManager := api.editor.PluginManager()
+	if pluginManager == nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("Plugin manager not available"))
+		return 2
+	}
+	
+	// Check if plugin is already loaded
+	_, found := pluginManager.GetPlugin(pluginName)
+	if found {
+		log.Info("Lua: Plugin %s is already enabled", pluginName)
+		L.Push(lua.LBool(true))
+		return 1
+	}
+	
+	// Try to load the plugin
+	err := pluginManager.LoadPlugin(pluginName)
+	if err != nil {
+		log.Error("Lua: Failed to enable plugin %s: %v", pluginName, err)
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+	
+	log.Info("Lua: Successfully enabled plugin %s", pluginName)
+	L.Push(lua.LBool(true))
+	return 1
+}
+
+// luaDisablePlugin implements gmacs.disable_plugin(name)
+func (api *APIBindings) luaDisablePlugin(L *lua.LState) int {
+	pluginName := L.CheckString(1)
+	
+	pluginManager := api.editor.PluginManager()
+	if pluginManager == nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("Plugin manager not available"))
+		return 2
+	}
+	
+	// Check if plugin is loaded
+	_, found := pluginManager.GetPlugin(pluginName)
+	if !found {
+		log.Info("Lua: Plugin %s is already disabled", pluginName)
+		L.Push(lua.LBool(true))
+		return 1
+	}
+	
+	// Try to unload the plugin
+	err := pluginManager.UnloadPlugin(pluginName)
+	if err != nil {
+		log.Error("Lua: Failed to disable plugin %s: %v", pluginName, err)
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+	
+	log.Info("Lua: Successfully disabled plugin %s", pluginName)
+	L.Push(lua.LBool(true))
+	return 1
+}
+
+// luaGetPluginConfig implements gmacs.get_plugin_config(name)
+func (api *APIBindings) luaGetPluginConfig(L *lua.LState) int {
+	pluginName := L.CheckString(1)
+	
+	pluginManager := api.editor.PluginManager()
+	if pluginManager == nil {
+		L.Push(lua.LNil)
+		return 1
+	}
+	
+	// Get plugin configuration
+	if pm, ok := pluginManager.(interface{ GetPluginConfig(string) (map[string]interface{}, error) }); ok {
+		config, err := pm.GetPluginConfig(pluginName)
+		if err != nil {
+			log.Error("Lua: Failed to get plugin config for %s: %v", pluginName, err)
+			L.Push(lua.LNil)
+			return 1
+		}
+		
+		// Convert Go map to Lua table
+		configTable := L.NewTable()
+		for key, value := range config {
+			L.SetField(configTable, key, goValueToLua(L, value))
+		}
+		
+		L.Push(configTable)
+		return 1
+	}
+	
+	log.Warn("Lua: Plugin manager does not support configuration retrieval")
+	L.Push(lua.LNil)
+	return 1
+}
+
+// luaSetPluginConfig implements gmacs.set_plugin_config(name, key, value)
+func (api *APIBindings) luaSetPluginConfig(L *lua.LState) int {
+	pluginName := L.CheckString(1)
+	key := L.CheckString(2)
+	value := L.Get(3)
+	
+	pluginManager := api.editor.PluginManager()
+	if pluginManager == nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("Plugin manager not available"))
+		return 2
+	}
+	
+	// Set single configuration value
+	if pm, ok := pluginManager.(interface{ SetPluginConfigValue(string, string, interface{}) error }); ok {
+		err := pm.SetPluginConfigValue(pluginName, key, luaValueToGo(value))
+		if err != nil {
+			log.Error("Lua: Failed to set plugin config %s.%s: %v", pluginName, key, err)
+			L.Push(lua.LBool(false))
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
+		
+		log.Info("Lua: Successfully set plugin config %s.%s", pluginName, key)
+		L.Push(lua.LBool(true))
+		return 1
+	}
+	
+	log.Warn("Lua: Plugin manager does not support configuration")
+	L.Push(lua.LBool(false))
+	L.Push(lua.LString("Plugin configuration not supported"))
+	return 2
+}
+
 // Helper functions for type conversion
 
 func luaValueToGo(value lua.LValue) interface{} {
@@ -490,6 +674,12 @@ func goValueToLua(L *lua.LState, value interface{}) lua.LValue {
 		return lua.LNumber(v)
 	case bool:
 		return lua.LBool(v)
+	case map[string]interface{}:
+		table := L.NewTable()
+		for key, val := range v {
+			L.SetField(table, key, goValueToLua(L, val))
+		}
+		return table
 	default:
 		return lua.LNil
 	}

@@ -222,3 +222,57 @@ end
 		t.Fatalf("Failed to load test config: %v", err)
 	}
 }
+
+func TestPluginConfigurationAPI(t *testing.T) {
+	// エディタを作成（プラグインマネージャー付き）
+	configLoader := luaconfig.NewConfigLoader()
+	defer configLoader.Close()
+	
+	editor := CreateEditorWithPlugins(configLoader, nil)
+	
+	// APIバインディングを設定
+	vm := configLoader.GetVM()
+	apiBindings := luaconfig.NewAPIBindings(editor, vm)
+	err := apiBindings.RegisterGmacsAPI()
+	if err != nil {
+		t.Fatalf("Failed to register Lua API: %v", err)
+	}
+	
+	// 一時ファイルでプラグイン設定APIをテスト
+	tempDir := t.TempDir()
+	testConfigPath := filepath.Join(tempDir, "config_test.lua")
+	testConfig := `
+-- Test plugin configuration API
+-- Note: These test the API syntax, actual plugin loading would require real plugins
+
+-- Test setup_plugin with configuration table
+local config_result = gmacs.setup_plugin("test-plugin", {
+    theme = "dark",
+    line_numbers = true,
+    auto_save = false,
+    indent_size = 4
+})
+
+-- Test enable/disable (these will fail since plugin doesn't exist, but API should work)
+local enable_result = gmacs.enable_plugin("test-plugin")
+local disable_result = gmacs.disable_plugin("test-plugin")
+
+-- Test configuration retrieval
+local config = gmacs.get_plugin_config("test-plugin")
+
+-- Test single configuration value setting
+local set_result = gmacs.set_plugin_config("test-plugin", "theme", "light")
+
+gmacs.message("Plugin configuration API test completed")
+`
+	err = os.WriteFile(testConfigPath, []byte(testConfig), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test config: %v", err)
+	}
+	
+	// テスト設定をロード（エラーは出るが、API構文のテストとして有効）
+	err = configLoader.LoadConfig(testConfigPath)
+	if err != nil {
+		t.Fatalf("Failed to load test config: %v", err)
+	}
+}

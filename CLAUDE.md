@@ -12,6 +12,8 @@ core/
 ├── domain/     # ドメインロジック（Buffer、Window、Editor）
 ├── events/     # イベントシステム
 ├── cli/        # CLI インターフェース（Display、Terminal）
+├── lua-config/ # Lua設定システム（デフォルト設定、プラグインAPI）
+├── plugin/     # プラグインシステム（マネージャー、ホストAPI）
 ├── e2e-test/   # E2E テスト（BDD形式、日本語アノテーション）
 ├── util/       # ユーティリティ関数
 ├── log/        # ログ機能
@@ -269,6 +271,57 @@ make dev         # ビルド + テスト + ドキュメント
 - `specs/features/*.feature` - 日本語Gherkin仕様書（手動編集）
 - `specs/test-docs.md` - テストから抽出した日本語ドキュメント（自動生成）
 
+## プラグインシステム
+
+### 概要
+gmacs は HashiCorp の go-plugin ライブラリを使用した包括的なプラグインシステムを実装しています。プラグインは独立したプロセスとして実行され、gRPC/NetRPC を通じてホストと通信します。
+
+### 設定ファイル
+#### **システム組み込み設定例**
+- `lua-config/plugins_example.lua` - API使用例とテスト用サンプル
+
+#### **ユーザー設定ファイル** (XDG準拠)
+- `~/.config/gmacs/plugins.lua` (推奨)
+- `~/.gmacs/plugins.lua` (レガシー)
+
+### Lua プラグイン API
+```lua
+-- プラグイン管理
+gmacs.load_plugin("plugin-name")
+gmacs.unload_plugin("plugin-name")
+gmacs.enable_plugin("plugin-name")
+gmacs.disable_plugin("plugin-name")
+
+-- プラグイン設定
+gmacs.setup_plugin("plugin-name", {
+    theme = "dark",
+    line_numbers = true,
+    auto_save = false
+})
+
+-- 設定取得・変更
+local config = gmacs.get_plugin_config("plugin-name")
+gmacs.set_plugin_config("plugin-name", "key", "value")
+
+-- プラグイン情報
+local plugins = gmacs.list_plugins()
+local loaded = gmacs.plugin_loaded("plugin-name")
+```
+
+### キーバインディング
+- `C-c p l` - プラグイン一覧表示
+- `C-c p s` - サンプルプラグイン設定
+- `C-c p t` - プラグイン有効/無効切り替え
+- `C-c p c` - プラグイン設定表示
+
+### プラグインディレクトリ (XDG準拠)
+- `~/.local/share/gmacs/plugins/` (メイン)
+- `~/.gmacs/plugins/` (レガシー)
+- `/usr/local/share/gmacs/plugins/` (システム全体)
+
+### テスト分離
+E2Eテストは空のプラグインパスを使用し、システムにインストール済みのプラグインの影響を受けません。テスト用プラグイン環境は必要に応じて独立して構築できます。
+
 ## 参考情報
 
-このプロジェクトは GNU Emacs の動作を参考にしていますが、完全な互換性は目指していません。基本的な編集機能と Emacs らしい操作感の提供を目標としています。BDD仕様書により、機能の意図と実装の対応関係を明確に管理しています。
+このプロジェクトは GNU Emacs の動作を参考にしていますが、完全な互換性は目指していません。基本的な編集機能と Emacs らしい操作感、そして拡張可能なプラグインシステムの提供を目標としています。BDD仕様書により、機能の意図と実装の対応関係を明確に管理しています。

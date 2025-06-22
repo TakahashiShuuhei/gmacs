@@ -121,6 +121,21 @@ func (a *PluginManagerAdapter) Shutdown() error {
 	return a.pm.Shutdown()
 }
 
+// SetPluginConfig sets the configuration for a plugin
+func (a *PluginManagerAdapter) SetPluginConfig(name string, config map[string]interface{}) error {
+	return a.pm.SetPluginConfig(name, config)
+}
+
+// GetPluginConfig gets the configuration for a plugin
+func (a *PluginManagerAdapter) GetPluginConfig(name string) (map[string]interface{}, error) {
+	return a.pm.GetPluginConfig(name)
+}
+
+// SetPluginConfigValue sets a single configuration value for a plugin
+func (a *PluginManagerAdapter) SetPluginConfigValue(name string, key string, value interface{}) error {
+	return a.pm.SetPluginConfigValue(name, key, value)
+}
+
 // PluginAdapter はplugin.Pluginをdomain.PluginInterfaceに適合させる
 type PluginAdapter struct {
 	plugin Plugin

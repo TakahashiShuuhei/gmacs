@@ -139,6 +139,57 @@ func (pm *PluginManager) UnloadPlugin(name string) error {
 	return nil
 }
 
+// SetPluginConfig sets the configuration for a plugin
+func (pm *PluginManager) SetPluginConfig(name string, config map[string]interface{}) error {
+	pm.mutex.Lock()
+	defer pm.mutex.Unlock()
+
+	loadedPlugin, exists := pm.plugins[name]
+	if !exists {
+		return fmt.Errorf("plugin %s is not loaded", name)
+	}
+
+	// Update plugin configuration
+	for key, value := range config {
+		loadedPlugin.Config[key] = value
+	}
+
+	return nil
+}
+
+// GetPluginConfig gets the configuration for a plugin
+func (pm *PluginManager) GetPluginConfig(name string) (map[string]interface{}, error) {
+	pm.mutex.RLock()
+	defer pm.mutex.RUnlock()
+
+	loadedPlugin, exists := pm.plugins[name]
+	if !exists {
+		return nil, fmt.Errorf("plugin %s is not loaded", name)
+	}
+
+	// Return a copy of the configuration to prevent external modification
+	config := make(map[string]interface{})
+	for key, value := range loadedPlugin.Config {
+		config[key] = value
+	}
+
+	return config, nil
+}
+
+// SetPluginConfigValue sets a single configuration value for a plugin
+func (pm *PluginManager) SetPluginConfigValue(name string, key string, value interface{}) error {
+	pm.mutex.Lock()
+	defer pm.mutex.Unlock()
+
+	loadedPlugin, exists := pm.plugins[name]
+	if !exists {
+		return fmt.Errorf("plugin %s is not loaded", name)
+	}
+
+	loadedPlugin.Config[key] = value
+	return nil
+}
+
 // GetPlugin はロード済みプラグインを取得する
 func (pm *PluginManager) GetPlugin(name string) (Plugin, bool) {
 	pm.mutex.RLock()

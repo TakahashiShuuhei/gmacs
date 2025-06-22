@@ -1,5 +1,11 @@
--- gmacs Plugin Configuration
--- This file is loaded after init.lua and provides plugin management functionality
+-- gmacs Plugin Configuration Example
+-- 
+-- This is an EXAMPLE file demonstrating plugin configuration syntax.
+-- The actual plugin configuration should be placed in one of these locations:
+--   ~/.config/gmacs/plugins.lua  (XDG compliant)
+--   ~/.gmacs/plugins.lua         (legacy location)
+--
+-- This file is used for testing and as a reference for plugin API usage.
 
 -- Plugin configuration examples
 
@@ -87,8 +93,65 @@ gmacs.defun("list-plugins-interactive", function()
     end
 end)
 
+-- Enhanced plugin setup example
+gmacs.defun("setup-example-plugin", function()
+    -- Example of plugin configuration
+    local success = gmacs.setup_plugin("example-plugin", {
+        theme = "dark",
+        line_numbers = true,
+        auto_save = false,
+        indent_size = 4
+    })
+    
+    if success then
+        gmacs.message("Example plugin configured successfully")
+    else
+        gmacs.message("Failed to configure example plugin")
+    end
+end)
+
+-- Toggle plugin enabled/disabled state
+gmacs.defun("toggle-plugin", function()
+    local plugin_name = "example-plugin" -- This would be interactive in real usage
+    
+    if gmacs.plugin_loaded(plugin_name) then
+        local success = gmacs.disable_plugin(plugin_name)
+        if success then
+            gmacs.message("Plugin " .. plugin_name .. " disabled")
+        else
+            gmacs.message("Failed to disable plugin " .. plugin_name)
+        end
+    else
+        local success = gmacs.enable_plugin(plugin_name)
+        if success then
+            gmacs.message("Plugin " .. plugin_name .. " enabled")
+        else
+            gmacs.message("Failed to enable plugin " .. plugin_name)
+        end
+    end
+end)
+
+-- Get and display plugin configuration
+gmacs.defun("show-plugin-config", function()
+    local plugin_name = "example-plugin"
+    local config = gmacs.get_plugin_config(plugin_name)
+    
+    if config then
+        local message = "Plugin " .. plugin_name .. " configuration:"
+        for key, value in pairs(config) do
+            message = message .. "\n  " .. key .. " = " .. tostring(value)
+        end
+        gmacs.message(message)
+    else
+        gmacs.message("No configuration found for plugin " .. plugin_name)
+    end
+end)
+
 -- Bind plugin management commands to keys
 gmacs.bind_key("C-c p l", "list-plugins-interactive")
+gmacs.bind_key("C-c p s", "setup-example-plugin")
+gmacs.bind_key("C-c p t", "toggle-plugin")
+gmacs.bind_key("C-c p c", "show-plugin-config")
 
 -- Print startup message
 gmacs.message("Plugin configuration loaded")
