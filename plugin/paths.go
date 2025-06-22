@@ -25,6 +25,15 @@ func GetXDGConfigHome() string {
 	return filepath.Join(homeDir, ".config")
 }
 
+// GetXDGCacheHome returns XDG_CACHE_HOME or fallback to ~/.cache
+func GetXDGCacheHome() string {
+	if cacheHome := os.Getenv("XDG_CACHE_HOME"); cacheHome != "" {
+		return cacheHome
+	}
+	homeDir, _ := os.UserHomeDir()
+	return filepath.Join(homeDir, ".cache")
+}
+
 // GetDefaultPluginPaths returns default plugin search paths
 func GetDefaultPluginPaths() []string {
 	userDataDir := GetXDGDataHome()

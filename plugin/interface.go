@@ -216,7 +216,10 @@ type BuildSpec struct {
 
 // BuildCache はビルドキャッシュ情報
 type BuildCache struct {
-	Hash       string    // ソースコードハッシュ
-	BuildTime  time.Time // ビルド時刻
-	BinaryPath string    // ビルド済みバイナリパス
+	PluginName   string    // プラグイン名
+	Version      string    // バージョン
+	Hash         string    // ソースコードハッシュ
+	BuildTime    time.Time // ビルド時刻
+	BinaryPath   string    // ビルド済みバイナリパス
+	ManifestPath string    // manifest.jsonパス
 }

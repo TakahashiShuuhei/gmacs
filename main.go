@@ -23,6 +23,21 @@ func main() {
 	}
 	defer gmacslog.Close()
 
+	// Check for subcommands
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "plugin":
+			handlePluginCommand()
+			return
+		case "--help", "-h", "help":
+			showHelp()
+			return
+		case "--version", "-v", "version":
+			showVersion()
+			return
+		}
+	}
+
 	gmacslog.Info("gmacs starting up")
 
 	display := cli.NewDisplay()
@@ -192,4 +207,89 @@ func isTestMode() bool {
 	}
 	
 	return false
+}
+
+// handlePluginCommand handles plugin subcommands
+func handlePluginCommand() {
+	if len(os.Args) < 3 {
+		showPluginHelp()
+		return
+	}
+
+	cli, err := plugin.NewPluginCLI()
+	if err != nil {
+		gmacslog.Error("Failed to create plugin CLI: %v", err)
+		log.Fatal("Failed to create plugin CLI:", err)
+	}
+
+	subcommand := os.Args[2]
+	args := os.Args[3:]
+
+	switch subcommand {
+	case "install":
+		err = cli.InstallCommand(args)
+	case "update":
+		err = cli.UpdateCommand(args)
+	case "remove", "uninstall":
+		err = cli.RemoveCommand(args)
+	case "list":
+		err = cli.ListCommand(args)
+	case "info":
+		err = cli.InfoCommand(args)
+	case "help", "--help", "-h":
+		err = cli.HelpCommand(args)
+	default:
+		log.Printf("Unknown plugin command: %s\n", subcommand)
+		showPluginHelp()
+		os.Exit(1)
+	}
+
+	if err != nil {
+		gmacslog.Error("Plugin command failed: %v", err)
+		log.Fatal("Plugin command failed:", err)
+	}
+}
+
+// showPluginHelp shows plugin command help
+func showPluginHelp() {
+	log.Println("Usage: gmacs plugin <command> [args...]")
+	log.Println()
+	log.Println("Available commands:")
+	log.Println("  install <repo|path> [ref]  Install plugin from repository or local path")
+	log.Println("  update <name|repo> [ref]   Update installed plugin")
+	log.Println("  remove <name>              Remove installed plugin")
+	log.Println("  list                       List all installed plugins")
+	log.Println("  info <name>                Show detailed plugin information")
+	log.Println("  help                       Show this help message")
+	log.Println()
+	log.Println("Examples:")
+	log.Println("  gmacs plugin install github.com/user/my-plugin")
+	log.Println("  gmacs plugin install ./local-plugin")
+	log.Println("  gmacs plugin list")
+	log.Println("  gmacs plugin remove my-plugin")
+}
+
+// showHelp shows general gmacs help
+func showHelp() {
+	log.Println("gmacs - Emacs-like text editor written in Go")
+	log.Println()
+	log.Println("Usage:")
+	log.Println("  gmacs [file...]           Start the editor")
+	log.Println("  gmacs plugin <command>    Manage plugins")
+	log.Println("  gmacs --help              Show this help")
+	log.Println("  gmacs --version           Show version information")
+	log.Println()
+	log.Println("Plugin commands:")
+	log.Println("  gmacs plugin list         List installed plugins")
+	log.Println("  gmacs plugin install     Install a plugin")
+	log.Println("  gmacs plugin remove      Remove a plugin")
+	log.Println("  gmacs plugin help        Show plugin help")
+	log.Println()
+	log.Println("For more information, visit: https://github.com/TakahashiShuuhei/gmacs")
+}
+
+// showVersion shows version information
+func showVersion() {
+	log.Println("gmacs version 0.1.0")
+	log.Println("Go-based Emacs-like text editor with plugin support")
 }

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -220,6 +221,66 @@ func (pm *PluginManager) ListPlugins() []PluginInfo {
 	}
 
 	return plugins
+}
+
+// ListInstalledPlugins はディスクにインストールされているプラグインの一覧を返す（ロード状態に関係なく）
+func (pm *PluginManager) ListInstalledPlugins() []PluginInfo {
+	var plugins []PluginInfo
+	
+	// 各検索パスをスキャン
+	for _, searchPath := range pm.searchPaths {
+		if entries, err := os.ReadDir(searchPath); err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					pluginDir := filepath.Join(searchPath, entry.Name())
+					if IsPluginDir(pluginDir) {
+						// マニフェストを読み込んでプラグイン情報を取得
+						if manifest, err := pm.loadSimpleManifest(pluginDir); err == nil {
+							// ロード状態をチェック
+							pm.mutex.RLock()
+							loadedPlugin, isLoaded := pm.plugins[entry.Name()]
+							pm.mutex.RUnlock()
+							
+							state := PluginStateUnloaded
+							enabled := false
+							if isLoaded {
+								state = loadedPlugin.State
+								enabled = state == PluginStateLoaded
+							}
+							
+							plugins = append(plugins, PluginInfo{
+								Name:        manifest.Name,
+								Version:     manifest.Version,
+								Description: manifest.Description,
+								State:       state,
+								Enabled:     enabled,
+							})
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	return plugins
+}
+
+// loadSimpleManifest は軽量なマニフェスト読み込み（JSON解析なしの簡易版）
+func (pm *PluginManager) loadSimpleManifest(pluginDir string) (*PluginManifest, error) {
+	// TODO: 実際のJSON読み込み実装
+	// 現在は最小限のマニフェストを返す
+	pluginName := filepath.Base(pluginDir)
+	if strings.HasSuffix(pluginName, ".git") {
+		pluginName = strings.TrimSuffix(pluginName, ".git")
+	}
+	
+	return &PluginManifest{
+		Name:        pluginName,
+		Version:     "1.0.0",
+		Description: "Plugin installed from source",
+		Author:      "Unknown",
+		Binary:      pluginName,
+	}, nil
 }
 
 // Shutdown は全プラグインをアンロードする
