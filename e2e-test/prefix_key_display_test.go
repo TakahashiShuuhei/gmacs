@@ -17,7 +17,7 @@ import (
  * @implementation domain/keybinding.go, cli/display.go
  */
 func TestPrefixKeyDisplay(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// 初期状態ではキーシーケンス進行中でない
 	keySequence := editor.GetKeySequenceInProgress()
@@ -125,7 +125,7 @@ func TestKeySequenceFormat(t *testing.T) {
  * @implementation domain/editor.go, Escapeキー処理
  */
 func TestKeySequenceCancelDisplay(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// C-x を送信してキーシーケンス開始
 	event := events.KeyEventData{Key: "x", Ctrl: true}
@@ -158,7 +158,7 @@ func TestKeySequenceCancelDisplay(t *testing.T) {
  * @implementation domain/minibuffer.go, カーソル位置計算
  */
 func TestMinibufferCursorPositionAccuracy(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// M-x を実行
 	event1 := events.KeyEventData{Key: "\x1b"} // Escape for Meta

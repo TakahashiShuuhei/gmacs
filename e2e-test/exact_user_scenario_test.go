@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -18,7 +17,7 @@ import (
  */
 func TestExactUserScenario(t *testing.T) {
 	// Setup: Height 10 terminal (8 content + 1 mode + 1 mini)
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10) // Height 10 exactly as user specified
 	
 	// Simulate actual resize event like in real gmacs
@@ -147,7 +146,7 @@ func TestExactUserScenario(t *testing.T) {
  * @implementation domain/scroll.go, デバッグ情報出力
  */
 func TestUserScenarioStepByStep(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10)
 	
 	window := editor.CurrentWindow()

@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -17,7 +16,7 @@ import (
  * @implementation domain/buffer.go, domain/editor.go
  */
 func TestBasicTextInput(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	renderer := &TestRenderer{}
 	
 	testText := "Hello, World!"
@@ -52,7 +51,7 @@ func TestBasicTextInput(t *testing.T) {
  * @implementation domain/buffer.go, events/key_event.go
  */
 func TestEnterKeyNewline(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	renderer := &TestRenderer{}
 	
 	editor.HandleEvent(events.KeyEventData{Rune: 'H', Key: "H"})
@@ -87,7 +86,7 @@ func TestEnterKeyNewline(t *testing.T) {
  * @implementation domain/buffer.go, domain/editor.go
  */
 func TestMultilineTextInput(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	renderer := &TestRenderer{}
 	
 	testLines := []string{"First line", "Second line", "Third line"}
@@ -125,7 +124,7 @@ func TestMultilineTextInput(t *testing.T) {
  * @implementation domain/buffer.go, UTF-8処理
  */
 func TestJapaneseTextInput(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	renderer := &TestRenderer{}
 	
 	testText := "あいう"

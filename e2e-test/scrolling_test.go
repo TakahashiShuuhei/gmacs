@@ -17,7 +17,7 @@ import (
  * @implementation domain/window.go, domain/scroll.go
  */
 func TestVerticalScrolling(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10) // Small window for testing
 	
 	// Set window size to match display content area (height-2)
@@ -72,7 +72,7 @@ func TestVerticalScrolling(t *testing.T) {
  * @implementation domain/window.go, 水平スクロール
  */
 func TestHorizontalScrolling(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(10, 5) // Very narrow window
 	
 	// Set window size to match display content area (height-2)
@@ -126,7 +126,7 @@ func TestHorizontalScrolling(t *testing.T) {
  * @implementation domain/window.go, 行ラップ処理
  */
 func TestLineWrapping(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(10, 5) // Small window
 	
 	// Set window size to match display content area (height-2)
@@ -169,7 +169,7 @@ func TestLineWrapping(t *testing.T) {
  * @implementation domain/commands.go, domain/window.go
  */
 func TestToggleLineWrap(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 
 	window := editor.CurrentWindow()
 
@@ -209,7 +209,7 @@ func TestToggleLineWrap(t *testing.T) {
  * @implementation domain/commands.go, domain/window.go
  */
 func TestPageUpDown(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 
 	// Add many lines
 	for i := 0; i < 50; i++ {
@@ -259,7 +259,7 @@ func TestPageUpDown(t *testing.T) {
  * @implementation domain/commands.go, domain/window.go
  */
 func TestScrollCommands(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 
 	// Add some content
 	for i := 0; i < 30; i++ {

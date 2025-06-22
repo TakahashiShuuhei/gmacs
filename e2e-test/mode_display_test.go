@@ -18,7 +18,7 @@ import (
  */
 func TestMajorModeDisplay(t *testing.T) {
 	// エディタの作成
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 
 	// 基本バッファ（*scratch*）の確認
 	buffer := editor.CurrentBuffer()
@@ -57,7 +57,7 @@ func TestMajorModeDisplay(t *testing.T) {
  * @implementation domain/mode.go, domain/text_mode.go
  */
 func TestFileExtensionModeMapping(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	modeManager := editor.ModeManager()
 	
 	// テストケース: 拡張子とその期待されるモード
@@ -106,7 +106,7 @@ func TestFileExtensionModeMapping(t *testing.T) {
 func TestModeLineContent(t *testing.T) {
 	// この関数は実際のモードライン描画のテストのために将来実装される
 	// 現在はモックディスプレイの制限により、基本的な確認のみ
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// モードライン表示に必要な情報が取得できることを確認
@@ -139,7 +139,7 @@ func TestModeLineContent(t *testing.T) {
  * @implementation domain/mode.go, domain/buffer.go
  */
 func TestModeSwitch(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	modeManager := editor.ModeManager()
 	buffer := editor.CurrentBuffer()
 	

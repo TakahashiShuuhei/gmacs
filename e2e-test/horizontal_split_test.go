@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -18,7 +17,7 @@ import (
  * @implementation domain/window_layout.go, cli/display.go
  */
 func TestHorizontalSplitDisplay(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 10)
 	
 	// Setup terminal size
@@ -149,7 +148,7 @@ func TestHorizontalSplitDisplay(t *testing.T) {
  * @implementation cli/display.go, ボーダー描画ロジック
  */
 func TestHorizontalBorderAnalysis(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(60, 8) // Smaller for easier analysis
 	
 	// Setup terminal size

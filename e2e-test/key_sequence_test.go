@@ -52,7 +52,7 @@ func TestKeySequenceBinding(t *testing.T) {
 	}
 	
 	// コマンドを実行
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	err := cmd(editor)
 	if err != nil {
 		t.Errorf("Command execution failed: %v", err)
@@ -118,7 +118,7 @@ func TestKeySequenceReset(t *testing.T) {
  */
 func TestMultipleKeySequences(t *testing.T) {
 	// エディタを作成してそのキーバインディングマップを使用
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	quitExecuted := false
 	quitCommand := func(e *domain.Editor) error {

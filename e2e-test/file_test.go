@@ -29,7 +29,7 @@ func TestFindFileBasic(t *testing.T) {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 	
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// C-x C-f を実行
 	event1 := events.KeyEventData{Key: "x", Ctrl: true}
@@ -97,7 +97,7 @@ func TestFindFileBasic(t *testing.T) {
  * @implementation domain/editor.go, エラーハンドリング
  */
 func TestFindFileNonexistent(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	originalBuffer := editor.CurrentBuffer()
 	
 	// C-x C-f を実行
@@ -156,7 +156,7 @@ func TestFindFileEmpty(t *testing.T) {
 		t.Fatalf("Failed to create empty test file: %v", err)
 	}
 	
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// C-x C-f を実行
 	event1 := events.KeyEventData{Key: "x", Ctrl: true}
@@ -213,7 +213,7 @@ func TestFindFileEmpty(t *testing.T) {
  * @implementation domain/editor.go, キャンセル処理
  */
 func TestFindFileCancel(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	originalBuffer := editor.CurrentBuffer()
 	
 	// C-x C-f を実行
@@ -273,7 +273,7 @@ func TestFindFileJapanese(t *testing.T) {
 		t.Fatalf("Failed to create Japanese test file: %v", err)
 	}
 	
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// C-x C-f を実行
 	event1 := events.KeyEventData{Key: "x", Ctrl: true}

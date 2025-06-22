@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -17,7 +16,7 @@ import (
  * @implementation test/mock_display.go, ターミナル幅計算処理
  */
 func TestTerminalWidthIssue(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(20, 3)
 	
 	testCases := []struct {
@@ -36,7 +35,7 @@ func TestTerminalWidthIssue(t *testing.T) {
 	
 	for _, tc := range testCases {
 		// Reset editor
-		editor = domain.NewEditor()
+		editor = NewEditorWithDefaults()
 		
 		// Input text
 		for _, ch := range []rune(tc.input) {

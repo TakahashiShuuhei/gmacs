@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -18,7 +17,7 @@ import (
  * @implementation test/mock_display.go, 改行処理
  */
 func TestNewlineDisplay(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(20, 5)
 	
 	// Type "hello"
@@ -82,7 +81,7 @@ func TestNewlineDisplay(t *testing.T) {
  * @implementation domain/buffer.go, 複数行改行処理
  */
 func TestNewlineAtEndOfLine(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// Type "abc" + Enter + "def" + Enter + "ghi"
 	inputs := []struct {

@@ -18,7 +18,7 @@ import (
  */
 func TestAutoAModeBasic(t *testing.T) {
 	// エディタの作成
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	modeManager := editor.ModeManager()
 	
@@ -56,7 +56,7 @@ func TestAutoAModeBasic(t *testing.T) {
  */
 func TestAutoAModeNewlineEffect(t *testing.T) {
 	// エディタとバッファの準備
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	modeManager := editor.ModeManager()
 	
@@ -113,7 +113,7 @@ func TestAutoAModeNewlineEffect(t *testing.T) {
  */
 func TestAutoAModeToggle(t *testing.T) {
 	// エディタの準備
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	modeManager := editor.ModeManager()
 	
@@ -168,7 +168,7 @@ func TestAutoAModeToggle(t *testing.T) {
  */
 func TestMinorModeDisplayInModeLine(t *testing.T) {
 	// エディタとバッファの準備
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	modeManager := editor.ModeManager()
 	

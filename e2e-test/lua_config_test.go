@@ -87,7 +87,7 @@ func TestEditorWithoutConfig(t *testing.T) {
 	defer gmacslog.Close()
 
 	// Create editor without configuration
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	if editor == nil {
 		t.Fatal("Failed to create editor without config")
 	}

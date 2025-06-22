@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -20,7 +19,7 @@ import (
  */
 func TestActualDisplayIssue(t *testing.T) {
 	// Test the exact scenario user reported: a, enter, b, enter, c, enter, d, enter
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(120, 12) // Match user's 12-line terminal
 	
 	// Simulate actual resize event 
@@ -108,7 +107,7 @@ func TestActualDisplayIssue(t *testing.T) {
  */
 func TestDisplayConsistency(t *testing.T) {
 	// Test if MockDisplay and actual Display logic are consistent
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 10)
 	
 	resizeEvent := events.ResizeEventData{Width: 80, Height: 10}

@@ -18,7 +18,7 @@ import (
  * @implementation cli/display.go, MockDisplay比較
  */
 func TestModeLineVisibilityIssue(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 10)
 	
 	// Setup terminal size
@@ -145,7 +145,7 @@ func TestModeLineVisibilityIssue(t *testing.T) {
  * @implementation cli/display.go, レンダリング順序
  */
 func TestRenderOrderAnalysis(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// Setup terminal size
 	resizeEvent := events.ResizeEventData{Width: 60, Height: 8}

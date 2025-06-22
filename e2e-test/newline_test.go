@@ -17,7 +17,7 @@ import (
  * @implementation domain/buffer.go, events/key_event.go
  */
 func TestNewlineBasic(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// Initial state
@@ -78,7 +78,7 @@ func TestNewlineBasic(t *testing.T) {
  * @implementation domain/buffer.go, 行分割処理
  */
 func TestNewlineInMiddle(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// Type "hello world"
@@ -127,7 +127,7 @@ func TestNewlineInMiddle(t *testing.T) {
  * @implementation domain/buffer.go, 行挿入処理
  */
 func TestNewlineAtBeginning(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// Type "hello"
@@ -172,7 +172,7 @@ func TestNewlineAtBeginning(t *testing.T) {
  * @implementation domain/buffer.go, 複数行処理
  */
 func TestMultipleNewlines(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// Type "a", Enter, "b", Enter, "c"

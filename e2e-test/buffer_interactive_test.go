@@ -18,7 +18,7 @@ import (
  * @implementation domain/buffer_interactive.go, domain/editor.go
  */
 func TestSwitchToBufferBasic(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 5)
 	
 	// Create additional buffers
@@ -79,7 +79,7 @@ func TestSwitchToBufferBasic(t *testing.T) {
  * @implementation domain/buffer_interactive.go
  */
 func TestSwitchToBufferExisting(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 5)
 	
 	// Create test buffer
@@ -153,7 +153,7 @@ func TestSwitchToBufferExisting(t *testing.T) {
  * @implementation domain/buffer_interactive.go
  */
 func TestSwitchToBufferNew(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 5)
 	
 	initialBufferCount := len(editor.GetBufferNames())
@@ -207,7 +207,7 @@ func TestSwitchToBufferNew(t *testing.T) {
  * @implementation domain/buffer_interactive.go
  */
 func TestSwitchToBufferEmpty(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	originalBuffer := editor.CurrentBuffer()
 	originalBufferName := originalBuffer.Name()
@@ -245,7 +245,7 @@ func TestSwitchToBufferEmpty(t *testing.T) {
  * @implementation domain/buffer_interactive.go
  */
 func TestSwitchToBufferCancel(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	originalBuffer := editor.CurrentBuffer()
 	originalBufferName := originalBuffer.Name()
@@ -294,7 +294,7 @@ func TestSwitchToBufferCancel(t *testing.T) {
  * @implementation domain/buffer_interactive.go
  */
 func TestListBuffersBasic(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(200, 5) // Wide display for buffer list
 	
 	// Create additional buffers
@@ -355,7 +355,7 @@ func TestListBuffersBasic(t *testing.T) {
  * @implementation domain/buffer_interactive.go
  */
 func TestKillBufferBasic(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 5)
 	
 	// Create additional buffer and switch to it
@@ -411,7 +411,7 @@ func TestKillBufferBasic(t *testing.T) {
  * @implementation domain/buffer_interactive.go, エラー処理
  */
 func TestKillBufferLast(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 5)
 	
 	// Should only have *scratch* buffer initially
@@ -459,7 +459,7 @@ func TestKillBufferLast(t *testing.T) {
  * @implementation domain/buffer_interactive.go, 補完機能
  */
 func TestBufferTabCompletionSingle(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 5)
 	
 	// Create buffers with distinct prefixes
@@ -509,7 +509,7 @@ func TestBufferTabCompletionSingle(t *testing.T) {
  * @implementation domain/buffer_interactive.go, 補完機能
  */
 func TestBufferTabCompletionMultiple(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(200, 5) // Wide display for matches
 	
 	// Create buffers with common prefix
@@ -571,7 +571,7 @@ func TestBufferTabCompletionMultiple(t *testing.T) {
  * @implementation domain/buffer_interactive.go, M-xコマンドシステム
  */
 func TestBufferMxCommands(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(200, 5)
 	
 	// Create test buffer
@@ -646,7 +646,7 @@ func TestBufferMxCommands(t *testing.T) {
  * @implementation domain/buffer_interactive.go, ミニバッファ編集
  */
 func TestBufferMinibufferEditing(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// Start C-x b
 	ctrlXEvent := events.KeyEventData{Key: "x", Ctrl: true}

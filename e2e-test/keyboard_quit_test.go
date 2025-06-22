@@ -17,7 +17,7 @@ import (
  * @implementation domain/command.go, KeyboardQuit関数
  */
 func TestKeyboardQuitMxCommand(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// M-x を実行
 	event1 := events.KeyEventData{Key: "\x1b"} // Escape for Meta
@@ -68,7 +68,7 @@ func TestKeyboardQuitMxCommand(t *testing.T) {
  * @implementation domain/command.go, KeyboardQuit関数
  */
 func TestKeyboardQuitFindFile(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	originalBuffer := editor.CurrentBuffer()
 	
 	// C-x C-f を実行
@@ -126,7 +126,7 @@ func TestKeyboardQuitFindFile(t *testing.T) {
  * @implementation domain/command.go, KeyboardQuit関数
  */
 func TestKeyboardQuitKeySequence(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// C-x を押下（キーシーケンス開始）
 	event1 := events.KeyEventData{Key: "x", Ctrl: true}
@@ -167,7 +167,7 @@ func TestKeyboardQuitKeySequence(t *testing.T) {
  * @implementation domain/command.go, KeyboardQuit関数
  */
 func TestKeyboardQuitNormalMode(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	originalBuffer := editor.CurrentBuffer()
 	
 	// 通常状態でC-gを押す
@@ -201,7 +201,7 @@ func TestKeyboardQuitNormalMode(t *testing.T) {
  * @implementation domain/command.go, KeyboardQuit関数
  */
 func TestKeyboardQuitMessageClear(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// メッセージを表示
 	editor.SetMinibufferMessage("This is a test message")

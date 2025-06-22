@@ -3,12 +3,11 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
 func TestScrollTimingProblem(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10) // 10 total height -> 8 content lines (10-2)
 	
 	// Set window size to match display content area
@@ -61,7 +60,7 @@ func TestScrollTimingProblem(t *testing.T) {
 }
 
 func TestWindowHeightCalculation(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10)
 	
 	// Check default window size
@@ -90,7 +89,7 @@ func TestWindowHeightCalculation(t *testing.T) {
 }
 
 func TestScrollCondition(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 6) // Small display: 6 total -> 4 content lines
 	
 	window := editor.CurrentWindow()

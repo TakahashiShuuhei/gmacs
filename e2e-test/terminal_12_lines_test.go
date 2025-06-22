@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -18,7 +17,7 @@ import (
  */
 func TestTerminal12LinesScenario(t *testing.T) {
 	// Exact user scenario: 12-line terminal
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(120, 12) // 12 total height = 10 content + 1 mode + 1 mini
 	
 	// Simulate actual resize event 
@@ -139,7 +138,7 @@ func TestTerminal12LinesScenario(t *testing.T) {
  */
 func TestTerminal12LinesDebugSteps(t *testing.T) {
 	// Debug each step in detail
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(120, 12)
 	
 	resizeEvent := events.ResizeEventData{Width: 120, Height: 12}

@@ -8,7 +8,7 @@ import (
 )
 
 func TestSimpleAutoScroll(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	window := editor.CurrentWindow()
 	window.Resize(20, 3) // Very small window for testing
@@ -43,7 +43,7 @@ func TestSimpleAutoScroll(t *testing.T) {
 }
 
 func TestManualCursorMovement(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	window := editor.CurrentWindow()
 	window.Resize(20, 3)

@@ -17,7 +17,7 @@ import (
  */
 func TestMajorModeBasics(t *testing.T) {
 	// エディタの作成
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 
 	// 現在のバッファを取得
 	buffer := editor.CurrentBuffer()
@@ -47,7 +47,7 @@ func TestMajorModeBasics(t *testing.T) {
  */
 func TestMajorModeSwitch(t *testing.T) {
 	// エディタとモードマネージャーの準備
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	modeManager := editor.ModeManager()
 	buffer := editor.CurrentBuffer()
 
@@ -80,7 +80,7 @@ func TestMajorModeSwitch(t *testing.T) {
  */
 func TestFileModeDetection(t *testing.T) {
 	// エディタの作成
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	modeManager := editor.ModeManager()
 
 	// テスト用のファイルバッファを作成
@@ -109,7 +109,7 @@ func TestFileModeDetection(t *testing.T) {
  */
 func TestMinorModeBasics(t *testing.T) {
 	// エディタの準備
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 
 	// 初期状態ではマイナーモードは空
@@ -133,7 +133,7 @@ func TestMinorModeBasics(t *testing.T) {
  */
 func TestModeSystemIntegration(t *testing.T) {
 	// エディタの作成
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 
 	// ModeManagerがエディタに統合されていることを確認
 	modeManager := editor.ModeManager()

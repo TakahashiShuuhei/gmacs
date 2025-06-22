@@ -18,7 +18,7 @@ import (
  * @implementation domain/scroll.go, リアルターミナル環境
  */
 func TestRealisticTerminalScroll(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// Simulate a realistic terminal size (80x24)
 	display := NewMockDisplay(80, 24) // 24 total -> 22 content lines
@@ -101,7 +101,7 @@ func TestScrollStartsAtRightTime(t *testing.T) {
 	
 	for _, tc := range testCases {
 		t.Run(fmt.Sprintf("Terminal%d", tc.terminalHeight), func(t *testing.T) {
-			editor := domain.NewEditor()
+			editor := NewEditorWithDefaults()
 			_ = NewMockDisplay(40, tc.terminalHeight)
 			
 			// Simulate resize event

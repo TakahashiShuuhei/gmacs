@@ -3,12 +3,11 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
 func TestScrollTimingIssue(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10) // Height 10 = 8 content + 1 mode line + 1 minibuffer
 	
 	// Set window content area size (height - 2 for mode line and minibuffer)

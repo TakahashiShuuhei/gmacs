@@ -37,7 +37,7 @@ func (tr *TestRenderer) GetRenderCount() int {
  * @implementation domain/editor.go, domain/buffer.go, domain/window.go
  */
 func TestEditorStartup(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	renderer := &TestRenderer{}
 	
 	if !editor.IsRunning() {

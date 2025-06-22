@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -17,7 +16,7 @@ import (
  * @implementation domain/buffer.go, DeleteBackward関数
  */
 func TestDeleteBackwardCharBasic(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// "hello"を入力
 	text := "hello"
@@ -61,7 +60,7 @@ func TestDeleteBackwardCharBasic(t *testing.T) {
  * @implementation domain/buffer.go, DeleteForward関数
  */
 func TestDeleteCharBasic(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// "hello"を入力
 	text := "hello"
@@ -106,7 +105,7 @@ func TestDeleteCharBasic(t *testing.T) {
  * @implementation domain/buffer.go, UTF-8対応削除処理
  */
 func TestDeleteBackwardCharJapanese(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// "aあiい"を入力
 	text := "aあiい"
@@ -144,7 +143,7 @@ func TestDeleteBackwardCharJapanese(t *testing.T) {
  * @implementation domain/buffer.go, UTF-8対応削除処理
  */
 func TestDeleteCharJapanese(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// "aあiい"を入力
 	text := "aあiい"
@@ -187,7 +186,7 @@ func TestDeleteCharJapanese(t *testing.T) {
  * @implementation domain/buffer.go, 行結合処理
  */
 func TestDeleteBackwardLineJoin(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// "hello" + Enter + "world"を入力
 	text := "hello"
@@ -253,7 +252,7 @@ func TestDeleteBackwardLineJoin(t *testing.T) {
  * @implementation domain/buffer.go, 行結合処理
  */
 func TestDeleteForwardLineJoin(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// "hello" + Enter + "world"を入力
 	text := "hello"
@@ -321,7 +320,7 @@ func TestDeleteForwardLineJoin(t *testing.T) {
  * @implementation domain/buffer.go, 境界チェック
  */
 func TestDeleteEdgeCases(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// 空のバッファでC-h（何も起こらない）

@@ -18,7 +18,7 @@ import (
  * @implementation domain/commands.go, domain/minibuffer.go
  */
 func TestMxCommandBasic(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 5)
 	
 	// Start with normal mode
@@ -72,7 +72,7 @@ func TestMxCommandBasic(t *testing.T) {
  * @implementation domain/commands.go, domain/minibuffer.go
  */
 func TestMxVersionCommand(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 5)
 	
 	// Start M-x
@@ -150,7 +150,7 @@ func TestMxVersionCommand(t *testing.T) {
  * @implementation domain/commands.go, エラー処理
  */
 func TestMxUnknownCommand(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 5)
 	
 	// Start M-x and type unknown command
@@ -196,7 +196,7 @@ func TestMxUnknownCommand(t *testing.T) {
  * @implementation domain/commands.go, キャンセル処理
  */
 func TestMxCancel(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// Start M-x
 	escEvent := events.KeyEventData{Key: "\x1b", Rune: 0}
@@ -239,7 +239,7 @@ func TestMxCancel(t *testing.T) {
  * @implementation domain/commands.go, コマンド一覧機能
  */
 func TestMxListCommands(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(200, 5) // Wider display to show all commands
 	
 	// Execute list-commands
@@ -294,7 +294,7 @@ func TestMxListCommands(t *testing.T) {
  * @implementation domain/commands.go, domain/buffer.go
  */
 func TestMxClearBuffer(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 5)
 	
 	// Add some content to buffer

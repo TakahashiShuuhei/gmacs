@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -18,7 +17,7 @@ import (
  */
 func TestDisplayLayoutAnalysis(t *testing.T) {
 	// Test actual display layout vs expected layout
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10)
 	
 	// Simulate actual resize event like in real gmacs
@@ -109,7 +108,7 @@ func TestDisplayLayoutAnalysis(t *testing.T) {
  */
 func TestRealVsMockDisplay(t *testing.T) {
 	// Test what happens with exactly the user scenario
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10)
 	
 	// Use real resize event

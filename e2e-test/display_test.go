@@ -4,7 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -18,7 +17,7 @@ import (
  * @implementation test/mock_display.go, cli/display.go
  */
 func TestMockDisplayBasic(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(10, 5)
 	
 	// Resize editor to match display size
@@ -66,7 +65,7 @@ func TestMockDisplayBasic(t *testing.T) {
  * @implementation test/mock_display.go, UTF-8処理
  */
 func TestMockDisplayJapanese(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(10, 5)
 	
 	// Resize editor to match display size
@@ -113,7 +112,7 @@ func TestMockDisplayJapanese(t *testing.T) {
  * @implementation test/mock_display.go, 文字幅計算
  */
 func TestMockDisplayCursorProgression(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(20, 5)
 	
 	testChars := []rune{'a', 'あ', 'b', 'い', 'c'}
@@ -158,7 +157,7 @@ func TestMockDisplayCursorProgression(t *testing.T) {
  * @implementation test/mock_display.go, 複数行処理
  */
 func TestMockDisplayMultiline(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(10, 5)
 	
 	// Resize editor to match display size
@@ -212,7 +211,7 @@ func TestMockDisplayMultiline(t *testing.T) {
  * @implementation test/mock_display.go, 文字幅計算
  */
 func TestMockDisplayWidthProblem(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(10, 3)
 	
 	testCases := []struct {
@@ -226,7 +225,7 @@ func TestMockDisplayWidthProblem(t *testing.T) {
 	
 	for _, tc := range testCases {
 		// Reset editor
-		editor = domain.NewEditor()
+		editor = NewEditorWithDefaults()
 		
 		// Input text
 		for _, ch := range []rune(tc.input) {

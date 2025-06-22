@@ -17,7 +17,7 @@ import (
  * @implementation domain/cursor.go, 行ラップ処理
  */
 func TestCursorPositionWithLineWrapping(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(10, 8) // Small window for testing wrapping
 	
 	// Set window size to match display content area (height-2)
@@ -77,7 +77,7 @@ func TestCursorPositionWithLineWrapping(t *testing.T) {
  * @implementation domain/cursor.go, ラップ境界処理
  */
 func TestCursorMovementAcrossWrappedLines(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(10, 8)
 	
 	window := editor.CurrentWindow()
@@ -128,7 +128,7 @@ func TestCursorMovementAcrossWrappedLines(t *testing.T) {
  * @implementation domain/commands.go, コマンド処理
  */
 func TestWrappingToggleCommand(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	window := editor.CurrentWindow()
 	

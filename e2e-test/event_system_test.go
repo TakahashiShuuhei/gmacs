@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -17,7 +16,7 @@ import (
  * @implementation events/event_queue.go
  */
 func TestEventQueue(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	queue := editor.EventQueue()
 	
 	testEvent := events.KeyEventData{Rune: 'A', Key: "A"}
@@ -48,7 +47,7 @@ func TestEventQueue(t *testing.T) {
  * @implementation events/resize_event.go, domain/window.go
  */
 func TestResizeEvent(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	resizeEvent := events.ResizeEventData{
 		Width:  100,
@@ -75,7 +74,7 @@ func TestResizeEvent(t *testing.T) {
  * @implementation events/quit_event.go, domain/editor.go
  */
 func TestQuitEvent(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	if !editor.IsRunning() {
 		t.Fatal("Editor should be running initially")
@@ -141,7 +140,7 @@ func TestEventQueueCapacity(t *testing.T) {
  * @implementation domain/editor.go, パフォーマンス測定
  */
 func BenchmarkEventProcessing(b *testing.B) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	event := events.KeyEventData{Rune: 'a', Key: "a"}
 	
 	b.ResetTimer()

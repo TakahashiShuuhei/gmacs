@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -12,7 +11,7 @@ import (
 // should show lines 2-9 but shows 1-8, then next Enter should show 3-10 but shows 1-8,
 // then finally next Enter shows 2-9"
 func TestScrollDelayIssue(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10) // 10 total = 8 content + 1 mode + 1 mini
 	
 	window := editor.CurrentWindow()
@@ -118,7 +117,7 @@ func TestScrollDelayIssue(t *testing.T) {
 
 // TestScrollDelayWithDetailedSteps - more granular testing
 func TestScrollDelayWithDetailedSteps(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10)
 	
 	window := editor.CurrentWindow()

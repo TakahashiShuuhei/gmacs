@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -17,7 +16,7 @@ import (
  * @implementation domain/scroll.go, スクロールタイミング修正
  */
 func TestEnterKeyTimingIssue(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10) // 10 total = 8 content + mode + mini
 	
 	window := editor.CurrentWindow()
@@ -136,7 +135,7 @@ func TestEnterKeyTimingIssue(t *testing.T) {
  * @implementation domain/scroll.go, ユーザー報告修正
  */
 func TestUserReportedBehavior(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10)
 	
 	window := editor.CurrentWindow()

@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -17,7 +16,7 @@ import (
  * @implementation domain/editor.go, prefix key システム
  */
 func TestCtrlXCtrlCQuit(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	if !editor.IsRunning() {
 		t.Fatal("Editor should be running initially")
@@ -58,7 +57,7 @@ func TestCtrlXCtrlCQuit(t *testing.T) {
  * @implementation domain/editor.go, prefix key システム
  */
 func TestCtrlCAloneDoesNotQuit(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	if !editor.IsRunning() {
 		t.Fatal("Editor should be running initially")
@@ -87,7 +86,7 @@ func TestCtrlCAloneDoesNotQuit(t *testing.T) {
  * @implementation domain/editor.go, prefix key システム
  */
 func TestCtrlXPrefixReset(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// Send C-x (prefix key)
 	event1 := events.KeyEventData{
@@ -130,7 +129,7 @@ func TestCtrlXPrefixReset(t *testing.T) {
  * @implementation domain/editor.go, events/key_event.go
  */
 func TestCtrlModifierDoesNotInsertText(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	renderer := &TestRenderer{}
 	
 	event := events.KeyEventData{
@@ -162,7 +161,7 @@ func TestCtrlModifierDoesNotInsertText(t *testing.T) {
  * @implementation domain/editor.go, events/key_event.go
  */
 func TestMetaModifierDoesNotInsertText(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	renderer := &TestRenderer{}
 	
 	event := events.KeyEventData{

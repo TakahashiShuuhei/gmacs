@@ -3,7 +3,6 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -17,7 +16,7 @@ import (
  * @implementation domain/command.go, Quit関数
  */
 func TestCleanExit(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// エディタが実行中であることを確認
 	if !editor.IsRunning() {
@@ -47,7 +46,7 @@ func TestCleanExit(t *testing.T) {
  * @implementation events/quit_event.go, domain/editor.go
  */
 func TestSignalExit(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// エディタが実行中であることを確認
 	if !editor.IsRunning() {
@@ -74,7 +73,7 @@ func TestSignalExit(t *testing.T) {
  * @implementation domain/editor.go, キー処理優先順位
  */
 func TestExitDuringInput(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// M-x を実行してミニバッファをアクティブにする
 	event1 := events.KeyEventData{Key: "\x1b"} // Escape for Meta

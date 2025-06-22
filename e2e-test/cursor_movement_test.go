@@ -17,7 +17,7 @@ import (
  * @implementation domain/cursor.go, events/key_event.go
  */
 func TestForwardCharBasic(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// Type "hello"
@@ -49,7 +49,7 @@ func TestForwardCharBasic(t *testing.T) {
  * @implementation domain/cursor.go, events/key_event.go
  */
 func TestBackwardCharBasic(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// Type "hello"
@@ -84,7 +84,7 @@ func TestBackwardCharBasic(t *testing.T) {
  * @implementation domain/cursor.go, events/key_event.go
  */
 func TestArrowKeys(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// Type "hello"
@@ -125,7 +125,7 @@ func TestArrowKeys(t *testing.T) {
  * @implementation domain/cursor.go, events/key_event.go
  */
 func TestNextPreviousLine(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// Create multi-line content: "hello" + Enter + "world"
@@ -177,7 +177,7 @@ func TestNextPreviousLine(t *testing.T) {
  * @implementation domain/cursor.go, events/key_event.go
  */
 func TestBeginningEndOfLine(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// Type "hello world"
@@ -221,7 +221,7 @@ func TestBeginningEndOfLine(t *testing.T) {
  * @implementation domain/cursor.go, UTF-8処理
  */
 func TestCursorMovementWithJapanese(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// Type "aあbいc" (mixed ASCII and Japanese)
@@ -265,7 +265,7 @@ func TestCursorMovementWithJapanese(t *testing.T) {
  * @implementation domain/commands.go, events/key_event.go
  */
 func TestInteractiveCommands(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	buffer := editor.CurrentBuffer()
 	
 	// Type "hello"

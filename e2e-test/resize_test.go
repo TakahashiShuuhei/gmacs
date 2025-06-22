@@ -18,7 +18,7 @@ import (
  * @implementation domain/window.go, events/resize_event.go
  */
 func TestTerminalResize(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 24)
 	
 	// Check initial size
@@ -80,7 +80,7 @@ func TestTerminalResize(t *testing.T) {
  * @implementation domain/window.go, domain/buffer.go
  */
 func TestResizeToSmallerSize(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 24)
 	
 	// Add multiple lines of content
@@ -142,7 +142,7 @@ func TestResizeToSmallerSize(t *testing.T) {
  * @implementation domain/window.go, events/resize_event.go
  */
 func TestMultipleResizes(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 24)
 	
 	// Add some content
@@ -202,7 +202,7 @@ func TestMultipleResizes(t *testing.T) {
  * @implementation domain/window.go, domain/cursor.go
  */
 func TestCursorPositionAfterResize(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(80, 24)
 	
 	// Add content and position cursor

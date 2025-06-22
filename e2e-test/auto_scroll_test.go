@@ -17,7 +17,7 @@ import (
  * @implementation domain/scroll.go, domain/window.go
  */
 func TestAutoScrollWhenAddingLines(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(40, 10) // 8 content lines (10-2)
 	
 	// Set window size to match display content area
@@ -88,7 +88,7 @@ func TestAutoScrollWhenAddingLines(t *testing.T) {
  * @implementation domain/scroll.go, domain/window.go
  */
 func TestAutoScrollWithLongLines(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(20, 8) // Small window
 	
 	window := editor.CurrentWindow()
@@ -144,7 +144,7 @@ func TestAutoScrollWithLongLines(t *testing.T) {
  * @implementation domain/scroll.go, domain/window.go
  */
 func TestAutoScrollOnTextInsertion(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(30, 6) // Very small window - 4 content lines
 	
 	window := editor.CurrentWindow()
@@ -214,7 +214,7 @@ func TestAutoScrollOnTextInsertion(t *testing.T) {
  * @implementation domain/scroll.go, domain/cursor.go
  */
 func TestCursorMovementTriggersDisplay(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(30, 8)
 	
 	window := editor.CurrentWindow()

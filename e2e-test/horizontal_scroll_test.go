@@ -17,7 +17,7 @@ import (
  * @implementation domain/scroll.go, 水平スクロール制御
  */
 func TestHorizontalScrollCursorFollow(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(20, 8) // 狭いウィンドウ（幅20）
 	
 	// ウィンドウサイズを狭く設定
@@ -140,7 +140,7 @@ func TestHorizontalScrollCursorFollow(t *testing.T) {
  * @implementation domain/scroll.go, 境界スクロール処理
  */
 func TestHorizontalBoundaryScroll(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(10, 5) // 非常に狭いウィンドウ（幅10）
 	
 	// ウィンドウサイズを非常に狭く設定
@@ -237,7 +237,7 @@ func TestHorizontalBoundaryScroll(t *testing.T) {
  * @implementation domain/scroll.go, ラップ切り替え処理
  */
 func TestHorizontalToggleWrapState(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	display := NewMockDisplay(15, 6)
 	
 	// ウィンドウサイズを設定

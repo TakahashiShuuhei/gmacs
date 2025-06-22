@@ -4,7 +4,6 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
 	"github.com/TakahashiShuuhei/gmacs/core/events"
 )
 
@@ -18,7 +17,7 @@ import (
  * @implementation domain/cursor.go, UTF-8処理
  */
 func TestCursorPositionWithJapanese(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// Test "あいう"
 	testText := "あいう"
@@ -80,7 +79,7 @@ func TestCursorPositionWithJapanese(t *testing.T) {
  * @implementation domain/cursor.go, 文字幅計算
  */
 func TestCursorPositionProgression(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	testChars := []rune{'あ', 'い', 'う', 'え', 'お'}
 	
@@ -122,7 +121,7 @@ func TestCursorPositionProgression(t *testing.T) {
  * @implementation domain/cursor.go, 混合文字列処理
  */
 func TestMixedASCIIJapaneseCursor(t *testing.T) {
-	editor := domain.NewEditor()
+	editor := NewEditorWithDefaults()
 	
 	// Test "aあiい"
 	chars := []rune{'a', 'あ', 'i', 'い'}
