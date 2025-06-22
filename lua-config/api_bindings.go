@@ -66,7 +66,8 @@ func (api *APIBindings) luaBindKey(L *lua.LState) int {
 	
 	err := api.editor.BindKey(sequence, command)
 	if err != nil {
-		L.RaiseError("Error: " + err.Error())
+		log.Error("Lua: Failed to bind key %s to %s: %v", sequence, command, err)
+		L.RaiseError("Failed to bind key " + sequence + " to " + command + ": " + err.Error())
 		return 0 // This line won't be reached
 	}
 	

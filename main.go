@@ -42,12 +42,16 @@ func main() {
 	
 	// Register Lua API (this also registers built-in commands)
 	apiBindings := luaconfig.NewAPIBindings(editor, configLoader.GetVM())
-	apiBindings.RegisterGmacsAPI()
+	if err := apiBindings.RegisterGmacsAPI(); err != nil {
+		gmacslog.Error("Failed to register Lua API: %v", err)
+		log.Fatal("Failed to register Lua API:", err)
+	}
 	
 	// Load default configuration first
 	gmacslog.Info("Loading default configuration")
 	if err := configLoader.GetVM().ExecuteString(defaultConfig); err != nil {
 		gmacslog.Error("Failed to load default config: %v", err)
+		log.Fatal("Failed to load default config:", err)
 	}
 	
 	// Then load user configuration if available
