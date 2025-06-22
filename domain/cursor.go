@@ -2,7 +2,7 @@ package domain
 
 import (
 	"unicode/utf8"
-	"github.com/TakahashiShuuhei/gmacs/core/util"
+	"github.com/TakahashiShuuhei/gmacs/util"
 )
 
 // Cursor movement interactive functions following Emacs conventions

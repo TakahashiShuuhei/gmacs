@@ -2,8 +2,8 @@ package domain
 
 import (
 	"fmt"
-	"github.com/TakahashiShuuhei/gmacs/core/log"
-	"github.com/TakahashiShuuhei/gmacs/core/util"
+	"github.com/TakahashiShuuhei/gmacs/log"
+	"github.com/TakahashiShuuhei/gmacs/util"
 )
 
 // ScrollUp scrolls the window up by one line

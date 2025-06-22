@@ -3,7 +3,7 @@ package test
 import (
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/util"
+	"github.com/TakahashiShuuhei/gmacs/util"
 )
 
 /**

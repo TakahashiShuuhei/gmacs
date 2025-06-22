@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"golang.org/x/term"
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
-	"github.com/TakahashiShuuhei/gmacs/core/log"
-	"github.com/TakahashiShuuhei/gmacs/core/util"
+	"github.com/TakahashiShuuhei/gmacs/domain"
+	"github.com/TakahashiShuuhei/gmacs/log"
+	"github.com/TakahashiShuuhei/gmacs/util"
 )
 
 type Display struct {

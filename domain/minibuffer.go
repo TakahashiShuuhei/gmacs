@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"github.com/TakahashiShuuhei/gmacs/core/events"
+	"github.com/TakahashiShuuhei/gmacs/events"
 )
 
 

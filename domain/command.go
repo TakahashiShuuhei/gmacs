@@ -3,7 +3,7 @@ package domain
 import (
 	"sort"
 	"strings"
-	"github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/log"
 )
 
 // CommandFunc represents a command function

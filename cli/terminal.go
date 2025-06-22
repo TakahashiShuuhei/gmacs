@@ -6,8 +6,8 @@ import (
 	"syscall"
 	"golang.org/x/term"
 	
-	"github.com/TakahashiShuuhei/gmacs/core/events"
-	"github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/events"
+	"github.com/TakahashiShuuhei/gmacs/log"
 )
 
 type Terminal struct {

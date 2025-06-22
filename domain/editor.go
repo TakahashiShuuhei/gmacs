@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"github.com/TakahashiShuuhei/gmacs/core/events"
+	"github.com/TakahashiShuuhei/gmacs/events"
 )
 
 // ConfigLoader interface for Lua configuration loading
@@ -454,7 +454,19 @@ func (e *Editor) ModeManager() *ModeManager {
 }
 
 func (e *Editor) registerMinorModeCommands() {
-	// Minor mode commands are now defined in Lua configuration
+	// Register auto-a-mode minor mode
+	autoAMode := NewAutoAMode()
+	e.modeManager.RegisterMinorMode(autoAMode)
+	
+	// Register the command
+	e.commandRegistry.RegisterFunc("auto-a-mode", func(editor *Editor) error {
+		buffer := editor.CurrentBuffer()
+		if buffer == nil {
+			return &ModeError{Message: "No current buffer"}
+		}
+		
+		return editor.ModeManager().ToggleMinorMode(buffer, "auto-a-mode")
+	})
 }
 
 func (e *Editor) processMinorModeHooks(buffer *Buffer, event string) {

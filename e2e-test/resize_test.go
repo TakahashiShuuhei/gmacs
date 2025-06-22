@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
-	"github.com/TakahashiShuuhei/gmacs/core/events"
+	"github.com/TakahashiShuuhei/gmacs/domain"
+	"github.com/TakahashiShuuhei/gmacs/events"
 )
 
 /**

@@ -2,7 +2,7 @@ package luaconfig
 
 import (
 	lua "github.com/yuin/gopher-lua"
-	"github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/log"
 )
 
 // LuaVM manages a Lua virtual machine for configuration

@@ -2,8 +2,8 @@ package luaconfig
 
 import (
 	lua "github.com/yuin/gopher-lua"
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
-	"github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/domain"
+	"github.com/TakahashiShuuhei/gmacs/log"
 )
 
 

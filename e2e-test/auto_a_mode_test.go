@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
+	"github.com/TakahashiShuuhei/gmacs/domain"
 )
 
 /**

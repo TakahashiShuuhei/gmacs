@@ -1,8 +1,8 @@
 package domain
 
 import (
-	"github.com/TakahashiShuuhei/gmacs/core/log"
-	"github.com/TakahashiShuuhei/gmacs/core/util"
+	"github.com/TakahashiShuuhei/gmacs/log"
+	"github.com/TakahashiShuuhei/gmacs/util"
 )
 
 type Window struct {

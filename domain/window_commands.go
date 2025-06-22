@@ -1,7 +1,7 @@
 package domain
 
 import (
-	"github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/log"
 )
 
 // SplitWindowRight implements the split-window-right command (C-x 3)

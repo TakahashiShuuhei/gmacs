@@ -3,7 +3,7 @@ package luaconfig
 import (
 	"sync"
 	lua "github.com/yuin/gopher-lua"
-	"github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/log"
 )
 
 // HookFunction represents a function that can be called as a hook

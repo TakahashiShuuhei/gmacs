@@ -3,7 +3,7 @@ package luaconfig
 import (
 	"os"
 	"path/filepath"
-	"github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/log"
 )
 
 // ConfigLoader handles loading and managing Lua configuration files

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
+	"github.com/TakahashiShuuhei/gmacs/domain"
 )
 
 func TestLocalBindKey(t *testing.T) {
@@ -160,6 +160,7 @@ func TestLocalBindKeyMinorMode(t *testing.T) {
 	hookManager := NewHookManager()
 	
 	editor := domain.NewEditorWithConfig(configLoader, hookManager)
+	editor.RegisterBuiltinCommands() // Register built-in commands including auto-a-mode
 	
 	// Bind key to minor mode
 	configContent := `

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/log"
 )
 
 func TestLoggerCreation(t *testing.T) {

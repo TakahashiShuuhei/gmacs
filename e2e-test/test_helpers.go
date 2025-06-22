@@ -3,8 +3,8 @@ package test
 import (
 	"io/ioutil"
 	"path/filepath"
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
-	"github.com/TakahashiShuuhei/gmacs/core/lua-config"
+	"github.com/TakahashiShuuhei/gmacs/domain"
+	"github.com/TakahashiShuuhei/gmacs/lua-config"
 )
 
 // getDefaultConfig reads the default.lua file

@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
-	luaconfig "github.com/TakahashiShuuhei/gmacs/core/lua-config"
-	gmacslog "github.com/TakahashiShuuhei/gmacs/core/log"
+	"github.com/TakahashiShuuhei/gmacs/domain"
+	luaconfig "github.com/TakahashiShuuhei/gmacs/lua-config"
+	gmacslog "github.com/TakahashiShuuhei/gmacs/log"
 )
 
 /**

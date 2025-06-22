@@ -5,8 +5,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/TakahashiShuuhei/gmacs/core/domain"
-	"github.com/TakahashiShuuhei/gmacs/core/util"
+	"github.com/TakahashiShuuhei/gmacs/domain"
+	"github.com/TakahashiShuuhei/gmacs/util"
 )
 
 type MockDisplay struct {
