@@ -47,6 +47,11 @@ func (api *APIBindings) RegisterGmacsAPI() error {
 	L.SetField(gmacsTable, "minor_mode", L.NewFunction(api.luaMinorMode))
 	L.SetField(gmacsTable, "add_hook", L.NewFunction(api.luaAddHook))
 	
+	// Buffer and UI functions
+	L.SetField(gmacsTable, "current_buffer", L.NewFunction(api.luaCurrentBuffer))
+	L.SetField(gmacsTable, "message", L.NewFunction(api.luaMessage))
+	L.SetField(gmacsTable, "toggle_minor_mode", L.NewFunction(api.luaToggleMinorMode))
+	
 	// Register all built-in commands
 	api.registerBuiltinCommands()
 	
@@ -249,6 +254,61 @@ func (api *APIBindings) luaAddHook(L *lua.LState) int {
 	return 0
 }
 
+// luaCurrentBuffer implements gmacs.current_buffer()
+func (api *APIBindings) luaCurrentBuffer(L *lua.LState) int {
+	buffer := api.editor.CurrentBuffer()
+	if buffer == nil {
+		L.Push(lua.LNil)
+		return 1
+	}
+	
+	// Return a table representing the buffer
+	bufferTable := L.NewTable()
+	L.SetField(bufferTable, "name", lua.LString(buffer.Name()))
+	// Add more buffer properties as needed
+	
+	L.Push(bufferTable)
+	return 1
+}
+
+// luaMessage implements gmacs.message(text)
+func (api *APIBindings) luaMessage(L *lua.LState) int {
+	message := L.CheckString(1)
+	api.editor.SetMinibufferMessage(message)
+	log.Info("Lua: Set message: %s", message)
+	return 0
+}
+
+// luaToggleMinorMode implements gmacs.toggle_minor_mode(mode_name)
+func (api *APIBindings) luaToggleMinorMode(L *lua.LState) int {
+	modeName := L.CheckString(1)
+	
+	buffer := api.editor.CurrentBuffer()
+	if buffer == nil {
+		L.Push(lua.LBool(false))
+		return 1
+	}
+	
+	modeManager := api.editor.ModeManager()
+	err := modeManager.ToggleMinorMode(buffer, modeName)
+	if err != nil {
+		log.Error("Lua: Failed to toggle minor mode %s: %v", modeName, err)
+		L.Push(lua.LBool(false))
+		return 1
+	}
+	
+	// Check if mode is now enabled
+	if minorMode, exists := modeManager.GetMinorModeByName(modeName); exists {
+		enabled := minorMode.IsEnabled(buffer)
+		L.Push(lua.LBool(enabled))
+		log.Info("Lua: Toggled minor mode %s, now enabled: %v", modeName, enabled)
+		return 1
+	}
+	
+	L.Push(lua.LBool(false))
+	return 1
+}
+
 // registerBuiltinCommands registers all built-in commands that were previously in editor.go
 func (api *APIBindings) registerBuiltinCommands() {
 	// Register cursor movement commands
@@ -287,27 +347,8 @@ func (api *APIBindings) registerBuiltinCommands() {
 
 // registerMinorModeCommands registers minor mode commands
 func (api *APIBindings) registerMinorModeCommands() {
-	api.editor.RegisterCommand("auto-a-mode", func() error {
-		buffer := api.editor.CurrentBuffer()
-		if buffer == nil {
-			return &domain.ModeError{Message: "No current buffer"}
-		}
-		
-		// Check if already enabled
-		modeManager := api.editor.ModeManager()
-		autoAMode, exists := modeManager.GetMinorModeByName("auto-a-mode")
-		if !exists {
-			return &domain.ModeError{Message: "auto-a-mode not available"}
-		}
-		
-		if autoAMode.IsEnabled(buffer) {
-			api.editor.SetMinibufferMessage("Auto-A mode disabled")
-		} else {
-			api.editor.SetMinibufferMessage("Auto-A mode enabled")
-		}
-		
-		return modeManager.ToggleMinorMode(buffer, "auto-a-mode")
-	})
+	// auto-a-mode is now defined in default.lua
+	// Other minor mode commands can be added here if needed
 }
 
 // Helper functions for type conversion

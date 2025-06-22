@@ -43,6 +43,24 @@ gmacs.bind_key("C-x C-c", "quit")
 -- File operations  
 gmacs.bind_key("C-x C-f", "find-file")
 
+-- Define auto-a-mode command in Lua
+gmacs.defun("auto-a-mode", function()
+    -- Get current buffer
+    local buffer = gmacs.current_buffer()
+    if not buffer then
+        gmacs.message("No current buffer")
+        return
+    end
+    
+    -- Toggle auto-a-mode
+    local enabled = gmacs.toggle_minor_mode("auto-a-mode")
+    if enabled then
+        gmacs.message("Auto-A mode enabled")
+    else
+        gmacs.message("Auto-A mode disabled")
+    end
+end)
+
 -- Minor mode commands  
 gmacs.bind_key("M-a", "auto-a-mode")
 

@@ -10,7 +10,7 @@ type ConfigLoader interface {
 	Close()
 }
 
-// HookManager interface for event hooks  
+// HookManager interface for event hooks
 type HookManager interface {
 	AddHook(event string, fn func(...interface{}) error)
 	TriggerHook(event string, args ...interface{})
@@ -40,10 +40,10 @@ type EditorConfig struct {
 // NewEditor creates a new editor with default configuration
 func NewEditor() *Editor {
 	editor := newEditorWithConfig(EditorConfig{})
-	
+
 	// Register built-in commands directly for backward compatibility
 	editor.RegisterBuiltinCommands()
-	
+
 	return editor
 }
 
@@ -58,9 +58,9 @@ func NewEditorWithConfig(configLoader ConfigLoader, hookManager HookManager) *Ed
 // newEditorWithConfig is the internal constructor that handles configuration
 func newEditorWithConfig(config EditorConfig) *Editor {
 	buffer := NewBuffer("*scratch*")
-	window := NewWindow(buffer, 80, 22) // 24-2 for mode line and minibuffer
+	window := NewWindow(buffer, 80, 22)       // 24-2 for mode line and minibuffer
 	layout := NewWindowLayout(window, 80, 24) // Total terminal size
-	
+
 	editor := &Editor{
 		buffers:         []*Buffer{buffer},
 		layout:          layout,
@@ -75,15 +75,15 @@ func newEditorWithConfig(config EditorConfig) *Editor {
 		hookManager:     config.HookManager,
 		options:         make(map[string]interface{}),
 	}
-	
+
 	// Built-in commands are now registered via Lua configuration
-	
+
 	// Initialize buffer with fundamental mode
 	err := editor.modeManager.SetMajorMode(buffer, "fundamental-mode")
 	if err != nil {
 		// TODO: Handle error appropriately
 	}
-	
+
 	return editor
 }
 
@@ -158,12 +158,12 @@ func (e *Editor) BindKey(sequence, command string) error {
 	if !exists {
 		return &ConfigError{Message: "Unknown command: " + command}
 	}
-	
+
 	// Convert command to function
 	cmdFunc := func(editor *Editor) error {
 		return cmd.Execute(editor)
 	}
-	
+
 	e.keyBindings.BindKeySequence(sequence, cmdFunc)
 	return nil
 }
@@ -175,12 +175,12 @@ func (e *Editor) LocalBindKey(modeName, sequence, command string) error {
 	if !exists {
 		return &ConfigError{Message: "Unknown command: " + command}
 	}
-	
+
 	// Convert command to function
 	cmdFunc := func(editor *Editor) error {
 		return cmd.Execute(editor)
 	}
-	
+
 	// Try to find major mode first
 	if majorMode, exists := e.modeManager.GetMajorModeByName(modeName); exists {
 		keyBindings := majorMode.KeyBindings()
@@ -189,7 +189,7 @@ func (e *Editor) LocalBindKey(modeName, sequence, command string) error {
 			return nil
 		}
 	}
-	
+
 	// Try to find minor mode
 	if minorMode, exists := e.modeManager.GetMinorModeByName(modeName); exists {
 		keyBindings := minorMode.KeyBindings()
@@ -198,7 +198,7 @@ func (e *Editor) LocalBindKey(modeName, sequence, command string) error {
 			return nil
 		}
 	}
-	
+
 	return &ConfigError{Message: "Unknown mode: " + modeName}
 }
 
@@ -208,7 +208,7 @@ func (e *Editor) RegisterCommand(name string, fn func() error) error {
 	cmdFunc := func(editor *Editor) error {
 		return fn()
 	}
-	
+
 	e.commandRegistry.RegisterFunc(name, cmdFunc)
 	return nil
 }
@@ -301,15 +301,15 @@ func (e *Editor) HandleEvent(event events.Event) {
 }
 
 func (e *Editor) handleKeyEvent(event events.KeyEventData) {
-	
+
 	// Always process key sequences first to handle multi-key sequences correctly
 	cmd, matched, continuing := e.keyBindings.ProcessKeyPress(event.Key, event.Ctrl, event.Meta)
-	
+
 	// If we have a continuing sequence, always handle it first
 	if continuing {
 		return
 	}
-	
+
 	// Handle minibuffer input first if active (except for special cases)
 	if e.minibuffer.IsActive() {
 		// Special commands that should always execute immediately
@@ -319,20 +319,20 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 			}
 			return
 		}
-		
+
 		// Try minibuffer handling first
-		handled := e.handleMinibufferInput(event)
+		handled := e.minibuffer.HandleInput(event, e)
 		if handled {
 			return
 		}
 	}
-	
+
 	// If not handled by minibuffer, check for matched global commands
 	if matched {
 		cmd(e)
 		return
 	}
-	
+
 	// Handle Meta key press detection
 	if event.Key == "\x1b" || event.Key == "Escape" {
 		e.metaPressed = true
@@ -340,39 +340,39 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 		e.keyBindings.ResetSequence()
 		return
 	}
-	
+
 	// Handle M-x command
 	if e.metaPressed && event.Key == "x" {
 		e.minibuffer.StartCommandInput()
 		e.metaPressed = false
 		return
 	}
-	
+
 	// Reset meta state for other keys
 	if e.metaPressed {
 		e.metaPressed = false
 	}
-	
+
 	// Check for any remaining key bindings through the unified system
 	// (single keys and raw sequences that weren't caught by sequence processing)
 	if cmd, found := e.keyBindings.LookupSequence(event.Key); found {
 		cmd(e)
 		return
 	}
-	
+
 	// Regular text input
 	buffer := e.CurrentBuffer()
 	if buffer == nil {
 		return
 	}
-	
+
 	if event.Rune != 0 && !event.Ctrl && !event.Meta {
 		if event.Key == "Enter" || event.Key == "Return" {
 			buffer.InsertChar('\n')
-			
+
 			// Check for auto-a-mode and add 'a' if enabled
 			e.processMinorModeHooks(buffer, "newline")
-			
+
 			EnsureCursorVisible(e)
 		} else {
 			buffer.InsertChar(event.Rune)
@@ -410,149 +410,10 @@ func (e *Editor) GetKeySequenceInProgress() string {
 }
 
 
-
-func (e *Editor) handleMinibufferInput(event events.KeyEventData) bool {
-	switch e.minibuffer.Mode() {
-	case MinibufferCommand:
-		return e.handleMinibufferAsBuffer(event, e.executeMinibufferCommand)
-	case MinibufferFile:
-		return e.handleMinibufferAsBuffer(event, e.executeFileOpen)
-	case MinibufferBufferSelection:
-		e.HandleBufferSelectionInput(event)
-		return true
-	case MinibufferMessage:
-		// Any key clears the message, but allow the key to continue being processed
-		e.minibuffer.Clear()
-		return false
-	}
-	return false
-}
-
-// handleMinibufferAsBuffer treats minibuffer like a regular buffer, using unified commands
-func (e *Editor) handleMinibufferAsBuffer(event events.KeyEventData, onEnter func()) bool {
-	// Handle Enter - execute the completion action
-	if event.Key == "Enter" || event.Key == "Return" {
-		onEnter()
-		return true
-	}
-	
-	// Handle Escape - cancel
-	if event.Key == "\x1b" || event.Key == "Escape" {
-		e.minibuffer.Clear()
-		return true
-	}
-	
-	// Handle Backspace as delete-backward-char
-	if event.Key == "Backspace" || event.Key == "\x7f" {
-		e.executeCommandOnMinibuffer("delete-backward-char")
-		return true
-	}
-	
-	// Handle Ctrl commands using the unified command system
-	if event.Ctrl {
-		switch event.Key {
-		case "h":
-			e.executeCommandOnMinibuffer("delete-backward-char")
-			return true
-		case "d":
-			e.executeCommandOnMinibuffer("delete-forward-char")
-			return true
-		case "f":
-			e.executeCommandOnMinibuffer("forward-char")
-			return true
-		case "b":
-			e.executeCommandOnMinibuffer("backward-char")
-			return true
-		case "a":
-			e.executeCommandOnMinibuffer("beginning-of-line")
-			return true
-		case "e":
-			e.executeCommandOnMinibuffer("end-of-line")
-			return true
-		}
-	}
-	
-	// Handle normal character input
-	if event.Rune != 0 && !event.Ctrl && !event.Meta {
-		e.executeCommandOnMinibuffer("self-insert-command", event.Rune)
-		return true
-	}
-	
-	return false
-}
-
-// executeCommandOnMinibuffer executes a command in the context of the minibuffer
-func (e *Editor) executeCommandOnMinibuffer(commandName string, rune ...rune) {
-	// Handle special minibuffer-specific commands first
-	switch commandName {
-	case "delete-backward-char":
-		e.minibuffer.DeleteBackward()
-	case "delete-forward-char":
-		e.minibuffer.DeleteForward()
-	case "forward-char":
-		e.minibuffer.MoveCursorForward()
-	case "backward-char":
-		e.minibuffer.MoveCursorBackward()
-	case "beginning-of-line":
-		e.minibuffer.MoveCursorToBeginning()
-	case "end-of-line":
-		e.minibuffer.MoveCursorToEnd()
-	case "self-insert-command":
-		if len(rune) > 0 {
-			e.minibuffer.InsertChar(rune[0])
-		}
-	default:
-		// Try to execute as a regular command if it exists
-		if cmd, exists := e.commandRegistry.Get(commandName); exists {
-			// Execute command - this allows minibuffer to use same commands as main buffer
-			cmd.Execute(e)
-		}
-	}
-}
-
-// executeMinibufferCommand handles M-x command execution
-func (e *Editor) executeMinibufferCommand() {
-	commandName := e.minibuffer.Content()
-	
-	if cmd, exists := e.commandRegistry.Get(commandName); exists {
-		// Clear command input first
-		e.minibuffer.Clear()
-		
-		// Execute command (command can set its own message)
-		err := cmd.Execute(e)
-		if err != nil {
-			e.minibuffer.SetMessage("Command failed: " + err.Error())
-		}
-	} else {
-		e.minibuffer.SetMessage("Unknown command: " + commandName)
-	}
-}
-
-// executeFileOpen handles C-x C-f file opening
-func (e *Editor) executeFileOpen() {
-	filepath := e.minibuffer.Content()
-	
-	// Try to load the file
-	buffer, err := NewBufferFromFile(filepath)
-	if err != nil {
-		e.minibuffer.SetMessage("Cannot open file: " + filepath)
-	} else {
-		// Add buffer to editor and switch to it
-		e.AddBuffer(buffer)
-		e.SwitchToBuffer(buffer)
-		e.minibuffer.SetMessage("Opened: " + filepath)
-	}
-}
-
-
-
-
-
-
 // AddBuffer adds a new buffer to the editor
 func (e *Editor) AddBuffer(buffer *Buffer) {
 	e.buffers = append(e.buffers, buffer)
-	
+
 	// Auto-detect and set major mode for new buffer
 	if buffer.MajorMode() == nil {
 		mode, err := e.modeManager.AutoDetectMajorMode(buffer)
@@ -580,41 +441,19 @@ func (e *Editor) FindBuffer(name string) *Buffer {
 	return nil
 }
 
-
 // ModeManager returns the mode manager
 func (e *Editor) ModeManager() *ModeManager {
 	return e.modeManager
 }
 
 func (e *Editor) registerMinorModeCommands() {
-	// Register auto-a-mode command
-	e.commandRegistry.RegisterFunc("auto-a-mode", func(editor *Editor) error {
-		buffer := editor.CurrentBuffer()
-		if buffer == nil {
-			return &ModeError{Message: "No current buffer"}
-		}
-		
-		// Check if already enabled
-		modeManager := editor.ModeManager()
-		autoAMode := modeManager.minorModes["auto-a-mode"]
-		if autoAMode == nil {
-			return &ModeError{Message: "auto-a-mode not available"}
-		}
-		
-		if autoAMode.IsEnabled(buffer) {
-			editor.SetMinibufferMessage("Auto-A mode disabled")
-		} else {
-			editor.SetMinibufferMessage("Auto-A mode enabled")
-		}
-		
-		return modeManager.ToggleMinorMode(buffer, "auto-a-mode")
-	})
+	// Minor mode commands are now defined in Lua configuration
 }
 
 func (e *Editor) processMinorModeHooks(buffer *Buffer, event string) {
 	// Process minor mode hooks for specific events
 	minorModes := buffer.MinorModes()
-	
+
 	for _, mode := range minorModes {
 		if autoAMode, ok := mode.(*AutoAMode); ok && event == "newline" {
 			autoAMode.ProcessNewline(buffer)
