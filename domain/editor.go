@@ -565,6 +565,94 @@ func (e *Editor) CommandRegistry() *CommandRegistry {
 	return e.commandRegistry
 }
 
+// RegisterPluginModes registers all modes from a loaded plugin
+func (e *Editor) RegisterPluginModes(plugin PluginInterface) error {
+	// Register major modes
+	majorModes := plugin.GetMajorModes()
+	for _, modeSpec := range majorModes {
+		pluginMajorMode := NewPluginMajorMode(modeSpec, plugin)
+		e.modeManager.RegisterMajorMode(pluginMajorMode)
+	}
+	
+	// Register minor modes
+	minorModes := plugin.GetMinorModes()
+	for _, modeSpec := range minorModes {
+		pluginMinorMode := NewPluginMinorMode(modeSpec, plugin)
+		e.modeManager.RegisterMinorMode(pluginMinorMode)
+	}
+	
+	return nil
+}
+
+// UnregisterPluginModes removes all modes from an unloaded plugin
+func (e *Editor) UnregisterPluginModes(plugin PluginInterface) error {
+	// Remove major modes
+	majorModes := plugin.GetMajorModes()
+	for _, modeSpec := range majorModes {
+		delete(e.modeManager.majorModes, modeSpec.Name)
+	}
+	
+	// Remove minor modes  
+	minorModes := plugin.GetMinorModes()
+	for _, modeSpec := range minorModes {
+		delete(e.modeManager.minorModes, modeSpec.Name)
+	}
+	
+	return nil
+}
+
+// RegisterPluginKeyBindings registers global key bindings from a loaded plugin
+func (e *Editor) RegisterPluginKeyBindings(plugin PluginInterface) error {
+	keyBindings := plugin.GetKeyBindings()
+	
+	for _, kbSpec := range keyBindings {
+		// グローバルキーバインドのみを登録（Mode が空またはglobal）
+		if kbSpec.Mode == "" || kbSpec.Mode == "global" {
+			// プラグインコマンドハンドラーを作成
+			cmdFunc := func(editor *Editor) error {
+				// TODO: 実際のプラグインコマンドハンドラーを呼び出す実装
+				// 現在はプレースホルダー
+				message := "Plugin global keybinding: " + kbSpec.Command + " from " + plugin.Name()
+				editor.SetMinibufferMessage(message)
+				return nil
+			}
+			
+			// エディタのグローバルキーバインドに登録
+			e.keyBindings.BindKeySequence(kbSpec.Sequence, cmdFunc)
+		}
+	}
+	
+	return nil
+}
+
+// UnregisterPluginKeyBindings removes global key bindings from an unloaded plugin
+func (e *Editor) UnregisterPluginKeyBindings(plugin PluginInterface) error {
+	keyBindings := plugin.GetKeyBindings()
+	
+	// 現在のキーバインドから削除
+	// 注：この実装はシンプルなため、プラグイン固有のバインディングを追跡する
+	// より高度な実装では、プラグインごとのバインディング管理が必要
+	
+	for _, kbSpec := range keyBindings {
+		if kbSpec.Mode == "" || kbSpec.Mode == "global" {
+			// グローバルキーバインドマップから削除
+			e.removeKeyBinding(kbSpec.Sequence)
+		}
+	}
+	
+	return nil
+}
+
+// removeKeyBinding はキーバインドマップから指定されたキーシーケンスを削除する
+func (e *Editor) removeKeyBinding(sequence string) {
+	e.keyBindings.RemoveSequence(sequence)
+}
+
+// KeyBindings returns the key binding map (for plugin integration and testing)
+func (e *Editor) KeyBindings() *KeyBindingMap {
+	return e.keyBindings
+}
+
 func (e *Editor) registerMinorModeCommands() {
 	// Register auto-a-mode minor mode
 	autoAMode := NewAutoAMode()

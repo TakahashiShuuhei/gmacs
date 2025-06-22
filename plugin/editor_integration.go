@@ -4,10 +4,14 @@ import (
 	"github.com/TakahashiShuuhei/gmacs/domain"
 )
 
-// EditorCommandRegistry defines the interface for registering/unregistering plugin commands
+// EditorCommandRegistry defines the interface for registering/unregistering plugin commands, modes, and key bindings
 type EditorCommandRegistry interface {
 	RegisterPluginCommands(plugin domain.PluginInterface) error
 	UnregisterPluginCommands(plugin domain.PluginInterface) error
+	RegisterPluginModes(plugin domain.PluginInterface) error
+	UnregisterPluginModes(plugin domain.PluginInterface) error
+	RegisterPluginKeyBindings(plugin domain.PluginInterface) error
+	UnregisterPluginKeyBindings(plugin domain.PluginInterface) error
 }
 
 // PluginManagerAdapter はplugin.PluginManagerをdomain.PluginManagerInterfaceに適合させる
@@ -36,12 +40,21 @@ func (a *PluginManagerAdapter) LoadPlugin(name string) error {
 		return err
 	}
 	
-	// プラグインが正常にロードされた場合、コマンドを登録
+	// プラグインが正常にロードされた場合、コマンドとモードを登録
 	if a.registry != nil {
 		plugin, found := a.pm.GetPlugin(name)
 		if found {
 			pluginAdapter := &PluginAdapter{plugin: plugin}
-			return a.registry.RegisterPluginCommands(pluginAdapter)
+			// コマンドを登録
+			if err := a.registry.RegisterPluginCommands(pluginAdapter); err != nil {
+				return err
+			}
+			// モードを登録
+			if err := a.registry.RegisterPluginModes(pluginAdapter); err != nil {
+				return err
+			}
+			// キーバインドを登録
+			return a.registry.RegisterPluginKeyBindings(pluginAdapter)
 		}
 	}
 	
@@ -50,11 +63,22 @@ func (a *PluginManagerAdapter) LoadPlugin(name string) error {
 
 // UnloadPlugin implements domain.PluginManagerInterface
 func (a *PluginManagerAdapter) UnloadPlugin(name string) error {
-	// プラグインのアンロード前にコマンドを削除
+	// プラグインのアンロード前にコマンドとモードを削除
 	if a.registry != nil {
 		plugin, found := a.pm.GetPlugin(name)
 		if found {
 			pluginAdapter := &PluginAdapter{plugin: plugin}
+			// キーバインドを削除
+			if err := a.registry.UnregisterPluginKeyBindings(pluginAdapter); err != nil {
+				// キーバインド削除に失敗してもプラグインのアンロードは続行
+				// エラーログは後で実装
+			}
+			// モードを削除
+			if err := a.registry.UnregisterPluginModes(pluginAdapter); err != nil {
+				// モード削除に失敗してもプラグインのアンロードは続行
+				// エラーログは後で実装
+			}
+			// コマンドを削除
 			if err := a.registry.UnregisterPluginCommands(pluginAdapter); err != nil {
 				// コマンド削除に失敗してもプラグインのアンロードは続行
 				// エラーログは後で実装

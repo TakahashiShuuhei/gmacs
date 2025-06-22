@@ -284,3 +284,57 @@ func FormatSequence(sequence []KeyPress) string {
 	
 	return strings.Join(parts, " ") + " -"
 }
+
+// RemoveSequence removes a key sequence binding
+func (kbm *KeyBindingMap) RemoveSequence(keySequence string) bool {
+	sequence := parseKeySequence(keySequence)
+	
+	// Remove from sequence bindings
+	for i, binding := range kbm.sequenceBindings {
+		if kbm.sequencesEqual(binding.Sequence, sequence) {
+			// Remove this binding
+			kbm.sequenceBindings = append(kbm.sequenceBindings[:i], kbm.sequenceBindings[i+1:]...)
+			return true
+		}
+	}
+	
+	// Remove from raw sequence bindings
+	for i, binding := range kbm.rawSequenceBindings {
+		if binding.Sequence == keySequence {
+			// Remove this binding
+			kbm.rawSequenceBindings = append(kbm.rawSequenceBindings[:i], kbm.rawSequenceBindings[i+1:]...)
+			return true
+		}
+	}
+	
+	return false
+}
+
+// ListBindings returns all current key bindings for debugging/inspection
+func (kbm *KeyBindingMap) ListBindings() ([]string, []string) {
+	sequences := make([]string, len(kbm.sequenceBindings))
+	for i, binding := range kbm.sequenceBindings {
+		parts := make([]string, len(binding.Sequence))
+		for j, press := range binding.Sequence {
+			var keyStr string
+			if press.Ctrl && press.Meta {
+				keyStr = "C-M-" + press.Key
+			} else if press.Ctrl {
+				keyStr = "C-" + press.Key
+			} else if press.Meta {
+				keyStr = "M-" + press.Key
+			} else {
+				keyStr = press.Key
+			}
+			parts[j] = keyStr
+		}
+		sequences[i] = strings.Join(parts, " ")
+	}
+	
+	rawSequences := make([]string, len(kbm.rawSequenceBindings))
+	for i, binding := range kbm.rawSequenceBindings {
+		rawSequences[i] = binding.Sequence
+	}
+	
+	return sequences, rawSequences
+}
