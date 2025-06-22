@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -104,6 +105,10 @@ func (pb *PluginBuilder) BuildFromRepository(req BuildRequest) (*BuildResult, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to load manifest: %v", err)
 	}
+	
+	// デバッグ: マニフェスト内容を出力
+	fmt.Printf("DEBUG: Loaded manifest - Name: %s, Version: %s, Binary: %s\n", 
+		manifest.Name, manifest.Version, manifest.Binary)
 
 	// ビルド実行
 	result, err := pb.buildPlugin(sourceDir, manifest, sourceHash)
@@ -211,8 +216,12 @@ func (pb *PluginBuilder) getCachedBuild(sourceHash string) *BuildCache {
 
 // buildPlugin は実際のビルドを実行する
 func (pb *PluginBuilder) buildPlugin(sourceDir string, manifest *PluginManifest, sourceHash string) (*BuildResult, error) {
+	// デバッグ: マニフェスト情報を出力
+	fmt.Printf("DEBUG: buildPlugin - manifest.Name: %s, sourceDir: %s\n", manifest.Name, sourceDir)
+	
 	// プラグイン専用ディレクトリを作成
 	pluginDir := filepath.Join(pb.targetDir, manifest.Name)
+	fmt.Printf("DEBUG: Creating plugin directory: %s\n", pluginDir)
 	if err := os.MkdirAll(pluginDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create plugin directory: %v", err)
 	}
@@ -390,18 +399,37 @@ func (pb *PluginBuilder) loadManifest(sourceDir string) (*PluginManifest, error)
 		return nil, fmt.Errorf("manifest.json not found in %s", sourceDir)
 	}
 	
-	// TODO: 実際のJSON読み込み実装
-	// 現在は最小限のマニフェストを返す（既存のloadManifest実装を参考）
-	pluginName := filepath.Base(sourceDir)
-	if strings.HasSuffix(pluginName, ".git") {
-		pluginName = strings.TrimSuffix(pluginName, ".git")
+	// manifest.jsonファイルを読み込み
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read manifest.json: %v", err)
 	}
 	
-	return &PluginManifest{
-		Name:        pluginName,
-		Version:     "1.0.0",
-		Description: "Plugin built from source",
-		Author:      "Unknown",
-		Binary:      pluginName,
-	}, nil
+	// JSONをパース
+	var manifest PluginManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, fmt.Errorf("failed to parse manifest.json: %v", err)
+	}
+	
+	// デバッグ: パース後のmanifest.Name確認
+	fmt.Printf("DEBUG: loadManifest parsed name: %s from file: %s\n", manifest.Name, manifestPath)
+	
+	// 必須フィールドの検証
+	if manifest.Name == "" {
+		return nil, fmt.Errorf("manifest.json: name field is required")
+	}
+	if manifest.Version == "" {
+		manifest.Version = "1.0.0" // デフォルト値
+	}
+	if manifest.Binary == "" {
+		manifest.Binary = manifest.Name // デフォルトはプラグイン名
+	}
+	if manifest.Description == "" {
+		manifest.Description = "Plugin built from source"
+	}
+	if manifest.Author == "" {
+		manifest.Author = "Unknown"
+	}
+	
+	return &manifest, nil
 }

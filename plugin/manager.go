@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -31,11 +32,16 @@ func NewPluginManager() *PluginManager {
 
 // NewPluginManagerWithPaths は指定されたパスでPluginManagerを作成する
 func NewPluginManagerWithPaths(searchPaths []string) *PluginManager {
-	return &PluginManager{
+	pm := &PluginManager{
 		plugins:     make(map[string]*LoadedPlugin),
 		clients:     make(map[string]*plugin.Client),
 		searchPaths: searchPaths,
 	}
+	
+	// 起動時にインストール済みプラグインを自動発見（同期実行に変更）
+	pm.autoDiscoverPlugins()
+	
+	return pm
 }
 
 // LoadPlugin はプラグインをロードする
@@ -226,6 +232,7 @@ func (pm *PluginManager) ListPlugins() []PluginInfo {
 // ListInstalledPlugins はディスクにインストールされているプラグインの一覧を返す（ロード状態に関係なく）
 func (pm *PluginManager) ListInstalledPlugins() []PluginInfo {
 	var plugins []PluginInfo
+	seen := make(map[string]bool) // 重複を避けるためのマップ
 	
 	// 各検索パスをスキャン
 	for _, searchPath := range pm.searchPaths {
@@ -236,6 +243,12 @@ func (pm *PluginManager) ListInstalledPlugins() []PluginInfo {
 					if IsPluginDir(pluginDir) {
 						// マニフェストを読み込んでプラグイン情報を取得
 						if manifest, err := pm.loadSimpleManifest(pluginDir); err == nil {
+							// プラグイン名で重複チェック
+							if seen[manifest.Name] {
+								continue // 既に追加済みの場合はスキップ
+							}
+							seen[manifest.Name] = true
+							
 							// ロード状態をチェック
 							pm.mutex.RLock()
 							loadedPlugin, isLoaded := pm.plugins[entry.Name()]
@@ -265,22 +278,93 @@ func (pm *PluginManager) ListInstalledPlugins() []PluginInfo {
 	return plugins
 }
 
-// loadSimpleManifest は軽量なマニフェスト読み込み（JSON解析なしの簡易版）
+// loadSimpleManifest は軽量なマニフェスト読み込み（JSON解析版）
 func (pm *PluginManager) loadSimpleManifest(pluginDir string) (*PluginManifest, error) {
-	// TODO: 実際のJSON読み込み実装
-	// 現在は最小限のマニフェストを返す
-	pluginName := filepath.Base(pluginDir)
-	if strings.HasSuffix(pluginName, ".git") {
-		pluginName = strings.TrimSuffix(pluginName, ".git")
+	manifestPath := filepath.Join(pluginDir, "manifest.json")
+	
+	// manifest.jsonの存在チェック
+	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
+		// フォールバック: ディレクトリ名ベースの最小限マニフェスト
+		pluginName := filepath.Base(pluginDir)
+		if strings.HasSuffix(pluginName, ".git") {
+			pluginName = strings.TrimSuffix(pluginName, ".git")
+		}
+		
+		return &PluginManifest{
+			Name:        pluginName,
+			Version:     "1.0.0",
+			Description: "Plugin installed from source",
+			Author:      "Unknown",
+			Binary:      pluginName,
+		}, nil
 	}
 	
-	return &PluginManifest{
-		Name:        pluginName,
-		Version:     "1.0.0",
-		Description: "Plugin installed from source",
-		Author:      "Unknown",
-		Binary:      pluginName,
-	}, nil
+	// manifest.jsonファイルを読み込み
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read manifest.json: %v", err)
+	}
+	
+	// JSONをパース
+	var manifest PluginManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return nil, fmt.Errorf("failed to parse manifest.json: %v", err)
+	}
+	
+	// 必須フィールドのデフォルト値設定
+	if manifest.Name == "" {
+		manifest.Name = filepath.Base(pluginDir)
+	}
+	if manifest.Version == "" {
+		manifest.Version = "1.0.0"
+	}
+	if manifest.Description == "" {
+		manifest.Description = "Plugin installed from source"
+	}
+	if manifest.Author == "" {
+		manifest.Author = "Unknown"
+	}
+	if manifest.Binary == "" {
+		manifest.Binary = manifest.Name
+	}
+	
+	return &manifest, nil
+}
+
+// autoDiscoverPlugins はインストール済みプラグインを自動発見してロードする
+func (pm *PluginManager) autoDiscoverPlugins() {
+	// 少し待ってからプラグインを発見（初期化完了を待つ）
+	time.Sleep(100 * time.Millisecond)
+	
+	// 重複を避けるため、既に発見したプラグイン名を記録
+	discovered := make(map[string]bool)
+	
+	// 各検索パスをスキャン
+	for _, searchPath := range pm.searchPaths {
+		if entries, err := os.ReadDir(searchPath); err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					pluginDir := filepath.Join(searchPath, entry.Name())
+					if IsPluginDir(pluginDir) {
+						// マニフェストを読み込んでプラグイン名を取得
+						if manifest, err := pm.loadSimpleManifest(pluginDir); err == nil {
+							dirName := entry.Name()  // 実際のディレクトリ名
+							pluginName := manifest.Name  // manifest.json内の名前
+							
+							// 既に発見済みの場合はスキップ
+							if discovered[pluginName] {
+								continue
+							}
+							discovered[pluginName] = true
+							
+							// ディレクトリ名でプラグインをロード（実際のバイナリがある場所）
+							pm.LoadPlugin(dirName)
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 // Shutdown は全プラグインをアンロードする

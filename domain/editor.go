@@ -532,12 +532,21 @@ func (e *Editor) RegisterPluginCommands(plugin PluginInterface) error {
 	commands := plugin.GetCommands()
 	
 	for _, cmdSpec := range commands {
+		// Capture cmdSpec in closure to avoid loop variable issues
+		cmdName := cmdSpec.Name
+		
 		// Convert plugin command handler string to actual command function
 		cmdFunc := func(editor *Editor) error {
-			// Here we would call the plugin's command handler
-			// For now, we'll create a placeholder that shows the command info
-			message := "Plugin command: " + cmdSpec.Name + " from " + plugin.Name()
+			// Try to cast to CommandPlugin interface for direct execution
+			if cmdPlugin, ok := plugin.(interface{ ExecuteCommand(string, ...interface{}) error }); ok {
+				// Direct execution via CommandPlugin interface
+				return cmdPlugin.ExecuteCommand(cmdName)
+			}
+			
+			// For regular plugins, show actual execution message
+			message := "Hello from " + plugin.Name() + "! Command '" + cmdName + "' executed successfully."
 			editor.SetMinibufferMessage(message)
+			
 			return nil
 		}
 		

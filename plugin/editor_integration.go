@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"github.com/TakahashiShuuhei/gmacs/domain"
+	gmacslog "github.com/TakahashiShuuhei/gmacs/log"
 )
 
 // EditorCommandRegistry defines the interface for registering/unregistering plugin commands, modes, and key bindings
@@ -257,6 +258,20 @@ func CreateEditorWithPluginsAndPaths(configLoader domain.ConfigLoader, hookManag
 	
 	// エディタにプラグインマネージャーを設定
 	editor.SetPluginManager(pluginManagerAdapter)
+	
+	// auto-discoveryでロードされたプラグインのコマンドを登録
+	loadedPlugins := pluginManager.ListPlugins()
+	
+	for _, pluginInfo := range loadedPlugins {
+		if plugin, found := pluginManager.GetPlugin(pluginInfo.Name); found {
+			pluginAdapter := &PluginAdapter{plugin: plugin}
+			
+			// コマンドを登録
+			if err := editor.RegisterPluginCommands(pluginAdapter); err != nil {
+				gmacslog.Error("Failed to register commands for plugin %s: %v", pluginInfo.Name, err)
+			}
+		}
+	}
 	
 	return editor
 }
