@@ -52,6 +52,12 @@ func (api *APIBindings) RegisterGmacsAPI() error {
 	L.SetField(gmacsTable, "message", L.NewFunction(api.luaMessage))
 	L.SetField(gmacsTable, "toggle_minor_mode", L.NewFunction(api.luaToggleMinorMode))
 	
+	// Plugin management functions
+	L.SetField(gmacsTable, "load_plugin", L.NewFunction(api.luaLoadPlugin))
+	L.SetField(gmacsTable, "unload_plugin", L.NewFunction(api.luaUnloadPlugin))
+	L.SetField(gmacsTable, "list_plugins", L.NewFunction(api.luaListPlugins))
+	L.SetField(gmacsTable, "plugin_loaded", L.NewFunction(api.luaPluginLoaded))
+	
 	// Register all built-in commands
 	api.registerBuiltinCommands()
 	
@@ -357,6 +363,97 @@ func (api *APIBindings) registerBuiltinCommands() {
 func (api *APIBindings) registerMinorModeCommands() {
 	// auto-a-mode is now defined in default.lua
 	// Other minor mode commands can be added here if needed
+}
+
+// Plugin management Lua functions
+
+// luaLoadPlugin implements gmacs.load_plugin(name)
+func (api *APIBindings) luaLoadPlugin(L *lua.LState) int {
+	pluginName := L.CheckString(1)
+	
+	pluginManager := api.editor.PluginManager()
+	if pluginManager == nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("Plugin manager not available"))
+		return 2
+	}
+	
+	err := pluginManager.LoadPlugin(pluginName)
+	if err != nil {
+		log.Error("Lua: Failed to load plugin %s: %v", pluginName, err)
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+	
+	log.Info("Lua: Successfully loaded plugin %s", pluginName)
+	L.Push(lua.LBool(true))
+	return 1
+}
+
+// luaUnloadPlugin implements gmacs.unload_plugin(name)
+func (api *APIBindings) luaUnloadPlugin(L *lua.LState) int {
+	pluginName := L.CheckString(1)
+	
+	pluginManager := api.editor.PluginManager()
+	if pluginManager == nil {
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString("Plugin manager not available"))
+		return 2
+	}
+	
+	err := pluginManager.UnloadPlugin(pluginName)
+	if err != nil {
+		log.Error("Lua: Failed to unload plugin %s: %v", pluginName, err)
+		L.Push(lua.LBool(false))
+		L.Push(lua.LString(err.Error()))
+		return 2
+	}
+	
+	log.Info("Lua: Successfully unloaded plugin %s", pluginName)
+	L.Push(lua.LBool(true))
+	return 1
+}
+
+// luaListPlugins implements gmacs.list_plugins()
+func (api *APIBindings) luaListPlugins(L *lua.LState) int {
+	pluginManager := api.editor.PluginManager()
+	if pluginManager == nil {
+		L.Push(L.NewTable())
+		return 1
+	}
+	
+	plugins := pluginManager.ListPlugins()
+	pluginTable := L.NewTable()
+	
+	for i, plugin := range plugins {
+		pluginInfo := L.NewTable()
+		L.SetField(pluginInfo, "name", lua.LString(plugin.Name))
+		L.SetField(pluginInfo, "version", lua.LString(plugin.Version))
+		L.SetField(pluginInfo, "description", lua.LString(plugin.Description))
+		L.SetField(pluginInfo, "enabled", lua.LBool(plugin.Enabled))
+		L.SetField(pluginInfo, "state", lua.LNumber(plugin.State))
+		
+		L.SetTable(pluginTable, lua.LNumber(i+1), pluginInfo)
+	}
+	
+	L.Push(pluginTable)
+	return 1
+}
+
+// luaPluginLoaded implements gmacs.plugin_loaded(name)
+func (api *APIBindings) luaPluginLoaded(L *lua.LState) int {
+	pluginName := L.CheckString(1)
+	
+	pluginManager := api.editor.PluginManager()
+	if pluginManager == nil {
+		L.Push(lua.LBool(false))
+		return 1
+	}
+	
+	_, found := pluginManager.GetPlugin(pluginName)
+	L.Push(lua.LBool(found))
+	return 1
 }
 
 // Helper functions for type conversion

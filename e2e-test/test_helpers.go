@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"github.com/TakahashiShuuhei/gmacs/domain"
 	"github.com/TakahashiShuuhei/gmacs/lua-config"
+	"github.com/TakahashiShuuhei/gmacs/plugin"
 )
 
 // getDefaultConfig reads the default.lua file
@@ -18,11 +19,14 @@ func getDefaultConfig() string {
 
 // NewEditorWithDefaults creates an editor with the EXACT same initialization as main.go
 // This ensures tests use the same configuration as the main application
+// For tests, plugin paths are empty to avoid interference from installed plugins
 func NewEditorWithDefaults() *domain.Editor {
-	// Step 1: Create editor with Lua configuration support (same as main.go)
+	// Step 1: Create editor with Lua configuration and plugin system (same as main.go)
 	configLoader := luaconfig.NewConfigLoader()
 	hookManager := luaconfig.NewHookManager()
-	editor := domain.NewEditorWithConfig(configLoader, hookManager)
+	
+	// Use empty plugin paths for tests to ensure isolation
+	editor := plugin.CreateEditorWithPluginsAndPaths(configLoader, hookManager, []string{})
 	
 	// Step 2: Register Lua API (same as main.go - this also registers built-in commands)
 	apiBindings := luaconfig.NewAPIBindings(editor, configLoader.GetVM())

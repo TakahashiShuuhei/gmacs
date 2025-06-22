@@ -228,15 +228,34 @@ func (a *PluginAdapter) GetKeyBindings() []domain.KeyBindingSpec {
 
 // CreateEditorWithPlugins はプラグインマネージャー付きのエディタを作成する
 func CreateEditorWithPlugins(configLoader domain.ConfigLoader, hookManager domain.HookManager) *domain.Editor {
+	return CreateEditorWithPluginsAndPaths(configLoader, hookManager, GetDefaultPluginPaths())
+}
+
+// CreateEditorWithPluginsAndPaths は指定されたプラグインパスでエディタを作成する
+func CreateEditorWithPluginsAndPaths(configLoader domain.ConfigLoader, hookManager domain.HookManager, pluginPaths []string) *domain.Editor {
 	// エディタを作成
 	editor := domain.NewEditorWithConfig(configLoader, hookManager)
 	
 	// プラグインマネージャーを作成
-	pluginManager := NewPluginManager()
+	pluginManager := NewPluginManagerWithPaths(pluginPaths)
 	pluginManagerAdapter := NewPluginManagerAdapterWithRegistry(pluginManager, editor)
 	
 	// エディタにプラグインマネージャーを設定
 	editor.SetPluginManager(pluginManagerAdapter)
 	
 	return editor
+}
+
+// LoadPluginConfigIfExists loads plugin configuration if available
+func LoadPluginConfigIfExists(configLoader domain.ConfigLoader) error {
+	// ConfigLoaderがluaconfigパッケージのものかチェックし、
+	// plugin configをロードする
+	// これは型アサーションで実装
+	
+	// interface{} として受け取った configLoader から実際の型にキャスト
+	if cl, ok := configLoader.(interface{ LoadPluginConfig() error }); ok {
+		return cl.LoadPluginConfig()
+	}
+	
+	return nil // plugin config loading not supported
 }

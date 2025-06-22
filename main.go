@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/TakahashiShuuhei/gmacs/cli"
-	"github.com/TakahashiShuuhei/gmacs/domain"
 	"github.com/TakahashiShuuhei/gmacs/events"
 	gmacslog "github.com/TakahashiShuuhei/gmacs/log"
 	"github.com/TakahashiShuuhei/gmacs/lua-config"
+	"github.com/TakahashiShuuhei/gmacs/plugin"
 )
 
 //go:embed lua-config/default.lua
@@ -35,10 +35,16 @@ func main() {
 	}
 	defer terminal.Restore()
 
-	// Always create editor with Lua configuration support
+	// Always create editor with Lua configuration and plugin support
 	configLoader := luaconfig.NewConfigLoader()
 	hookManager := luaconfig.NewHookManager()
-	editor := domain.NewEditorWithConfig(configLoader, hookManager)
+	
+	// Resolve plugin directories (main.go controls this for testability)
+	pluginPaths := resolvePluginPaths()
+	gmacslog.Info("Plugin search paths: %v", pluginPaths)
+	
+	// Create editor with plugin system
+	editor := plugin.CreateEditorWithPluginsAndPaths(configLoader, hookManager, pluginPaths)
 	
 	// Register Lua API (this also registers built-in commands)
 	apiBindings := luaconfig.NewAPIBindings(editor, configLoader.GetVM())
@@ -63,6 +69,11 @@ func main() {
 		}
 	} else {
 		gmacslog.Info("No user config file found, using defaults only")
+	}
+	
+	// Load plugin configuration if available
+	if err := plugin.LoadPluginConfigIfExists(configLoader); err != nil {
+		gmacslog.Error("Failed to load plugin config: %v", err)
 	}
 	
 	// Ensure cleanup on exit
@@ -145,4 +156,40 @@ func findConfigFile() string {
 	
 	gmacslog.Info("No config file found in standard locations")
 	return ""
+}
+
+// resolvePluginPaths resolves plugin search paths for the current environment
+func resolvePluginPaths() []string {
+	// Check if we're in test mode (no plugins for tests)
+	if isTestMode() {
+		gmacslog.Info("Test mode detected, using empty plugin paths")
+		return []string{} // Empty paths for tests
+	}
+	
+	// Use default plugin paths for normal operation
+	return plugin.GetDefaultPluginPaths()
+}
+
+// isTestMode checks if we're running in test mode
+func isTestMode() bool {
+	// Check for test-specific environment variables or conditions
+	if os.Getenv("GMACS_TEST_MODE") == "1" {
+		return true
+	}
+	
+	// Check if we're being run by go test
+	if len(os.Args) > 0 && filepath.Base(os.Args[0]) == "gmacs.test" {
+		return true
+	}
+	
+	// Check for test binary names
+	executable, err := os.Executable()
+	if err == nil {
+		baseName := filepath.Base(executable)
+		if baseName == "gmacs.test" || baseName == "__debug_bin" {
+			return true
+		}
+	}
+	
+	return false
 }

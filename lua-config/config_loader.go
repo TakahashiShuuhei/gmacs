@@ -82,6 +82,51 @@ func (cl *ConfigLoader) FindConfigFile() (string, error) {
 	return "", nil
 }
 
+// FindPluginConfigFile searches for plugin configuration file in standard locations
+func (cl *ConfigLoader) FindPluginConfigFile() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Warn("Could not get user home directory: %v", err)
+		return "", nil
+	}
+	
+	// XDG Base Directory specification compliant path
+	xdgConfigHome := os.Getenv("XDG_CONFIG_HOME")
+	if xdgConfigHome == "" {
+		xdgConfigHome = filepath.Join(homeDir, ".config")
+	}
+	
+	configPaths := []string{
+		filepath.Join(xdgConfigHome, "gmacs", "plugins.lua"),
+		filepath.Join(homeDir, ".gmacs", "plugins.lua"),
+	}
+	
+	for _, path := range configPaths {
+		if _, err := os.Stat(path); err == nil {
+			log.Info("Found plugin config file: %s", path)
+			return path, nil
+		}
+	}
+	
+	log.Info("No plugin config file found in standard locations")
+	return "", nil
+}
+
+// LoadPluginConfig loads the plugin configuration file
+func (cl *ConfigLoader) LoadPluginConfig() error {
+	configPath, err := cl.FindPluginConfigFile()
+	if err != nil {
+		return err
+	}
+	
+	if configPath == "" {
+		log.Info("No plugin configuration file found")
+		return nil
+	}
+	
+	return cl.LoadConfig(configPath)
+}
+
 // ReloadConfig reloads the current configuration file
 func (cl *ConfigLoader) ReloadConfig() error {
 	if cl.configPath == "" {

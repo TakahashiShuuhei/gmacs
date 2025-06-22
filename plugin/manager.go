@@ -28,6 +28,15 @@ func NewPluginManager() *PluginManager {
 	}
 }
 
+// NewPluginManagerWithPaths は指定されたパスでPluginManagerを作成する
+func NewPluginManagerWithPaths(searchPaths []string) *PluginManager {
+	return &PluginManager{
+		plugins:     make(map[string]*LoadedPlugin),
+		clients:     make(map[string]*plugin.Client),
+		searchPaths: searchPaths,
+	}
+}
+
 // LoadPlugin はプラグインをロードする
 func (pm *PluginManager) LoadPlugin(name string) error {
 	pm.mutex.Lock()
