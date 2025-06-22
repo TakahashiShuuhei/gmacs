@@ -2,7 +2,7 @@
 
 このドキュメントはテストコードから自動抽出されたBDD仕様書です。
 
-**生成日時:** 2025年06月20日 21:25:06
+**生成日時:** 2025年06月22日 14:11:56
 
 ## application/clean_exit
 
@@ -441,6 +441,26 @@
 **結果:** 行ラップ状態が適切に切り替わり、コマンドが正しく動作する
 
 **実装ファイル:** `domain/commands.go`, `コマンド処理`
+
+---
+
+## configuration/lua_config
+
+### TestLuaConfigurationLoading
+
+**ファイル:** `e2e-test/lua_config_test.go`
+
+**シナリオ:** Lua configuration loading
+
+**説明:** Test that Lua configuration files can be loaded and applied correctly
+
+**前提:** A test Lua configuration file exists
+
+**操作:** Editor is created with the config file
+
+**結果:** Configuration should be loaded and applied successfully
+
+**実装ファイル:** `lua-config package integration`
 
 ---
 
@@ -1306,6 +1326,66 @@
 
 ---
 
+## initialization/config_load_error_detection
+
+### TestConfigLoadErrorDetection
+
+**ファイル:** `e2e-test/initialization_consistency_test.go`
+
+**シナリオ:** 設定読み込み中のエラーを検出
+
+**説明:** 破損した設定が与えられた場合にエラーが適切に検出されることをテスト
+
+**前提:** 無効なLua設定
+
+**操作:** エディタ初期化を試行
+
+**結果:** エラーが適切に報告される
+
+**実装ファイル:** `lua-config/config_loader.go`
+
+---
+
+## initialization/consistency_check
+
+### TestInitializationConsistency
+
+**ファイル:** `e2e-test/initialization_consistency_test.go`
+
+**シナリオ:** テスト環境と本番環境の初期化が一致することを確認
+
+**説明:** NewEditorWithDefaults()と実際のアプリケーションの初期化が同じ結果を生成することをテスト
+
+**前提:** NewEditorWithDefaults()でエディタを作成
+
+**操作:** 基本的なコマンドとキーバインディングが利用可能かチェック
+
+**結果:** すべてのコアコマンドが正常に動作する
+
+**実装ファイル:** `main.go`, `e2e-test/test_helpers.go`
+
+---
+
+## initialization/keybinding_check
+
+### TestKeybindingConsistency
+
+**ファイル:** `e2e-test/initialization_consistency_test.go`
+
+**シナリオ:** 重要なキーバインディングが正常に動作することを確認
+
+**説明:** 設定読み込み後にキーバインディングが正しく機能することをテスト
+
+**前提:** NewEditorWithDefaults()でエディタを作成
+
+**操作:** 重要なキーバインディングを実行
+
+**結果:** 対応するコマンドが正常に実行される
+
+**実装ファイル:** `default.lua`, `domain/keybinding.go`
+
+---
+
 ## キーボード入力機能 (input/basic_text)
 
 ### TestBasicTextInput
@@ -1723,6 +1803,86 @@
 **結果:** シーケンス状態がリセットされ、その後のC-cでは実行されない
 
 **実装ファイル:** `domain/keybinding.go`, `シーケンス状態管理`
+
+---
+
+## lua-config/local_bind_key_basic
+
+### TestLuaLocalBindKeyBasic
+
+**ファイル:** `e2e-test/lua_local_bind_key_test.go`
+
+**シナリオ:** Lua gmacs.local_bind_key() 基本動作
+
+**説明:** gmacs.local_bind_key()でモード固有のキーバインドを設定する
+
+**前提:** エディタを作成し、Lua設定システムを初期化
+
+**操作:** gmacs.local_bind_key("fundamental-mode", "C-t", "version")を実行
+
+**結果:** fundamental-modeにC-tキーバインドが登録される
+
+**実装ファイル:** `lua-config/api_bindings.go`, `domain/editor.go`
+
+---
+
+## lua-config/local_bind_key_minor_mode
+
+### TestLuaLocalBindKeyMinorMode
+
+**ファイル:** `e2e-test/lua_local_bind_key_test.go`
+
+**シナリオ:** マイナーモードへのキーバインド設定
+
+**説明:** gmacs.local_bind_key()でマイナーモードにキーバインドを設定する
+
+**前提:** エディタとLua設定システムを初期化
+
+**操作:** gmacs.local_bind_key("auto-a-mode", "C-a", "version")を実行
+
+**結果:** auto-a-modeにC-aキーバインドが登録される
+
+**実装ファイル:** `lua-config/api_bindings.go`, `domain/editor.go`
+
+---
+
+## lua-config/local_bind_key_unknown_command
+
+### TestLuaLocalBindKeyUnknownCommand
+
+**ファイル:** `e2e-test/lua_local_bind_key_test.go`
+
+**シナリオ:** 未知のコマンドでのキーバインド試行
+
+**説明:** 存在しないコマンドにキーバインドを設定しようとした場合のエラー処理
+
+**前提:** エディタとLua設定システムを初期化
+
+**操作:** gmacs.local_bind_key("fundamental-mode", "C-t", "non-existent-command")を実行
+
+**結果:** Luaエラーが発生し、Unknown commandエラーメッセージが含まれる
+
+**実装ファイル:** `lua-config/api_bindings.go`, `domain/editor.go`
+
+---
+
+## lua-config/local_bind_key_unknown_mode
+
+### TestLuaLocalBindKeyUnknownMode
+
+**ファイル:** `e2e-test/lua_local_bind_key_test.go`
+
+**シナリオ:** 未知のモードへのキーバインド試行
+
+**説明:** 存在しないモードにキーバインドを設定しようとした場合のエラー処理
+
+**前提:** エディタとLua設定システムを初期化
+
+**操作:** gmacs.local_bind_key("non-existent-mode", "C-t", "version")を実行
+
+**結果:** Luaエラーが発生し、Unknown modeエラーメッセージが含まれる
+
+**実装ファイル:** `lua-config/api_bindings.go`, `domain/editor.go`
 
 ---
 
@@ -2441,6 +2601,406 @@
 **結果:** 各文字の幅の合計値が正確に計算される（混合文字列は範囲チェック）
 
 **実装ファイル:** `util/runewidth.go`, `文字列幅計算`
+
+---
+
+## window/border_positioning
+
+### TestWindowBorderPositioning
+
+**ファイル:** `e2e-test/window_display_test.go`
+
+**シナリオ:** ウィンドウ境界線の位置確認
+
+**説明:** 垂直分割時の境界線が正しい位置に描画されることを確認
+
+**前提:** 80x10のターミナルでC-x 3による垂直分割
+
+**操作:** 左右ウィンドウのサイズを確認
+
+**結果:** 境界線がウィンドウ間の正しい位置に表示される
+
+**実装ファイル:** `cli/display.go`, `renderWindowBorders`
+
+---
+
+## window/content_overlap
+
+### TestContentBorderOverlap
+
+**ファイル:** `e2e-test/window_display_test.go`
+
+**シナリオ:** コンテンツと境界線の重なり検証
+
+**説明:** 境界線がコンテンツと重ならないことを確認
+
+**前提:** 垂直分割されたウィンドウ
+
+**操作:** 両ウィンドウにコンテンツを入力
+
+**結果:** コンテンツが境界線と重ならず正しく表示される
+
+**実装ファイル:** `domain/window.go`, `cli/display.go`
+
+---
+
+## window/horizontal_border_analysis
+
+### TestHorizontalBorderAnalysis
+
+**ファイル:** `e2e-test/horizontal_split_test.go`
+
+**シナリオ:** 水平分割時の境界線分析
+
+**説明:** モードラインが境界として機能することを確認
+
+**前提:** 水平分割された状態
+
+**操作:** 各ウィンドウの境界を分析
+
+**結果:** モードラインが適切に境界として機能することを確認
+
+**実装ファイル:** `cli/display.go`, `ボーダー描画ロジック`
+
+---
+
+## window/horizontal_split_display
+
+### TestHorizontalSplitDisplay
+
+**ファイル:** `e2e-test/horizontal_split_test.go`
+
+**シナリオ:** 水平分割時の表示検証
+
+**説明:** C-x 2による水平分割時のコンテンツ表示確認
+
+**前提:** 80x10のターミナル環境
+
+**操作:** C-x 2で水平分割し、上ウィンドウに"abc"を入力
+
+**結果:** 下ウィンドウの1行目がコンテンツで隠されていないことを確認
+
+**実装ファイル:** `domain/window_layout.go`, `cli/display.go`
+
+---
+
+## window/modeline_visibility
+
+### TestModeLineVisibilityIssue
+
+**ファイル:** `e2e-test/modeline_issue_test.go`
+
+**シナリオ:** モードライン消失問題の調査
+
+**説明:** 実際の画面表示でモードラインが消える原因を特定
+
+**前提:** ウィンドウ分割後の状態
+
+**操作:** レンダリング処理を詳細に追跡
+
+**結果:** モードラインが正しく表示されることを確認
+
+**実装ファイル:** `cli/display.go`, `MockDisplay比較`
+
+---
+
+## window/render_order_analysis
+
+### TestRenderOrderAnalysis
+
+**ファイル:** `e2e-test/modeline_issue_test.go`
+
+**シナリオ:** レンダリング順序の詳細分析
+
+**説明:** ウィンドウ、モードライン、境界線の描画順序を確認
+
+**前提:** 垂直分割された状態
+
+**操作:** 各レンダリングステップを個別に実行
+
+**結果:** 正しい順序で描画されることを確認
+
+**実装ファイル:** `cli/display.go`, `レンダリング順序`
+
+---
+
+## window/vertical_split_display
+
+### TestVerticalSplitDisplay
+
+**ファイル:** `e2e-test/window_display_test.go`
+
+**シナリオ:** 垂直分割時の表示検証
+
+**説明:** C-x 3による垂直分割時のコンテンツ表示とモードライン確認
+
+**前提:** 80x10のターミナル環境
+
+**操作:** C-x 3で垂直分割し、左ウィンドウに"abc"を入力
+
+**結果:** 両ウィンドウにモードラインが表示され、コンテンツが正常に表示される
+
+**実装ファイル:** `domain/window_layout.go`, `cli/display.go`
+
+---
+
+## マイナーモード/AutoAMode
+
+### TestAutoAModeBasic
+
+**ファイル:** `e2e-test/auto_a_mode_test.go`
+
+**シナリオ:** AutoAModeの基本動作
+
+**説明:** AutoAModeが正しく動作し、Enterキー押下時に'a'が自動追加される
+
+**前提:** エディタとバッファが存在する
+
+**操作:** AutoAModeを有効化してEnterキーを押す
+
+**結果:** 改行後に'a'が自動的に追加される
+
+**実装ファイル:** `domain/auto_a_mode.go`, `domain/editor.go`
+
+---
+
+## マイナーモード/AutoAModeトグル
+
+### TestAutoAModeToggle
+
+**ファイル:** `e2e-test/auto_a_mode_test.go`
+
+**シナリオ:** AutoAModeの有効/無効切り替え
+
+**説明:** AutoAModeのトグル機能が正常に動作する
+
+**前提:** エディタとバッファが存在する
+
+**操作:** AutoAModeを複数回トグルする
+
+**結果:** 正しく有効/無効が切り替わる
+
+**実装ファイル:** `domain/auto_a_mode.go`, `domain/mode.go`
+
+---
+
+## マイナーモード/AutoAMode機能
+
+### TestAutoAModeNewlineEffect
+
+**ファイル:** `e2e-test/auto_a_mode_test.go`
+
+**シナリオ:** AutoAModeの改行時a追加機能
+
+**説明:** AutoAMode有効時に改行すると'a'が自動追加される
+
+**前提:** AutoAModeが有効なバッファ
+
+**操作:** 改行を挿入する
+
+**結果:** 改行後に'a'が追加される
+
+**実装ファイル:** `domain/auto_a_mode.go`, `domain/editor.go`
+
+---
+
+## マイナーモード/モードライン表示
+
+### TestMinorModeDisplayInModeLine
+
+**ファイル:** `e2e-test/auto_a_mode_test.go`
+
+**シナリオ:** マイナーモードのモードライン表示
+
+**説明:** 有効なマイナーモードがモードラインに表示される
+
+**前提:** エディタとバッファが存在する
+
+**操作:** AutoAModeを有効化する
+
+**結果:** モードライン表示にマイナーモード名が含まれる
+
+**実装ファイル:** `cli/display.go`
+
+---
+
+## モード管理/システム統合
+
+### TestModeSystemIntegration
+
+**ファイル:** `e2e-test/mode_system_test.go`
+
+**シナリオ:** モードシステムとエディタの統合
+
+**説明:** モードシステムがエディタ全体と正しく統合されている
+
+**前提:** エディタが起動している
+
+**操作:** 各種操作を行う
+
+**結果:** モードシステムが正常に動作する
+
+**実装ファイル:** `domain/editor.go`, `domain/mode.go`
+
+---
+
+## モード管理/ファイル関連バッファ
+
+### TestFileModeDetection
+
+**ファイル:** `e2e-test/mode_system_test.go`
+
+**シナリオ:** ファイルバッファのモード自動検出
+
+**説明:** ファイルパスに基づくメジャーモードの自動検出が動作する
+
+**前提:** エディタが存在する
+
+**操作:** ファイルバッファを作成する
+
+**結果:** 適切なメジャーモードが設定される
+
+**実装ファイル:** `domain/mode.go`
+
+---
+
+## モード管理/マイナーモード
+
+### TestMinorModeBasics
+
+**ファイル:** `e2e-test/mode_system_test.go`
+
+**シナリオ:** マイナーモードの基本動作
+
+**説明:** マイナーモードの有効化・無効化が正常に動作する
+
+**前提:** エディタとバッファが存在する
+
+**操作:** マイナーモードを操作する
+
+**結果:** 正しく有効化・無効化される
+
+**実装ファイル:** `domain/mode.go`, `domain/buffer.go`
+
+---
+
+## モード管理/メジャーモード
+
+### TestMajorModeBasics
+
+**ファイル:** `e2e-test/mode_system_test.go`
+
+**シナリオ:** 基本的なメジャーモード機能
+
+**説明:** Emacsライクなメジャーモードシステムの基本動作を確認
+
+**前提:** エディタが起動している
+
+**操作:** 新しいバッファを作成する
+
+**結果:** fundamental-modeが自動設定される
+
+**実装ファイル:** `domain/mode.go`, `domain/fundamental_mode.go`
+
+---
+
+## モード管理/メジャーモード切り替え
+
+### TestMajorModeSwitch
+
+**ファイル:** `e2e-test/mode_system_test.go`
+
+**シナリオ:** メジャーモードの手動切り替え
+
+**説明:** ModeManagerを使ったメジャーモードの切り替えが正常に動作する
+
+**前提:** エディタとバッファが存在する
+
+**操作:** ModeManagerでメジャーモードを切り替える
+
+**結果:** 正しいモードが設定される
+
+**実装ファイル:** `domain/mode.go`
+
+---
+
+## モード表示/ファイル拡張子マッピング
+
+### TestFileExtensionModeMapping
+
+**ファイル:** `e2e-test/mode_display_test.go`
+
+**シナリオ:** 複数の拡張子でのモード自動検出
+
+**説明:** 異なるファイル拡張子で正しいメジャーモードが検出される
+
+**前提:** エディタとモードマネージャーが存在する
+
+**操作:** 様々な拡張子のファイルを処理する
+
+**結果:** 各ファイルに適切なメジャーモードが設定される
+
+**実装ファイル:** `domain/mode.go`, `domain/text_mode.go`
+
+---
+
+## モード表示/メジャーモード表示
+
+### TestMajorModeDisplay
+
+**ファイル:** `e2e-test/mode_display_test.go`
+
+**シナリオ:** メジャーモード名のモードライン表示
+
+**説明:** モードラインにメジャーモード名が正しく表示される
+
+**前提:** エディタが起動している
+
+**操作:** 異なる拡張子のファイルを開く
+
+**結果:** モードラインに正しいメジャーモード名が表示される
+
+**実装ファイル:** `cli/display.go`, `domain/text_mode.go`
+
+---
+
+## モード表示/モードライン内容
+
+### TestModeLineContent
+
+**ファイル:** `e2e-test/mode_display_test.go`
+
+**シナリオ:** モードライン表示内容の確認
+
+**説明:** モードラインに表示される内容が正しい形式である
+
+**前提:** エディタとモックディスプレイが存在する
+
+**操作:** モードラインを描画する
+
+**結果:** 正しい形式でバッファ名とモード名が表示される
+
+**実装ファイル:** `cli/display.go`
+
+---
+
+## モード表示/モード切り替え確認
+
+### TestModeSwitch
+
+**ファイル:** `e2e-test/mode_display_test.go`
+
+**シナリオ:** モード切り替え時の表示更新
+
+**説明:** メジャーモードを切り替えた時に表示が更新される
+
+**前提:** エディタとバッファが存在する
+
+**操作:** メジャーモードを切り替える
+
+**結果:** 新しいモード名が確認できる
+
+**実装ファイル:** `domain/mode.go`, `domain/buffer.go`
 
 ---
 
