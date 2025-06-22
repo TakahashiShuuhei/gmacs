@@ -1,0 +1,395 @@
+syntax = "proto3";
+
+package gmacs.plugin;
+
+option go_package = "github.com/TakahashiShuuhei/gmacs/plugin";
+
+// プラグインサービス（プラグイン側が実装）
+service PluginService {
+    rpc Initialize(InitRequest) returns (InitResponse);
+    rpc GetInfo(InfoRequest) returns (InfoResponse);
+    rpc GetCommands(CommandsRequest) returns (CommandsResponse);
+    rpc GetModes(ModesRequest) returns (ModesResponse);
+    rpc GetKeyBindings(KeyBindingsRequest) returns (KeyBindingsResponse);
+    rpc ExecuteCommand(ExecuteRequest) returns (ExecuteResponse);
+    rpc Cleanup(CleanupRequest) returns (CleanupResponse);
+    
+    // MajorModePlugin用
+    rpc OnActivate(ModeActivateRequest) returns (ModeActivateResponse);
+    rpc OnDeactivate(ModeDeactivateRequest) returns (ModeDeactivateResponse);
+    rpc OnFileOpen(FileOpenRequest) returns (FileOpenResponse);
+    rpc OnFileSave(FileSaveRequest) returns (FileSaveResponse);
+    
+    // MinorModePlugin用
+    rpc EnableMinorMode(MinorModeEnableRequest) returns (MinorModeEnableResponse);
+    rpc DisableMinorMode(MinorModeDisableRequest) returns (MinorModeDisableResponse);
+    rpc IsMinorModeEnabled(MinorModeStatusRequest) returns (MinorModeStatusResponse);
+    rpc OnBufferChange(BufferChangeRequest) returns (BufferChangeResponse);
+    rpc OnCursorMove(CursorMoveRequest) returns (CursorMoveResponse);
+}
+
+// ホストサービス（gmacs側が実装、プラグインから呼び出し）
+service HostService {
+    rpc GetCurrentBuffer(GetBufferRequest) returns (GetBufferResponse);
+    rpc GetCurrentWindow(GetWindowRequest) returns (GetWindowResponse);
+    rpc SetStatus(SetStatusRequest) returns (SetStatusResponse);
+    rpc ShowMessage(ShowMessageRequest) returns (ShowMessageResponse);
+    rpc ExecuteCommand(HostExecuteRequest) returns (HostExecuteResponse);
+    rpc SetMajorMode(SetMajorModeRequest) returns (SetMajorModeResponse);
+    rpc ToggleMinorMode(ToggleMinorModeRequest) returns (ToggleMinorModeResponse);
+    rpc AddHook(AddHookRequest) returns (AddHookResponse);
+    rpc TriggerHook(TriggerHookRequest) returns (TriggerHookResponse);
+    rpc CreateBuffer(CreateBufferRequest) returns (CreateBufferResponse);
+    rpc FindBuffer(FindBufferRequest) returns (FindBufferResponse);
+    rpc SwitchToBuffer(SwitchBufferRequest) returns (SwitchBufferResponse);
+    rpc OpenFile(OpenFileRequest) returns (OpenFileResponse);
+    rpc SaveBuffer(SaveBufferRequest) returns (SaveBufferResponse);
+    rpc GetOption(GetOptionRequest) returns (GetOptionResponse);
+    rpc SetOption(SetOptionRequest) returns (SetOptionResponse);
+}
+
+// プラグイン初期化
+message InitRequest {
+    map<string, string> config = 1;
+}
+
+message InitResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+// プラグイン情報取得
+message InfoRequest {}
+
+message InfoResponse {
+    string name = 1;
+    string version = 2;
+    string description = 3;
+}
+
+// コマンド取得
+message CommandsRequest {}
+
+message CommandsResponse {
+    repeated CommandSpec commands = 1;
+}
+
+message CommandSpec {
+    string name = 1;
+    string description = 2;
+    bool interactive = 3;
+    string handler = 4;
+}
+
+// モード取得
+message ModesRequest {}
+
+message ModesResponse {
+    repeated MajorModeSpec major_modes = 1;
+    repeated MinorModeSpec minor_modes = 2;
+}
+
+message MajorModeSpec {
+    string name = 1;
+    repeated string extensions = 2;
+    string description = 3;
+    repeated KeyBindingSpec key_bindings = 4;
+}
+
+message MinorModeSpec {
+    string name = 1;
+    string description = 2;
+    bool global = 3;
+    repeated KeyBindingSpec key_bindings = 4;
+}
+
+// キーバインディング取得
+message KeyBindingsRequest {}
+
+message KeyBindingsResponse {
+    repeated KeyBindingSpec key_bindings = 1;
+}
+
+message KeyBindingSpec {
+    string sequence = 1;
+    string command = 2;
+    string mode = 3;
+}
+
+// コマンド実行
+message ExecuteRequest {
+    string command = 1;
+    repeated string args = 2;
+}
+
+message ExecuteResponse {
+    bool success = 1;
+    string error = 2;
+    string result = 3;
+}
+
+// クリーンアップ
+message CleanupRequest {}
+
+message CleanupResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+// メジャーモード関連
+message ModeActivateRequest {
+    Buffer buffer = 1;
+}
+
+message ModeActivateResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message ModeDeactivateRequest {
+    Buffer buffer = 1;
+}
+
+message ModeDeactivateResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message FileOpenRequest {
+    Buffer buffer = 1;
+    string filename = 2;
+}
+
+message FileOpenResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message FileSaveRequest {
+    Buffer buffer = 1;
+    string filename = 2;
+}
+
+message FileSaveResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+// マイナーモード関連
+message MinorModeEnableRequest {
+    Buffer buffer = 1;
+}
+
+message MinorModeEnableResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message MinorModeDisableRequest {
+    Buffer buffer = 1;
+}
+
+message MinorModeDisableResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message MinorModeStatusRequest {
+    Buffer buffer = 1;
+}
+
+message MinorModeStatusResponse {
+    bool enabled = 1;
+}
+
+message BufferChangeRequest {
+    Buffer buffer = 1;
+    ChangeSpec change = 2;
+}
+
+message BufferChangeResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message CursorMoveRequest {
+    Buffer buffer = 1;
+    int32 old_pos = 2;
+    int32 new_pos = 3;
+}
+
+message CursorMoveResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+// ホストサービス関連
+message GetBufferRequest {}
+
+message GetBufferResponse {
+    Buffer buffer = 1;
+}
+
+message GetWindowRequest {}
+
+message GetWindowResponse {
+    Window window = 1;
+}
+
+message SetStatusRequest {
+    string message = 1;
+}
+
+message SetStatusResponse {
+    bool success = 1;
+}
+
+message ShowMessageRequest {
+    string message = 1;
+}
+
+message ShowMessageResponse {
+    bool success = 1;
+}
+
+message HostExecuteRequest {
+    string name = 1;
+    repeated string args = 2;
+}
+
+message HostExecuteResponse {
+    bool success = 1;
+    string error = 2;
+    string result = 3;
+}
+
+message SetMajorModeRequest {
+    string buffer_name = 1;
+    string mode_name = 2;
+}
+
+message SetMajorModeResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message ToggleMinorModeRequest {
+    string buffer_name = 1;
+    string mode_name = 2;
+}
+
+message ToggleMinorModeResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message AddHookRequest {
+    string event = 1;
+    string handler_id = 2;
+}
+
+message AddHookResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message TriggerHookRequest {
+    string event = 1;
+    repeated string args = 2;
+}
+
+message TriggerHookResponse {
+    bool success = 1;
+}
+
+message CreateBufferRequest {
+    string name = 1;
+}
+
+message CreateBufferResponse {
+    Buffer buffer = 1;
+}
+
+message FindBufferRequest {
+    string name = 1;
+}
+
+message FindBufferResponse {
+    Buffer buffer = 1;
+    bool found = 2;
+}
+
+message SwitchBufferRequest {
+    string name = 1;
+}
+
+message SwitchBufferResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message OpenFileRequest {
+    string path = 1;
+}
+
+message OpenFileResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message SaveBufferRequest {
+    string buffer_name = 1;
+}
+
+message SaveBufferResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+message GetOptionRequest {
+    string name = 1;
+}
+
+message GetOptionResponse {
+    string value = 1;
+    bool found = 2;
+}
+
+message SetOptionRequest {
+    string name = 1;
+    string value = 2;
+}
+
+message SetOptionResponse {
+    bool success = 1;
+    string error = 2;
+}
+
+// 共通データ型
+message Buffer {
+    string name = 1;
+    string content = 2;
+    int32 cursor_position = 3;
+    bool is_dirty = 4;
+    string filename = 5;
+}
+
+message Window {
+    Buffer buffer = 1;
+    int32 width = 2;
+    int32 height = 3;
+    int32 scroll_offset = 4;
+}
+
+message ChangeSpec {
+    ChangeType type = 1;
+    int32 pos = 2;
+    int32 length = 3;
+    string text = 4;
+}
+
+enum ChangeType {
+    CHANGE_TYPE_INSERT = 0;
+    CHANGE_TYPE_DELETE = 1;
+    CHANGE_TYPE_REPLACE = 2;
+}
