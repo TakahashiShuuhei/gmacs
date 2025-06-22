@@ -311,6 +311,13 @@ func (api *APIBindings) luaToggleMinorMode(L *lua.LState) int {
 
 // registerBuiltinCommands registers all built-in commands that were previously in editor.go
 func (api *APIBindings) registerBuiltinCommands() {
+	// Register core commands first
+	api.editor.RegisterCommand("quit", func() error { return domain.Quit(api.editor) })
+	api.editor.RegisterCommand("keyboard-quit", func() error { return domain.KeyboardQuit(api.editor) })
+	api.editor.RegisterCommand("find-file", func() error { return domain.FindFile(api.editor) })
+	api.editor.RegisterCommand("delete-backward-char", func() error { return domain.DeleteBackwardChar(api.editor) })
+	api.editor.RegisterCommand("delete-char", func() error { return domain.DeleteChar(api.editor) })
+	
 	// Register cursor movement commands
 	api.editor.RegisterCommand("forward-char", func() error { return domain.ForwardChar(api.editor) })
 	api.editor.RegisterCommand("backward-char", func() error { return domain.BackwardChar(api.editor) })

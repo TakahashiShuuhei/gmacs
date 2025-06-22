@@ -93,13 +93,23 @@ func (kbm *KeyBindingMap) BindRawSequence(sequence string, command CommandFunc) 
 	kbm.rawSequenceBindings = append(kbm.rawSequenceBindings, binding)
 }
 
-// LookupSequence finds a command for the given raw key sequence
+// LookupSequence finds a command for the given key sequence (both raw and parsed)
 func (kbm *KeyBindingMap) LookupSequence(sequence string) (CommandFunc, bool) {
+	// First check raw sequence bindings (escape sequences)
 	for _, binding := range kbm.rawSequenceBindings {
 		if binding.Sequence == sequence {
 			return binding.Command, true
 		}
 	}
+	
+	// Then check parsed key sequence bindings (like M-a, C-x C-c)
+	parsedSequence := parseKeySequence(sequence)
+	for _, binding := range kbm.sequenceBindings {
+		if kbm.sequencesEqual(binding.Sequence, parsedSequence) {
+			return binding.Command, true
+		}
+	}
+	
 	return nil, false
 }
 

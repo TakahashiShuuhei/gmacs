@@ -348,8 +348,15 @@ func (e *Editor) handleKeyEvent(event events.KeyEventData) {
 		return
 	}
 
-	// Reset meta state for other keys
+	// Handle other Meta key combinations
 	if e.metaPressed {
+		metaSequence := "M-" + event.Key
+		if cmd, found := e.keyBindings.LookupSequence(metaSequence); found {
+			cmd(e)
+			e.metaPressed = false
+			return
+		}
+		// Reset meta state for unbound keys
 		e.metaPressed = false
 	}
 

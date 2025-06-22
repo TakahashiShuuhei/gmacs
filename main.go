@@ -40,7 +40,7 @@ func main() {
 	hookManager := luaconfig.NewHookManager()
 	editor := domain.NewEditorWithConfig(configLoader, hookManager)
 	
-	// Register Lua API
+	// Register Lua API (this also registers built-in commands)
 	apiBindings := luaconfig.NewAPIBindings(editor, configLoader.GetVM())
 	apiBindings.RegisterGmacsAPI()
 	
