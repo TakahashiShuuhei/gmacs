@@ -2,11 +2,28 @@ package plugin
 
 import (
 	"context"
+	"encoding/gob"
+	"fmt"
 	"net/rpc"
 
 	"github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 )
+
+// StringError matches the plugin's StringError type for gob serialization
+type StringError struct {
+	Message string
+}
+
+func (se StringError) Error() string {
+	return se.Message
+}
+
+func init() {
+	// Register StringError with gob for RPC serialization
+	// Use the same name as the plugin side to avoid name conflicts
+	gob.RegisterName("main.StringError", StringError{})
+}
 
 // GRPCPluginはHashiCorp go-pluginのGRPCプラグイン実装
 // 後でprotobufが利用可能になったら、gRPCに変更する予定
@@ -124,6 +141,43 @@ func (c *RPCClient) GetKeyBindings() []KeyBindingSpec {
 	return resp
 }
 
+// CommandPlugin interface implementation
+func (c *RPCClient) ExecuteCommand(name string, args ...interface{}) error {
+	// Convert args to a simpler structure for gob encoding
+	argsStrings := make([]string, len(args))
+	for i, arg := range args {
+		argsStrings[i] = fmt.Sprintf("%v", arg)
+	}
+	
+	request := map[string]interface{}{
+		"name": name,
+		"args": argsStrings, // Use string slice instead of []interface{}
+	}
+	var resp error
+	err := c.client.Call("Plugin.ExecuteCommand", request, &resp)
+	if err != nil {
+		// Check if it's a "method not found" error
+		if err.Error() == "rpc: can't find method Plugin.ExecuteCommand" {
+			return fmt.Errorf("plugin does not support ExecuteCommand (plugin needs to be updated to implement CommandPlugin interface)")
+		}
+		return fmt.Errorf("RPC call failed: %v", err)
+	}
+	return resp
+}
+
+func (c *RPCClient) GetCompletions(command string, prefix string) []string {
+	request := map[string]interface{}{
+		"command": command,
+		"prefix":  prefix,
+	}
+	var resp []string
+	err := c.client.Call("Plugin.GetCompletions", request, &resp)
+	if err != nil {
+		return nil
+	}
+	return resp
+}
+
 // RPCサーバー側のメソッド実装
 func (s *RPCServer) Name(args interface{}, resp *string) error {
 	*resp = s.Impl.Name()
@@ -168,6 +222,36 @@ func (s *RPCServer) GetMinorModes(args interface{}, resp *[]MinorModeSpec) error
 
 func (s *RPCServer) GetKeyBindings(args interface{}, resp *[]KeyBindingSpec) error {
 	*resp = s.Impl.GetKeyBindings()
+	return nil
+}
+
+// CommandPlugin RPC server methods
+func (s *RPCServer) ExecuteCommand(args map[string]interface{}, resp *error) error {
+	if cmdPlugin, ok := s.Impl.(CommandPlugin); ok {
+		name, _ := args["name"].(string)
+		argsStrings, _ := args["args"].([]string)
+		
+		// Convert string slice back to []interface{}
+		pluginArgs := make([]interface{}, len(argsStrings))
+		for i, arg := range argsStrings {
+			pluginArgs[i] = arg
+		}
+		
+		*resp = cmdPlugin.ExecuteCommand(name, pluginArgs...)
+	} else {
+		*resp = fmt.Errorf("plugin does not implement CommandPlugin interface")
+	}
+	return nil
+}
+
+func (s *RPCServer) GetCompletions(args map[string]interface{}, resp *[]string) error {
+	if cmdPlugin, ok := s.Impl.(CommandPlugin); ok {
+		command, _ := args["command"].(string)
+		prefix, _ := args["prefix"].(string)
+		*resp = cmdPlugin.GetCompletions(command, prefix)
+	} else {
+		*resp = []string{}
+	}
 	return nil
 }
 

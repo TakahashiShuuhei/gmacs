@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"fmt"
 	"github.com/TakahashiShuuhei/gmacs/domain"
 	gmacslog "github.com/TakahashiShuuhei/gmacs/log"
 )
@@ -240,6 +241,159 @@ func (a *PluginAdapter) GetKeyBindings() []domain.KeyBindingSpec {
 	}
 	
 	return result
+}
+
+// ExecuteCommand implements CommandPlugin interface for command execution
+func (a *PluginAdapter) ExecuteCommand(name string, args ...interface{}) error {
+	gmacslog.Debug("Executing command '%s' on plugin '%s'", name, a.plugin.Name())
+	
+	// Try to cast to CommandPlugin interface
+	if cmdPlugin, ok := a.plugin.(CommandPlugin); ok {
+		err := cmdPlugin.ExecuteCommand(name, args...)
+		if err != nil {
+			gmacslog.Error("Plugin command execution failed: %v", err)
+		}
+		return err
+	}
+	
+	// If the underlying plugin doesn't implement CommandPlugin, return error
+	gmacslog.Error("Plugin %s does not implement CommandPlugin interface", a.plugin.Name())
+	return fmt.Errorf("plugin %s does not implement CommandPlugin interface", a.plugin.Name())
+}
+
+// GetCompletions implements CommandPlugin interface for command completion
+func (a *PluginAdapter) GetCompletions(command string, prefix string) []string {
+	// Try to cast to CommandPlugin interface
+	if cmdPlugin, ok := a.plugin.(CommandPlugin); ok {
+		return cmdPlugin.GetCompletions(command, prefix)
+	}
+	
+	// If the underlying plugin doesn't implement CommandPlugin, return empty
+	return []string{}
+}
+
+// HostInterfaceImpl はプラグインに提供するホストインターフェースの実装
+type HostInterfaceImpl struct {
+	editor *domain.Editor
+}
+
+// NewHostInterface creates a new HostInterface implementation
+func NewHostInterface(editor *domain.Editor) *HostInterfaceImpl {
+	return &HostInterfaceImpl{editor: editor}
+}
+
+// エディタ操作
+func (h *HostInterfaceImpl) GetCurrentBuffer() interface{} {
+	if h.editor != nil {
+		return h.editor.CurrentBuffer()
+	}
+	return nil
+}
+
+func (h *HostInterfaceImpl) GetCurrentWindow() interface{} {
+	if h.editor != nil {
+		return h.editor.CurrentWindow()
+	}
+	return nil
+}
+
+func (h *HostInterfaceImpl) SetStatus(message string) {
+	if h.editor != nil {
+		h.editor.SetMinibufferMessage(message)
+	}
+}
+
+func (h *HostInterfaceImpl) ShowMessage(message string) {
+	if h.editor != nil {
+		h.editor.SetMinibufferMessage(message)
+	}
+}
+
+// コマンド実行
+func (h *HostInterfaceImpl) ExecuteCommand(name string, args ...interface{}) error {
+	if h.editor != nil {
+		cmd, exists := h.editor.CommandRegistry().Get(name)
+		if !exists {
+			return fmt.Errorf("command not found: %s", name)
+		}
+		return cmd.Execute(h.editor)
+	}
+	return fmt.Errorf("editor not available")
+}
+
+// モード管理
+func (h *HostInterfaceImpl) SetMajorMode(bufferName, modeName string) error {
+	// TODO: Implement major mode setting
+	return fmt.Errorf("SetMajorMode not implemented")
+}
+
+func (h *HostInterfaceImpl) ToggleMinorMode(bufferName, modeName string) error {
+	// TODO: Implement minor mode toggling
+	return fmt.Errorf("ToggleMinorMode not implemented")
+}
+
+// イベント・フック
+func (h *HostInterfaceImpl) AddHook(event string, handler func(...interface{}) error) {
+	if h.editor != nil {
+		h.editor.AddHook(event, handler)
+	}
+}
+
+func (h *HostInterfaceImpl) TriggerHook(event string, args ...interface{}) {
+	if h.editor != nil {
+		h.editor.TriggerHook(event, args...)
+	}
+}
+
+// バッファ操作
+func (h *HostInterfaceImpl) CreateBuffer(name string) interface{} {
+	// TODO: Implement buffer creation
+	return nil
+}
+
+func (h *HostInterfaceImpl) FindBuffer(name string) interface{} {
+	if h.editor != nil {
+		return h.editor.FindBuffer(name)
+	}
+	return nil
+}
+
+func (h *HostInterfaceImpl) SwitchToBuffer(name string) error {
+	if h.editor != nil {
+		buffer := h.editor.FindBuffer(name)
+		if buffer != nil {
+			h.editor.SwitchToBuffer(buffer)
+			return nil
+		}
+		return fmt.Errorf("buffer not found: %s", name)
+	}
+	return fmt.Errorf("editor not available")
+}
+
+// ファイル操作
+func (h *HostInterfaceImpl) OpenFile(path string) error {
+	// TODO: Implement file opening
+	return fmt.Errorf("OpenFile not implemented")
+}
+
+func (h *HostInterfaceImpl) SaveBuffer(bufferName string) error {
+	// TODO: Implement buffer saving
+	return fmt.Errorf("SaveBuffer not implemented")
+}
+
+// 設定
+func (h *HostInterfaceImpl) GetOption(name string) (interface{}, error) {
+	if h.editor != nil {
+		return h.editor.GetOption(name)
+	}
+	return nil, fmt.Errorf("editor not available")
+}
+
+func (h *HostInterfaceImpl) SetOption(name string, value interface{}) error {
+	if h.editor != nil {
+		return h.editor.SetOption(name, value)
+	}
+	return fmt.Errorf("editor not available")
 }
 
 // CreateEditorWithPlugins はプラグインマネージャー付きのエディタを作成する

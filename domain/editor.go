@@ -1,7 +1,9 @@
 package domain
 
 import (
+	"reflect"
 	"github.com/TakahashiShuuhei/gmacs/events"
+	"github.com/TakahashiShuuhei/gmacs/log"
 )
 
 // ConfigLoader interface for Lua configuration loading
@@ -495,16 +497,42 @@ func (e *Editor) RegisterPluginCommands(plugin PluginInterface) error {
 		
 		// Convert plugin command handler string to actual command function
 		cmdFunc := func(editor *Editor) error {
-			// Try to cast to CommandPlugin interface for direct execution
+			log.Debug("Executing plugin command: %s from plugin: %s", cmdName, plugin.Name())
+			
+			// Try to execute command via CommandPlugin interface
 			if cmdPlugin, ok := plugin.(interface{ ExecuteCommand(string, ...interface{}) error }); ok {
-				// Direct execution via CommandPlugin interface
-				return cmdPlugin.ExecuteCommand(cmdName)
+				log.Debug("Direct CommandPlugin execution for: %s", cmdName)
+				err := cmdPlugin.ExecuteCommand(cmdName)
+				if err != nil {
+					// Check if it's a success message disguised as an error
+					errMsg := err.Error()
+					if len(errMsg) > 8 && errMsg[:8] == "SUCCESS:" {
+						// Extract and display the success message
+						editor.SetMinibufferMessage(errMsg[9:]) // Remove "SUCCESS: " prefix
+						return nil
+					}
+					editor.SetMinibufferMessage("Plugin command error: " + errMsg)
+					return err
+				}
+				// Plugin command executed successfully, let plugin handle its own messaging
+				return nil
 			}
 			
-			// For regular plugins, show actual execution message
-			message := "Hello from " + plugin.Name() + "! Command '" + cmdName + "' executed successfully."
-			editor.SetMinibufferMessage(message)
+			// If plugin doesn't implement CommandPlugin interface, try via plugin manager
+			log.Debug("Plugin does not implement CommandPlugin directly, trying via plugin manager")
+			if editor.pluginManager != nil {
+				log.Info("PLUGIN_DEBUG: Using plugin manager for command: %s", cmdName)
+				editor.TriggerHook("debug", "Using plugin manager for command:", cmdName)
+				err := editor.executePluginCommand(plugin.Name(), cmdName)
+				if err != nil {
+					editor.SetMinibufferMessage("Plugin command error: " + err.Error())
+					return err
+				}
+				return nil
+			}
 			
+			// Fallback: command not executable
+			editor.SetMinibufferMessage("Plugin command '" + cmdName + "' cannot be executed (plugin not loaded)")
 			return nil
 		}
 		
@@ -613,6 +641,36 @@ func (e *Editor) UnregisterPluginKeyBindings(plugin PluginInterface) error {
 // removeKeyBinding はキーバインドマップから指定されたキーシーケンスを削除する
 func (e *Editor) removeKeyBinding(sequence string) {
 	e.keyBindings.RemoveSequence(sequence)
+}
+
+// executePluginCommand executes a command from a loaded plugin
+func (e *Editor) executePluginCommand(pluginName, commandName string) error {
+	// Get plugin from plugin manager  
+	plugin, exists := e.pluginManager.GetPlugin(pluginName)
+	if !exists {
+		e.TriggerHook("debug", "Plugin not found:", pluginName)
+		return &ConfigError{Message: "Plugin not found: " + pluginName}
+	}
+	
+	log.Info("PLUGIN_DEBUG: Plugin found: %s, type: %s", pluginName, reflect.TypeOf(plugin))
+	e.TriggerHook("debug", "Plugin found:", pluginName, "type:", plugin)
+	
+	// Try to cast to CommandPlugin interface
+	if cmdPlugin, ok := plugin.(interface{ ExecuteCommand(string, ...interface{}) error }); ok {
+		log.Info("PLUGIN_DEBUG: Plugin %s implements CommandPlugin interface, executing command: %s", pluginName, commandName)
+		e.TriggerHook("debug", "Plugin", pluginName, "implements CommandPlugin, executing:", commandName)
+		err := cmdPlugin.ExecuteCommand(commandName)
+		if err != nil {
+			e.TriggerHook("debug", "Plugin command execution failed:", err)
+			return err
+		}
+		e.SetMinibufferMessage("Plugin command '" + commandName + "' executed successfully")
+		return nil
+	}
+	
+	log.Info("PLUGIN_DEBUG: Plugin %s does NOT implement CommandPlugin interface", pluginName)
+	e.TriggerHook("debug", "Plugin", pluginName, "does NOT implement CommandPlugin interface")
+	return &ConfigError{Message: "Plugin " + pluginName + " does not support command execution"}
 }
 
 // KeyBindings returns the key binding map (for plugin integration and testing)
