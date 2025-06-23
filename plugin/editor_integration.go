@@ -408,11 +408,15 @@ func (h *HostInterfaceImpl) SetOption(name string, value interface{}) error {
 
 // CreateEditorWithPlugins はプラグインマネージャー付きのエディタを作成する
 func CreateEditorWithPlugins(configLoader domain.ConfigLoader, hookManager domain.HookManager) *domain.Editor {
+	fmt.Println("[DEBUG] CreateEditorWithPlugins called")
+	gmacslog.Info("CreateEditorWithPlugins called")
 	return CreateEditorWithPluginsAndPaths(configLoader, hookManager, GetDefaultPluginPaths())
 }
 
 // CreateEditorWithPluginsAndPaths は指定されたプラグインパスでエディタを作成する
 func CreateEditorWithPluginsAndPaths(configLoader domain.ConfigLoader, hookManager domain.HookManager, pluginPaths []string) *domain.Editor {
+	fmt.Printf("[DEBUG] CreateEditorWithPluginsAndPaths called with %d plugin paths\n", len(pluginPaths))
+	gmacslog.Info("CreateEditorWithPluginsAndPaths called with %d plugin paths", len(pluginPaths))
 	// エディタを作成
 	editor := domain.NewEditorWithConfig(configLoader, hookManager)
 	
@@ -425,20 +429,26 @@ func CreateEditorWithPluginsAndPaths(configLoader domain.ConfigLoader, hookManag
 	
 	// auto-discoveryでロードされたプラグインのコマンドを登録
 	loadedPlugins := pluginManager.ListPlugins()
+	fmt.Printf("[DEBUG] Found %d loaded plugins\n", len(loadedPlugins))
 	gmacslog.Info("Found %d loaded plugins", len(loadedPlugins))
 	
 	// Create HostInterface for plugin initialization
 	hostInterface := NewHostInterface(editor)
 	
 	for _, pluginInfo := range loadedPlugins {
+		fmt.Printf("[DEBUG] Processing plugin: %s\n", pluginInfo.Name)
 		if plugin, found := pluginManager.GetPlugin(pluginInfo.Name); found {
+			fmt.Printf("[DEBUG] Plugin %s found, initializing...\n", pluginInfo.Name)
 			// Initialize the plugin with proper HostInterface
 			gmacslog.Info("Initializing plugin %s with HostInterface", pluginInfo.Name)
 			ctx := context.Background()
+			fmt.Printf("[DEBUG] Calling plugin.Initialize for %s...\n", pluginInfo.Name)
 			if err := plugin.Initialize(ctx, hostInterface); err != nil {
+				fmt.Printf("[DEBUG] Failed to initialize plugin %s: %v\n", pluginInfo.Name, err)
 				gmacslog.Error("Failed to initialize plugin %s: %v", pluginInfo.Name, err)
 				continue
 			}
+			fmt.Printf("[DEBUG] Successfully initialized plugin %s\n", pluginInfo.Name)
 			gmacslog.Info("Successfully initialized plugin %s", pluginInfo.Name)
 			
 			pluginAdapter := &PluginAdapter{plugin: plugin}
