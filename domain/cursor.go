@@ -185,3 +185,13 @@ func findBytePositionFromDisplay(line string, targetWidth int) int {
 	// Target width is beyond the line
 	return len(line)
 }
+
+// RegisterCursorCommands registers cursor movement commands
+func RegisterCursorCommands(registry *CommandRegistry) {
+	registry.RegisterFunc("forward-char", ForwardChar)
+	registry.RegisterFunc("backward-char", BackwardChar)
+	registry.RegisterFunc("next-line", NextLine)
+	registry.RegisterFunc("previous-line", PreviousLine)
+	registry.RegisterFunc("beginning-of-line", BeginningOfLine)
+	registry.RegisterFunc("end-of-line", EndOfLine)
+}

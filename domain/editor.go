@@ -146,60 +146,18 @@ func newEditorWithConfig(config EditorConfig) *Editor {
 	return editor
 }
 
-// RegisterBuiltinCommands registers all built-in editor commands for backward compatibility
+// RegisterBuiltinCommands registers all built-in editor commands using automatic discovery
 func (e *Editor) RegisterBuiltinCommands() {
-	e.registerCoreCommands()
-	e.registerCursorCommands()
-	e.registerScrollCommands()
-	e.registerBufferCommands()
-	e.registerWindowCommands()
+	// Use automatic function discovery - no need to manually call each registration
+	registrationFunctions := GetAllRegistrationFunctions()
+	for _, registerFunc := range registrationFunctions {
+		registerFunc(e.commandRegistry)
+	}
+	
+	// Special case for minor mode commands (not yet refactored)
 	e.registerMinorModeCommands()
 }
 
-func (e *Editor) registerCoreCommands() {
-	// Register core system commands
-	e.commandRegistry.RegisterFunc("quit", Quit)
-	e.commandRegistry.RegisterFunc("keyboard-quit", KeyboardQuit)
-	e.commandRegistry.RegisterFunc("find-file", FindFile)
-	e.commandRegistry.RegisterFunc("delete-backward-char", DeleteBackwardChar)
-	e.commandRegistry.RegisterFunc("delete-char", DeleteChar)
-}
-
-func (e *Editor) registerCursorCommands() {
-	// Register cursor movement commands as M-x interactive functions
-	e.commandRegistry.RegisterFunc("forward-char", ForwardChar)
-	e.commandRegistry.RegisterFunc("backward-char", BackwardChar)
-	e.commandRegistry.RegisterFunc("next-line", NextLine)
-	e.commandRegistry.RegisterFunc("previous-line", PreviousLine)
-	e.commandRegistry.RegisterFunc("beginning-of-line", BeginningOfLine)
-	e.commandRegistry.RegisterFunc("end-of-line", EndOfLine)
-}
-
-func (e *Editor) registerScrollCommands() {
-	// Register scrolling commands as M-x interactive functions
-	e.commandRegistry.RegisterFunc("scroll-up", ScrollUp)
-	e.commandRegistry.RegisterFunc("scroll-down", ScrollDown)
-	e.commandRegistry.RegisterFunc("page-up", PageUp)
-	e.commandRegistry.RegisterFunc("page-down", PageDown)
-	e.commandRegistry.RegisterFunc("toggle-truncate-lines", ToggleLineWrap)
-	e.commandRegistry.RegisterFunc("debug-info", ShowDebugInfo)
-}
-
-func (e *Editor) registerBufferCommands() {
-	// Register buffer commands as M-x interactive functions
-	e.commandRegistry.RegisterFunc("switch-to-buffer", SwitchToBufferInteractive)
-	e.commandRegistry.RegisterFunc("list-buffers", ListBuffersInteractive)
-	e.commandRegistry.RegisterFunc("kill-buffer", KillBufferInteractive)
-}
-
-func (e *Editor) registerWindowCommands() {
-	// Register window commands as M-x interactive functions
-	e.commandRegistry.RegisterFunc("split-window-right", SplitWindowRight)
-	e.commandRegistry.RegisterFunc("split-window-below", SplitWindowBelow)
-	e.commandRegistry.RegisterFunc("other-window", OtherWindow)
-	e.commandRegistry.RegisterFunc("delete-window", DeleteWindow)
-	e.commandRegistry.RegisterFunc("delete-other-windows", DeleteOtherWindows)
-}
 
 // Cleanup closes any resources when the editor is shutting down
 func (e *Editor) Cleanup() {

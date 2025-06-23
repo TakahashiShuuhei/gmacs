@@ -70,6 +70,35 @@ func NewCommandRegistry() *CommandRegistry {
 	return registry
 }
 
+// CommandRegistrar interface for command registration
+type CommandRegistrar interface {
+	RegisterCommands(registry *CommandRegistry)
+}
+
+// CommandRegistrationFunc represents a function that registers commands
+type CommandRegistrationFunc func(registry *CommandRegistry)
+
+// GetAllRegistrationFunctions returns all command registration functions
+func GetAllRegistrationFunctions() []CommandRegistrationFunc {
+	return []CommandRegistrationFunc{
+		RegisterCoreCommands,
+		RegisterCursorCommands,
+		RegisterScrollCommands,
+		RegisterBufferCommands,
+		RegisterWindowCommands,
+		RegisterTestCommands, // New test commands
+	}
+}
+
+// RegisterCoreCommands registers basic commands
+func RegisterCoreCommands(registry *CommandRegistry) {
+	registry.RegisterFunc("quit", Quit)
+	registry.RegisterFunc("keyboard-quit", KeyboardQuit)
+	registry.RegisterFunc("find-file", FindFile)
+	registry.RegisterFunc("delete-backward-char", DeleteBackwardChar)
+	registry.RegisterFunc("delete-char", DeleteChar)
+}
+
 // Quit command for C-x C-c
 func Quit(editor *Editor) error {
 	log.Info("Quit command executed")

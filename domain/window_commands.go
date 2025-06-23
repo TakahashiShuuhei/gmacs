@@ -93,3 +93,12 @@ func DeleteOtherWindows(editor *Editor) error {
 	
 	return nil
 }
+
+// RegisterWindowCommands registers window management commands
+func RegisterWindowCommands(registry *CommandRegistry) {
+	registry.RegisterFunc("split-window-right", SplitWindowRight)
+	registry.RegisterFunc("split-window-below", SplitWindowBelow)
+	registry.RegisterFunc("other-window", OtherWindow)
+	registry.RegisterFunc("delete-window", DeleteWindow)
+	registry.RegisterFunc("delete-other-windows", DeleteOtherWindows)
+}

@@ -359,3 +359,10 @@ func (e *Editor) getBufferMode(buffer *Buffer) string {
 	
 	return "Fundamental"
 }
+
+// RegisterBufferCommands registers buffer management commands
+func RegisterBufferCommands(registry *CommandRegistry) {
+	registry.RegisterFunc("switch-to-buffer", SwitchToBufferInteractive)
+	registry.RegisterFunc("list-buffers", ListBuffersInteractive)
+	registry.RegisterFunc("kill-buffer", KillBufferInteractive)
+}

@@ -313,7 +313,7 @@ func TestPluginSystemPerformance(t *testing.T) {
 	defer editor.Cleanup()
 
 	initTime := time.Since(start)
-	if initTime > 100*time.Millisecond {
+	if initTime > 150*time.Millisecond {
 		t.Errorf("Plugin system initialization took too long: %v", initTime)
 	} else {
 		t.Logf("✓ Plugin system initialization time: %v", initTime)

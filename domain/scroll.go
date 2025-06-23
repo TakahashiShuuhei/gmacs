@@ -278,3 +278,13 @@ func ShowDebugInfo(editor *Editor) error {
 	log.Info("Debug info: %s", debugMsg)
 	return nil
 }
+
+// RegisterScrollCommands registers scrolling commands
+func RegisterScrollCommands(registry *CommandRegistry) {
+	registry.RegisterFunc("scroll-up", ScrollUp)
+	registry.RegisterFunc("scroll-down", ScrollDown)
+	registry.RegisterFunc("page-up", PageUp)
+	registry.RegisterFunc("page-down", PageDown)
+	registry.RegisterFunc("toggle-truncate-lines", ToggleLineWrap)
+	registry.RegisterFunc("debug-info", ShowDebugInfo)
+}
