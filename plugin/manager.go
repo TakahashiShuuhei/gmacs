@@ -96,6 +96,10 @@ func (pm *PluginManager) LoadPlugin(name string) error {
 		return fmt.Errorf("plugin %s does not implement Plugin interface", name)
 	}
 
+	// Initialize the plugin with HostInterface  
+	// Note: We skip initialization here since HostInterface is not available
+	// The caller (editor integration) should call Initialize with proper HostInterface
+
 	// LoadedPluginを作成
 	loadedPlugin := &LoadedPlugin{
 		Name:     name,

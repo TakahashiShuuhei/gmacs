@@ -1,6 +1,7 @@
 package plugin
 
 import (
+	"context"
 	"fmt"
 	"github.com/TakahashiShuuhei/gmacs/domain"
 	gmacslog "github.com/TakahashiShuuhei/gmacs/log"
@@ -283,16 +284,22 @@ func NewHostInterface(editor *domain.Editor) *HostInterfaceImpl {
 }
 
 // エディタ操作
-func (h *HostInterfaceImpl) GetCurrentBuffer() interface{} {
+func (h *HostInterfaceImpl) GetCurrentBuffer() BufferInterface {
 	if h.editor != nil {
-		return h.editor.CurrentBuffer()
+		buffer := h.editor.CurrentBuffer()
+		if buffer != nil {
+			return (*BufferWrapper)(nil) // TODO: Fix proper buffer wrapping
+		}
 	}
 	return nil
 }
 
-func (h *HostInterfaceImpl) GetCurrentWindow() interface{} {
+func (h *HostInterfaceImpl) GetCurrentWindow() WindowInterface {
 	if h.editor != nil {
-		return h.editor.CurrentWindow()
+		window := h.editor.CurrentWindow()
+		if window != nil {
+			return (*WindowWrapper)(nil) // TODO: Fix proper window wrapping
+		}
 	}
 	return nil
 }
@@ -346,14 +353,17 @@ func (h *HostInterfaceImpl) TriggerHook(event string, args ...interface{}) {
 }
 
 // バッファ操作
-func (h *HostInterfaceImpl) CreateBuffer(name string) interface{} {
+func (h *HostInterfaceImpl) CreateBuffer(name string) BufferInterface {
 	// TODO: Implement buffer creation
 	return nil
 }
 
-func (h *HostInterfaceImpl) FindBuffer(name string) interface{} {
+func (h *HostInterfaceImpl) FindBuffer(name string) BufferInterface {
 	if h.editor != nil {
-		return h.editor.FindBuffer(name)
+		buffer := h.editor.FindBuffer(name)
+		if buffer != nil {
+			return (*BufferWrapper)(nil) // TODO: Fix proper buffer wrapping
+		}
 	}
 	return nil
 }
@@ -415,9 +425,22 @@ func CreateEditorWithPluginsAndPaths(configLoader domain.ConfigLoader, hookManag
 	
 	// auto-discoveryでロードされたプラグインのコマンドを登録
 	loadedPlugins := pluginManager.ListPlugins()
+	gmacslog.Info("Found %d loaded plugins", len(loadedPlugins))
+	
+	// Create HostInterface for plugin initialization
+	hostInterface := NewHostInterface(editor)
 	
 	for _, pluginInfo := range loadedPlugins {
 		if plugin, found := pluginManager.GetPlugin(pluginInfo.Name); found {
+			// Initialize the plugin with proper HostInterface
+			gmacslog.Info("Initializing plugin %s with HostInterface", pluginInfo.Name)
+			ctx := context.Background()
+			if err := plugin.Initialize(ctx, hostInterface); err != nil {
+				gmacslog.Error("Failed to initialize plugin %s: %v", pluginInfo.Name, err)
+				continue
+			}
+			gmacslog.Info("Successfully initialized plugin %s", pluginInfo.Name)
+			
 			pluginAdapter := &PluginAdapter{plugin: plugin}
 			
 			// コマンドを登録

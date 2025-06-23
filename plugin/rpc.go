@@ -25,6 +25,88 @@ func init() {
 	gob.RegisterName("main.StringError", StringError{})
 }
 
+// RPCHostClient はプラグイン側でホストの機能をRPC経由で呼び出すクライアント
+type RPCHostClient struct {
+	client *rpc.Client
+}
+
+// HostInterface implementation for RPC client
+func (h *RPCHostClient) GetCurrentBuffer() BufferInterface {
+	// TODO: Implement RPC call to host
+	return nil
+}
+
+func (h *RPCHostClient) GetCurrentWindow() WindowInterface {
+	// TODO: Implement RPC call to host
+	return nil
+}
+
+func (h *RPCHostClient) SetStatus(message string) {
+	// TODO: Implement RPC call to host
+}
+
+func (h *RPCHostClient) ShowMessage(message string) {
+	// TODO: Implement RPC call to host
+}
+
+func (h *RPCHostClient) ExecuteCommand(name string, args ...interface{}) error {
+	// TODO: Implement RPC call to host
+	return fmt.Errorf("ExecuteCommand not implemented in RPC client")
+}
+
+func (h *RPCHostClient) SetMajorMode(bufferName, modeName string) error {
+	// TODO: Implement RPC call to host
+	return fmt.Errorf("SetMajorMode not implemented in RPC client")
+}
+
+func (h *RPCHostClient) ToggleMinorMode(bufferName, modeName string) error {
+	// TODO: Implement RPC call to host
+	return fmt.Errorf("ToggleMinorMode not implemented in RPC client")
+}
+
+func (h *RPCHostClient) AddHook(event string, handler func(...interface{}) error) {
+	// TODO: Implement RPC call to host
+}
+
+func (h *RPCHostClient) TriggerHook(event string, args ...interface{}) {
+	// TODO: Implement RPC call to host
+}
+
+func (h *RPCHostClient) CreateBuffer(name string) BufferInterface {
+	// TODO: Implement RPC call to host
+	return nil
+}
+
+func (h *RPCHostClient) FindBuffer(name string) BufferInterface {
+	// TODO: Implement RPC call to host
+	return nil
+}
+
+func (h *RPCHostClient) SwitchToBuffer(name string) error {
+	// TODO: Implement RPC call to host
+	return fmt.Errorf("SwitchToBuffer not implemented in RPC client")
+}
+
+func (h *RPCHostClient) OpenFile(path string) error {
+	// TODO: Implement RPC call to host
+	return fmt.Errorf("OpenFile not implemented in RPC client")
+}
+
+func (h *RPCHostClient) SaveBuffer(bufferName string) error {
+	// TODO: Implement RPC call to host
+	return fmt.Errorf("SaveBuffer not implemented in RPC client")
+}
+
+func (h *RPCHostClient) GetOption(name string) (interface{}, error) {
+	// TODO: Implement RPC call to host
+	return nil, fmt.Errorf("GetOption not implemented in RPC client")
+}
+
+func (h *RPCHostClient) SetOption(name string, value interface{}) error {
+	// TODO: Implement RPC call to host
+	return fmt.Errorf("SetOption not implemented in RPC client")
+}
+
 // GRPCPluginはHashiCorp go-pluginのGRPCプラグイン実装
 // 後でprotobufが利用可能になったら、gRPCに変更する予定
 type GRPCPlugin struct {
@@ -47,7 +129,9 @@ type RPCPlugin struct {
 }
 
 func (p *RPCPlugin) Server(*plugin.MuxBroker) (interface{}, error) {
-	return &RPCServer{Impl: p.Impl}, nil
+	// TODO: Create a proper HostInterface implementation for RPC
+	// For now, create a basic implementation
+	return &RPCServer{Impl: p.Impl, Host: &RPCHostClient{}}, nil
 }
 
 func (p *RPCPlugin) Client(b *plugin.MuxBroker, c *rpc.Client) (interface{}, error) {
@@ -57,6 +141,7 @@ func (p *RPCPlugin) Client(b *plugin.MuxBroker, c *rpc.Client) (interface{}, err
 // RPCServer はプラグイン側のRPCサーバー
 type RPCServer struct {
 	Impl Plugin
+	Host HostInterface
 }
 
 // RPCClient はホスト側のRPCクライアント
@@ -195,8 +280,8 @@ func (s *RPCServer) Description(args interface{}, resp *string) error {
 }
 
 func (s *RPCServer) Initialize(args map[string]interface{}, resp *error) error {
-	// TODO: 適切なHostInterface実装
-	*resp = s.Impl.Initialize(context.Background(), nil)
+	// Pass the Host interface to the plugin
+	*resp = s.Impl.Initialize(context.Background(), s.Host)
 	return nil
 }
 
