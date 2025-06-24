@@ -1,0 +1,7 @@
+{
+  "name": "file-test-plugin",
+  "version": "1.0.0",
+  "description": "Plugin for testing file operations",
+  "binary": "file-test-plugin",
+  "dependencies": []
+}

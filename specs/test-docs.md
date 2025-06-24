@@ -2,7 +2,7 @@
 
 このドキュメントはテストコードから自動抽出されたBDD仕様書です。
 
-**生成日時:** 2025年06月22日 14:36:36
+**生成日時:** 2025年06月24日 20:31:50
 
 ## application/clean_exit
 
@@ -2741,6 +2741,404 @@
 **結果:** 両ウィンドウにモードラインが表示され、コンテンツが正常に表示される
 
 **実装ファイル:** `domain/window_layout.go`, `cli/display.go`
+
+---
+
+## プラグインAPI/ウィンドウ操作
+
+### TestPluginWindowOps
+
+**ファイル:** `e2e-test/plugin_host_api_test.go`
+
+**シナリオ:** example-window-opsコマンドでウィンドウ操作の確認
+
+**説明:** プラグインからウィンドウの操作が正常に動作することを確認
+
+**前提:** エディタが起動している状態
+
+**操作:** M-x example-window-opsコマンドを実行する
+
+**結果:** ウィンドウサイズ取得やスクロール操作が正常に動作する
+
+**実装ファイル:** `plugin/editor_integration.go`, `plugin/host_api.go`
+
+---
+
+## プラグインAPI/バッファ操作
+
+### TestPluginBufferOps
+
+**ファイル:** `e2e-test/plugin_host_api_test.go`
+
+**シナリオ:** example-buffer-opsコマンドでバッファ読み取り操作の確認
+
+**説明:** プラグインからバッファの読み取り操作が正常に動作することを確認
+
+**前提:** エディタにテキストを入力した状態
+
+**操作:** M-x example-buffer-opsコマンドを実行する
+
+**結果:** バッファ情報が正常に取得・表示される
+
+**実装ファイル:** `plugin/editor_integration.go`, `plugin/host_api.go`
+
+---
+
+## プラグインAPI/バッファ編集
+
+### TestPluginBufferEdit
+
+**ファイル:** `e2e-test/plugin_host_api_test.go`
+
+**シナリオ:** example-buffer-editコマンドでバッファ編集操作の確認
+
+**説明:** プラグインからバッファの編集操作が正常に動作することを確認
+
+**前提:** エディタにテキストを入力した状態
+
+**操作:** M-x example-buffer-editコマンドを実行する
+
+**結果:** バッファへの文字列挿入とカーソル移動が正常に動作する
+
+**実装ファイル:** `plugin/editor_integration.go`, `plugin/host_api.go`
+
+---
+
+## プラグインAPI/メッセージ表示
+
+### TestPluginMessageDisplay
+
+**ファイル:** `e2e-test/plugin_host_api_test.go`
+
+**シナリオ:** プラグインコマンド実行後のメッセージ表示確認
+
+**説明:** プラグインコマンドの実行結果がミニバッファに適切に表示されることを確認
+
+**前提:** エディタが起動している状態
+
+**操作:** M-x example-greetコマンドを実行する
+
+**結果:** プラグインからのメッセージが表示される
+
+**実装ファイル:** `plugin/editor_integration.go`
+
+---
+
+## プラグインAPI/基本ホストAPI
+
+### TestPluginHostAPIBasic
+
+**ファイル:** `e2e-test/plugin_host_api_test.go`
+
+**シナリオ:** example-test-host-apiコマンドでShowMessage/SetStatusの確認
+
+**説明:** プラグインから基本的なホストAPIが呼び出せることを確認
+
+**前提:** エディタがプラグインシステム付きで初期化される
+
+**操作:** M-x example-test-host-apiコマンドを実行する
+
+**結果:** ShowMessage/SetStatusが正常に動作し、メッセージが表示される
+
+**実装ファイル:** `plugin/editor_integration.go`
+
+---
+
+## プラグインシステム/BufferInterface API検証
+
+### TestPluginBufferAPI
+
+**ファイル:** `e2e-test/plugin_api_test.go`
+
+**シナリオ:** BufferInterface APIのテスト
+
+**説明:** テスト用プラグインを使用してBufferInterface APIが正常に動作することを確認
+
+**前提:** テスト用プラグインがロードされた状態のエディタ
+
+**操作:** BufferInterface の各メソッドを実行
+
+**結果:** 期待される結果が返される
+
+**実装ファイル:** `plugin/host_api.go BufferInterface実装`
+
+---
+
+## プラグインシステム/FileInterface API検証
+
+### TestPluginFileAPI
+
+**ファイル:** `e2e-test/plugin_api_test.go`
+
+**シナリオ:** ファイル操作APIのテスト
+
+**説明:** テスト用プラグインを使用してファイル操作APIが正常に動作することを確認
+
+**前提:** テスト用プラグインがロードされた状態のエディタ
+
+**操作:** ファイル操作の各メソッドを実行
+
+**結果:** 期待される結果が返される
+
+**実装ファイル:** `plugin/host_api.go ファイル操作実装`
+
+---
+
+## プラグインシステム/Lua統合
+
+### TestPluginLuaAPIIntegration
+
+**ファイル:** `e2e-test/plugin_system_test.go`
+
+**シナリオ:** LuaからプラグインAPIの呼び出し
+
+**説明:** LuaスクリプトからプラグインAPIが正しく呼べるか確認
+
+**前提:** エディタとLua環境が初期化される
+
+**操作:** Luaからプラグインリスト取得APIを呼ぶ
+
+**結果:** エラーなく結果が返される
+
+**実装ファイル:** `lua-config/api_bindings.go`, `plugin/lua_integration.go`
+
+---
+
+## プラグインシステム/エラーハンドリング
+
+### TestNonExistentPluginCommand
+
+**ファイル:** `e2e-test/plugin_command_test.go`
+
+**シナリオ:** 存在しないプラグインコマンドのエラー処理
+
+**説明:** 存在しないプラグインコマンドを実行した際のエラーハンドリング
+
+**前提:** エディタがプラグインシステム付きで初期化される
+
+**操作:** 存在しないプラグインコマンドを実行する
+
+**結果:** 適切なエラーメッセージが表示される
+
+**実装ファイル:** `domain/editor.go`
+
+---
+
+### TestPluginErrorHandling
+
+**ファイル:** `e2e-test/plugin_system_test.go`
+
+**シナリオ:** プラグインシステムのエラー処理
+
+**説明:** プラグインシステムで発生する各種エラーが適切に処理されるか確認
+
+**前提:** エディタが初期化される
+
+**操作:** 無効なプラグイン操作を実行する
+
+**結果:** 適切なエラーメッセージが返される
+
+**実装ファイル:** `plugin/manager.go`
+
+---
+
+## プラグインシステム/キーバインディング
+
+### TestPluginKeyBindings
+
+**ファイル:** `e2e-test/plugin_system_test.go`
+
+**シナリオ:** プラグイン関連キーバインディングの動作
+
+**説明:** プラグイン関連のキーバインディングが正しく設定され動作するか確認
+
+**前提:** エディタが初期化される
+
+**操作:** プラグイン関連のキーを押下する
+
+**結果:** 対応するコマンドが実行される
+
+**実装ファイル:** `plugin/command_registration.go`
+
+---
+
+## プラグインシステム/コマンド実行
+
+### TestPluginCommandExecution
+
+**ファイル:** `e2e-test/plugin_command_test.go`
+
+**シナリオ:** M-x example-greetコマンドの実行
+
+**説明:** プラグインコマンドがM-x経由で正常に実行されるか確認
+
+**前提:** エディタがプラグインシステム付きで初期化される
+
+**操作:** M-x example-greetコマンドを実行する
+
+**結果:** プラグインコマンドが正常に実行される
+
+**実装ファイル:** `plugin/editor_integration.go`, `domain/editor.go`
+
+---
+
+## プラグインシステム/コマンド登録
+
+### TestPluginCommandRegistration
+
+**ファイル:** `e2e-test/plugin_command_test.go`
+
+**シナリオ:** プラグインコマンドの登録確認
+
+**説明:** プラグインコマンドがエディタのコマンドレジストリに正しく登録されるか確認
+
+**前提:** エディタがプラグインシステム付きで初期化される
+
+**操作:** コマンドレジストリを確認する
+
+**結果:** プラグインコマンドが登録されている（模擬環境の場合）
+
+**実装ファイル:** `plugin/editor_integration.go`
+
+---
+
+## プラグインシステム/コマンド統合
+
+### TestPluginCommandIntegration
+
+**ファイル:** `e2e-test/plugin_system_test.go`
+
+**シナリオ:** プラグインコマンドがエディタに登録される
+
+**説明:** プラグイン関連のコマンドがエディタのコマンドシステムに統合されているか確認
+
+**前提:** エディタが初期化される
+
+**操作:** プラグイン関連コマンドの存在を確認する
+
+**結果:** 必要なコマンドが登録されている
+
+**実装ファイル:** `plugin/command_registration.go`
+
+---
+
+## プラグインシステム/テストプラグイン分離
+
+### TestPluginIsolation
+
+**ファイル:** `e2e-test/plugin_api_test.go`
+
+**シナリオ:** テスト環境でのプラグイン分離確認
+
+**説明:** テスト用プラグインがグローバルプラグインと分離されていることを確認
+
+**前提:** テスト用プラグインディレクトリを指定したエディタ
+
+**操作:** プラグインリストを取得
+
+**結果:** テスト用プラグインのみが読み込まれている
+
+**実装ファイル:** `plugin/manager.go NewPluginManagerWithPaths`
+
+---
+
+## プラグインシステム/パフォーマンス
+
+### TestPluginSystemPerformance
+
+**ファイル:** `e2e-test/plugin_system_test.go`
+
+**シナリオ:** プラグインシステムのパフォーマンス確認
+
+**説明:** プラグインシステムがエディタのパフォーマンスに与える影響を確認
+
+**前提:** エディタが初期化される
+
+**操作:** 基本操作を実行する
+
+**結果:** パフォーマンスが許容範囲内である
+
+**実装ファイル:** `plugin/manager.go`, `plugin/editor_integration.go`
+
+---
+
+## プラグインシステム/ビルドシステム
+
+### TestPluginBuilderInitialization
+
+**ファイル:** `e2e-test/plugin_system_test.go`
+
+**シナリオ:** PluginBuilderの基本動作
+
+**説明:** PluginBuilderが正しく初期化され、基本操作ができるか確認
+
+**前提:** テスト環境が準備される
+
+**操作:** PluginBuilderを作成する
+
+**結果:** 正常に初期化され、ディレクトリが作成される
+
+**実装ファイル:** `plugin/builder.go`
+
+---
+
+## プラグインシステム/基本機能
+
+### TestPluginManagerIntegration
+
+**ファイル:** `e2e-test/plugin_system_test.go`
+
+**シナリオ:** プラグインマネージャーの基本動作
+
+**説明:** プラグインマネージャーがエディタに正しく統合されているか確認
+
+**前提:** エディタがプラグインシステム付きで初期化される
+
+**操作:** プラグインマネージャーを取得する
+
+**結果:** プラグインマネージャーが正常に動作する
+
+**実装ファイル:** `plugin/manager.go`, `plugin/editor_integration.go`
+
+---
+
+## プラグインシステム/実際のプラグインコマンド実行
+
+### TestRealPluginCommandExecution
+
+**ファイル:** `e2e-test/plugin_command_test.go`
+
+**シナリオ:** 実際にインストールされたプラグインコマンドの実行
+
+**説明:** 実際にインストールされたプラグインのコマンドをM-xで実行し、メッセージ表示を確認
+
+**前提:** プラグインがインストールされた状態のエディタ
+
+**操作:** M-xでプラグインコマンドを実行
+
+**結果:** プラグインのメッセージが表示される
+
+**実装ファイル:** `domain/editor.go RegisterPluginCommands`
+
+---
+
+## プラグインシステム/設定システム統合
+
+### TestPluginConfigurationSystem
+
+**ファイル:** `e2e-test/plugin_system_test.go`
+
+**シナリオ:** プラグイン設定の読み込みと適用
+
+**説明:** プラグイン設定ファイルが正しく読み込まれ、設定が適用されるか確認
+
+**前提:** テスト用プラグイン設定ファイルが準備される
+
+**操作:** エディタでプラグイン設定を読み込む
+
+**結果:** 設定が正しく適用される
+
+**実装ファイル:** `plugin/lua_integration.go`
 
 ---
 

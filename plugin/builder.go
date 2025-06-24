@@ -40,10 +40,19 @@ type BuildResult struct {
 
 // NewPluginBuilder は新しいPluginBuilderを作成する
 func NewPluginBuilder() (*PluginBuilder, error) {
+	return NewPluginBuilderWithTargetDir("")
+}
+
+// NewPluginBuilderWithTargetDir は指定されたターゲットディレクトリでPluginBuilderを作成する
+func NewPluginBuilderWithTargetDir(targetDir string) (*PluginBuilder, error) {
 	// XDG準拠のディレクトリを取得
 	workDir := filepath.Join(os.TempDir(), "gmacs-plugin-build")
 	cacheDir := filepath.Join(GetXDGCacheHome(), "gmacs", "plugin-build")
-	targetDir := filepath.Join(GetXDGDataHome(), "gmacs", "plugins")
+	
+	// ターゲットディレクトリが指定されていない場合はデフォルトを使用
+	if targetDir == "" {
+		targetDir = filepath.Join(GetXDGDataHome(), "gmacs", "plugins")
+	}
 
 	// ディレクトリを作成
 	for _, dir := range []string{workDir, cacheDir, targetDir} {

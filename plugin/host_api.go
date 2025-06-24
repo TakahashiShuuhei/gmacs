@@ -2,6 +2,8 @@ package plugin
 
 import (
 	"fmt"
+	"os"
+	"reflect"
 	"strings"
 	"github.com/TakahashiShuuhei/gmacs/domain"
 )
@@ -110,13 +112,47 @@ func (h *HostAPI) SwitchToBuffer(name string) error {
 // ファイル操作
 
 func (h *HostAPI) OpenFile(path string) error {
-	// TODO: ファイルオープンの実装
-	return fmt.Errorf("file operations not implemented yet")
+	buffer, err := domain.NewBufferFromFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to open file %s: %v", path, err)
+	}
+	if buffer != nil {
+		h.editor.AddBuffer(buffer)
+		h.editor.SwitchToBuffer(buffer)
+		return nil
+	}
+	return fmt.Errorf("failed to open file: %s", path)
 }
 
 func (h *HostAPI) SaveBuffer(bufferName string) error {
-	// TODO: バッファ保存の実装
-	return fmt.Errorf("buffer save not implemented yet")
+	buffer := h.editor.FindBuffer(bufferName)
+	if buffer == nil {
+		return fmt.Errorf("buffer %s not found", bufferName)
+	}
+	
+	filepath := buffer.Filepath()
+	if filepath == "" {
+		return fmt.Errorf("buffer %s has no associated file", bufferName)
+	}
+	
+	// Write buffer content to file
+	content := buffer.Content()
+	contentStr := strings.Join(content, "\n")
+	
+	err := os.WriteFile(filepath, []byte(contentStr), 0644)
+	if err != nil {
+		return err
+	}
+	
+	// Mark buffer as not modified by setting modified field via reflection
+	// since there's no public method to mark as clean
+	bufferValue := reflect.ValueOf(buffer).Elem()
+	modifiedField := bufferValue.FieldByName("modified")
+	if modifiedField.IsValid() && modifiedField.CanSet() {
+		modifiedField.SetBool(false)
+	}
+	
+	return nil
 }
 
 // 設定
@@ -144,8 +180,11 @@ func (b *BufferWrapper) Content() string {
 }
 
 func (b *BufferWrapper) SetContent(content string) {
-	// TODO: 適切なSetContentの実装
-	// 現在domain.Bufferには直接setするメソッドがないため、後で実装
+	// Clear current content and set new content
+	b.buffer.Clear()
+	if content != "" {
+		b.buffer.InsertString(content)
+	}
 }
 
 func (b *BufferWrapper) InsertAt(pos int, text string) {
@@ -171,7 +210,12 @@ func (b *BufferWrapper) SetCursorPosition(pos int) {
 }
 
 func (b *BufferWrapper) MarkDirty() {
-	// TODO: MarkDirtyの実装（domain.Bufferには対応メソッドがない）
+	// Mark buffer as modified using reflection
+	bufferValue := reflect.ValueOf(b.buffer).Elem()
+	modifiedField := bufferValue.FieldByName("modified")
+	if modifiedField.IsValid() && modifiedField.CanSet() {
+		modifiedField.SetBool(true)
+	}
 }
 
 func (b *BufferWrapper) IsDirty() bool {

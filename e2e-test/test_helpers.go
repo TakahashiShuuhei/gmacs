@@ -48,8 +48,11 @@ func NewEditorWithTestPlugins() *domain.Editor {
 	configLoader := luaconfig.NewConfigLoader()
 	hookManager := luaconfig.NewHookManager()
 	
-	// Use test plugin directory
-	testPluginPaths := []string{"/tmp/gmacs-test-plugins"}
+	// Test plugins directory (absolute path)
+	testPluginPaths := []string{
+		"/tmp/gmacs-test-plugins",
+	}
+	
 	editor := plugin.CreateEditorWithPluginsAndPaths(configLoader, hookManager, testPluginPaths)
 	
 	// Register Lua API
@@ -64,5 +67,41 @@ func NewEditorWithTestPlugins() *domain.Editor {
 		panic("Failed to load default config in test: " + err.Error())
 	}
 	
+	// Ensure test environment has a current buffer (same as production)
+	// The *scratch* buffer should already exist from editor initialization
+	scratchBuffer := editor.FindBuffer("*scratch*")
+	if scratchBuffer != nil {
+		editor.SwitchToBuffer(scratchBuffer)
+	} else {
+		// Create and switch to scratch buffer if it doesn't exist
+		scratchBuffer = editor.GetOrCreateBuffer("*scratch*")
+		editor.SwitchToBuffer(scratchBuffer)
+	}
+	
 	return editor
+}
+
+// InstallTestPlugin installs a plugin to the test plugins directory
+func InstallTestPlugin(pluginSourcePath string) error {
+	// Use absolute path for test plugins directory
+	testPluginsDir := "/tmp/gmacs-test-plugins"
+	
+	builder, err := plugin.NewPluginBuilderWithTargetDir(testPluginsDir)
+	if err != nil {
+		return err
+	}
+	
+	// Convert relative source path to absolute
+	absSourcePath, err := filepath.Abs(pluginSourcePath)
+	if err != nil {
+		return err
+	}
+	
+	req := plugin.BuildRequest{
+		LocalPath: absSourcePath,
+		Force:     true, // Always rebuild for tests
+	}
+	
+	_, err = builder.BuildFromRepository(req)
+	return err
 }

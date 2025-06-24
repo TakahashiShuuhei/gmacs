@@ -19,10 +19,57 @@ func (se StringError) Error() string {
 	return se.Message
 }
 
+// BufferInfo represents buffer state for RPC transmission
+type BufferInfo struct {
+	Name     string
+	Content  string
+	Position int
+	IsDirty  bool
+	Filename string
+}
+
+// RPCBufferProxy provides a client-side proxy for buffer operations via RPC
+type RPCBufferProxy struct {
+	client *rpc.Client
+	info   BufferInfo
+}
+
+func (b *RPCBufferProxy) Name() string           { return b.info.Name }
+func (b *RPCBufferProxy) Content() string        { return b.info.Content }
+func (b *RPCBufferProxy) CursorPosition() int    { return b.info.Position }
+func (b *RPCBufferProxy) IsDirty() bool          { return b.info.IsDirty }
+func (b *RPCBufferProxy) Filename() string       { return b.info.Filename }
+
+func (b *RPCBufferProxy) SetContent(content string) {
+	b.info.Content = content
+	// TODO: Implement RPC call to sync content to host
+}
+
+func (b *RPCBufferProxy) InsertAt(pos int, text string) {
+	// TODO: Implement RPC call to insert text at position
+}
+
+func (b *RPCBufferProxy) DeleteRange(start, end int) {
+	// TODO: Implement RPC call to delete text range
+}
+
+func (b *RPCBufferProxy) SetCursorPosition(pos int) {
+	b.info.Position = pos
+	// TODO: Implement RPC call to sync cursor position to host
+}
+
+func (b *RPCBufferProxy) MarkDirty() {
+	b.info.IsDirty = true
+	// TODO: Implement RPC call to mark buffer dirty on host
+}
+
 func init() {
 	// Register StringError with gob for RPC serialization
 	// Use the same name as the plugin side to avoid name conflicts
 	gob.RegisterName("main.StringError", StringError{})
+	
+	// Register BufferInfo for RPC serialization
+	gob.Register(BufferInfo{})
 }
 
 // RPCHostServer はgmacs側でホスト機能をRPC経由で提供するサーバー
@@ -44,6 +91,56 @@ func (h *RPCHostServer) SetStatus(message string, resp *error) error {
 	return nil
 }
 
+// CreateBuffer handles RPC calls from plugins to create buffers
+func (h *RPCHostServer) CreateBuffer(name string, resp *BufferInfo) error {
+	buffer := h.Impl.CreateBuffer(name)
+	if buffer == nil {
+		*resp = BufferInfo{}
+		return fmt.Errorf("failed to create buffer")
+	}
+	
+	// Return buffer information via RPC
+	*resp = BufferInfo{
+		Name:     buffer.Name(),
+		Content:  buffer.Content(),
+		Position: buffer.CursorPosition(),
+		IsDirty:  buffer.IsDirty(),
+		Filename: buffer.Filename(),
+	}
+	return nil
+}
+
+// GetCurrentBuffer handles RPC calls from plugins to get current buffer
+func (h *RPCHostServer) GetCurrentBuffer(args struct{}, resp *BufferInfo) error {
+	fmt.Printf("[RPC-Host] GetCurrentBuffer called\n")
+	buffer := h.Impl.GetCurrentBuffer()
+	if buffer == nil {
+		fmt.Printf("[RPC-Host] GetCurrentBuffer: no current buffer found\n")
+		*resp = BufferInfo{}
+		return fmt.Errorf("no current buffer")
+	}
+	
+	fmt.Printf("[RPC-Host] GetCurrentBuffer: found buffer '%s'\n", buffer.Name())
+	
+	// Return buffer information via RPC
+	*resp = BufferInfo{
+		Name:     buffer.Name(),
+		Content:  buffer.Content(),
+		Position: buffer.CursorPosition(),
+		IsDirty:  buffer.IsDirty(),
+		Filename: buffer.Filename(),
+	}
+	
+	fmt.Printf("[RPC-Host] GetCurrentBuffer: returning buffer info: %+v\n", *resp)
+	return nil
+}
+
+// SwitchToBuffer handles RPC calls from plugins to switch buffers
+func (h *RPCHostServer) SwitchToBuffer(name string, resp *error) error {
+	*resp = h.Impl.SwitchToBuffer(name)
+	return nil
+}
+
 // TODO: Add other HostInterface methods as needed
 
 // RPCHostClient はプラグイン側でホストの機能をRPC経由で呼び出すクライアント
@@ -53,8 +150,17 @@ type RPCHostClient struct {
 
 // HostInterface implementation for RPC client
 func (h *RPCHostClient) GetCurrentBuffer() BufferInterface {
-	// TODO: Implement RPC call to host
-	return nil
+	var resp BufferInfo
+	err := h.client.Call("Host.GetCurrentBuffer", struct{}{}, &resp)
+	if err != nil {
+		fmt.Printf("[RPC] GetCurrentBuffer call failed: %v\n", err)
+		return nil
+	}
+	
+	return &RPCBufferProxy{
+		client: h.client,
+		info:   resp,
+	}
 }
 
 func (h *RPCHostClient) GetCurrentWindow() WindowInterface {
@@ -99,8 +205,19 @@ func (h *RPCHostClient) TriggerHook(event string, args ...interface{}) {
 }
 
 func (h *RPCHostClient) CreateBuffer(name string) BufferInterface {
-	// TODO: Implement RPC call to host
-	return nil
+	fmt.Printf("[RPC] CreateBuffer called with name: %s\n", name)
+	var resp BufferInfo
+	err := h.client.Call("Host.CreateBuffer", name, &resp)
+	if err != nil {
+		fmt.Printf("[RPC] CreateBuffer call failed: %v\n", err)
+		return nil
+	}
+	
+	fmt.Printf("[RPC] CreateBuffer succeeded: %+v\n", resp)
+	return &RPCBufferProxy{
+		client: h.client,
+		info:   resp,
+	}
 }
 
 func (h *RPCHostClient) FindBuffer(name string) BufferInterface {
@@ -109,8 +226,12 @@ func (h *RPCHostClient) FindBuffer(name string) BufferInterface {
 }
 
 func (h *RPCHostClient) SwitchToBuffer(name string) error {
-	// TODO: Implement RPC call to host
-	return fmt.Errorf("SwitchToBuffer not implemented in RPC client")
+	var resp error
+	err := h.client.Call("Host.SwitchToBuffer", name, &resp)
+	if err != nil {
+		return fmt.Errorf("RPC call failed: %v", err)
+	}
+	return resp
 }
 
 func (h *RPCHostClient) OpenFile(path string) error {
@@ -160,7 +281,7 @@ func (p *RPCPlugin) Server(broker *plugin.MuxBroker) (interface{}, error) {
 }
 
 func (p *RPCPlugin) Client(b *plugin.MuxBroker, c *rpc.Client) (interface{}, error) {
-	return &RPCClient{client: c}, nil
+	return &RPCClient{client: c, broker: b}, nil
 }
 
 // RPCServer はプラグイン側のRPCサーバー
@@ -172,6 +293,7 @@ type RPCServer struct {
 // RPCClient はホスト側のRPCクライアント
 type RPCClient struct {
 	client *rpc.Client
+	broker *plugin.MuxBroker
 }
 
 // Plugin インターフェースの実装（RPCClient）
@@ -203,9 +325,46 @@ func (c *RPCClient) Description() string {
 }
 
 func (c *RPCClient) Initialize(ctx context.Context, host HostInterface) error {
-	// TODO: HostInterfaceの適切な渡し方を実装
+	fmt.Printf("[RPC] Initialize called - setting up MuxBroker\n")
+	
+	// Start RPC server for HostInterface on client side
+	hostBrokerID := c.broker.NextId()
+	fmt.Printf("[RPC] Starting host RPC server with broker ID: %d\n", hostBrokerID)
+	
+	// Create a proper RPC server and register the Host service
+	go func() {
+		// Accept connection from plugin
+		conn, err := c.broker.Accept(hostBrokerID)
+		if err != nil {
+			fmt.Printf("[RPC] Failed to accept connection on broker ID %d: %v\n", hostBrokerID, err)
+			return
+		}
+		
+		// Create RPC server and register Host service
+		server := rpc.NewServer()
+		err = server.RegisterName("Host", &RPCHostServer{Impl: host})
+		if err != nil {
+			fmt.Printf("[RPC] Failed to register Host service: %v\n", err)
+			return
+		}
+		
+		fmt.Printf("[RPC] Host service registered, serving RPC\n")
+		server.ServeConn(conn)
+	}()
+	
+	// Send the broker ID to plugin so it can connect back
+	args := map[string]interface{}{
+		"hostBrokerID": hostBrokerID,
+	}
+	
+	fmt.Printf("[RPC] Calling Plugin.Initialize with args: %+v\n", args)
 	var resp error
-	err := c.client.Call("Plugin.Initialize", map[string]interface{}{}, &resp)
+	err := c.client.Call("Plugin.Initialize", args, &resp)
+	if err != nil {
+		fmt.Printf("[RPC] Plugin.Initialize failed: %v\n", err)
+	} else {
+		fmt.Printf("[RPC] Plugin.Initialize succeeded\n")
+	}
 	return err
 }
 
@@ -305,25 +464,40 @@ func (s *RPCServer) Description(args interface{}, resp *string) error {
 }
 
 func (s *RPCServer) Initialize(args map[string]interface{}, resp *error) error {
+	fmt.Printf("[RPC-Server] Initialize called with args: %+v\n", args)
+	
 	// Extract the host broker ID from args
 	hostBrokerID, ok := args["hostBrokerID"].(uint32)
 	if !ok {
+		fmt.Printf("[RPC-Server] hostBrokerID not provided or wrong type\n")
 		*resp = fmt.Errorf("hostBrokerID not provided")
 		return nil
 	}
 	
+	fmt.Printf("[RPC-Server] Connecting to host broker ID: %d\n", hostBrokerID)
+	
 	// Connect to the host's RPC server using MuxBroker
 	conn, err := s.broker.Dial(hostBrokerID)
 	if err != nil {
+		fmt.Printf("[RPC-Server] Failed to connect to host broker: %v\n", err)
 		*resp = fmt.Errorf("failed to connect to host broker: %v", err)
 		return nil
 	}
 	
+	fmt.Printf("[RPC-Server] Successfully connected to host broker\n")
+	
 	// Create RPC client for host interface
 	hostClient := &RPCHostClient{client: rpc.NewClient(conn)}
 	
+	fmt.Printf("[RPC-Server] Created host RPC client, initializing plugin\n")
+	
 	// Initialize the plugin with the host interface
 	*resp = s.Impl.Initialize(context.Background(), hostClient)
+	if *resp != nil {
+		fmt.Printf("[RPC-Server] Plugin initialization failed: %v\n", *resp)
+	} else {
+		fmt.Printf("[RPC-Server] Plugin initialization succeeded\n")
+	}
 	return nil
 }
 
