@@ -3,6 +3,8 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"os"
+	"reflect"
 	"strings"
 	"github.com/TakahashiShuuhei/gmacs/domain"
 	gmacslog "github.com/TakahashiShuuhei/gmacs/log"
@@ -437,8 +439,29 @@ func (h *HostInterfaceImpl) SaveBuffer(bufferName string) error {
 	if h.editor != nil {
 		buffer := h.editor.FindBuffer(bufferName)
 		if buffer != nil {
-			// Buffer save functionality needs to be implemented in domain.Buffer
-			return fmt.Errorf("buffer save not implemented in domain.Buffer yet")
+			filepath := buffer.Filepath()
+			if filepath == "" {
+				return fmt.Errorf("buffer %s has no associated file", bufferName)
+			}
+			
+			// Write buffer content to file
+			content := buffer.Content()
+			contentStr := strings.Join(content, "\n")
+			
+			err := os.WriteFile(filepath, []byte(contentStr), 0644)
+			if err != nil {
+				return err
+			}
+			
+			// Mark buffer as not modified by setting modified field via reflection
+			// since there's no public method to mark as clean
+			bufferValue := reflect.ValueOf(buffer).Elem()
+			modifiedField := bufferValue.FieldByName("modified")
+			if modifiedField.IsValid() && modifiedField.CanSet() {
+				modifiedField.SetBool(false)
+			}
+			
+			return nil
 		}
 		return fmt.Errorf("buffer not found: %s", bufferName)
 	}
@@ -510,8 +533,18 @@ func CreateEditorWithPluginsAndPaths(configLoader domain.ConfigLoader, hookManag
 			pluginAdapter := &PluginAdapter{plugin: plugin}
 			
 			// コマンドを登録
+			fmt.Printf("[DEBUG] Getting commands from plugin %s...\n", pluginInfo.Name)
+			commands := pluginAdapter.GetCommands()
+			fmt.Printf("[DEBUG] Plugin %s returned %d commands: ", pluginInfo.Name, len(commands))
+			for _, cmd := range commands {
+				fmt.Printf("%s ", cmd.Name)
+			}
+			fmt.Printf("\n")
+			
 			if err := editor.RegisterPluginCommands(pluginAdapter); err != nil {
 				gmacslog.Error("Failed to register commands for plugin %s: %v", pluginInfo.Name, err)
+			} else {
+				fmt.Printf("[DEBUG] Successfully registered commands for plugin %s\n", pluginInfo.Name)
 			}
 		}
 	}

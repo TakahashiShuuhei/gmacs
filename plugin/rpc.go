@@ -141,7 +141,29 @@ func (h *RPCHostServer) SwitchToBuffer(name string, resp *error) error {
 	return nil
 }
 
-// TODO: Add other HostInterface methods as needed
+// OpenFile handles RPC calls from plugins to open files
+func (h *RPCHostServer) OpenFile(path string, resp *error) error {
+	fmt.Printf("[RPC-Host] OpenFile called with path: %s\n", path)
+	*resp = h.Impl.OpenFile(path)
+	if *resp != nil {
+		fmt.Printf("[RPC-Host] OpenFile failed: %v\n", *resp)
+	} else {
+		fmt.Printf("[RPC-Host] OpenFile succeeded for: %s\n", path)
+	}
+	return nil
+}
+
+// SaveBuffer handles RPC calls from plugins to save buffers
+func (h *RPCHostServer) SaveBuffer(bufferName string, resp *error) error {
+	fmt.Printf("[RPC-Host] SaveBuffer called with buffer: %s\n", bufferName)
+	*resp = h.Impl.SaveBuffer(bufferName)
+	if *resp != nil {
+		fmt.Printf("[RPC-Host] SaveBuffer failed: %v\n", *resp)
+	} else {
+		fmt.Printf("[RPC-Host] SaveBuffer succeeded for: %s\n", bufferName)
+	}
+	return nil
+}
 
 // RPCHostClient はプラグイン側でホストの機能をRPC経由で呼び出すクライアント
 type RPCHostClient struct {
@@ -235,13 +257,35 @@ func (h *RPCHostClient) SwitchToBuffer(name string) error {
 }
 
 func (h *RPCHostClient) OpenFile(path string) error {
-	// TODO: Implement RPC call to host
-	return fmt.Errorf("OpenFile not implemented in RPC client")
+	fmt.Printf("[RPC] OpenFile called with path: %s\n", path)
+	var resp error
+	err := h.client.Call("Host.OpenFile", path, &resp)
+	if err != nil {
+		fmt.Printf("[RPC] OpenFile RPC call failed: %v\n", err)
+		return fmt.Errorf("RPC call failed: %v", err)
+	}
+	if resp != nil {
+		fmt.Printf("[RPC] OpenFile failed on host: %v\n", resp)
+	} else {
+		fmt.Printf("[RPC] OpenFile succeeded on host\n")
+	}
+	return resp
 }
 
 func (h *RPCHostClient) SaveBuffer(bufferName string) error {
-	// TODO: Implement RPC call to host
-	return fmt.Errorf("SaveBuffer not implemented in RPC client")
+	fmt.Printf("[RPC] SaveBuffer called with buffer: %s\n", bufferName)
+	var resp error
+	err := h.client.Call("Host.SaveBuffer", bufferName, &resp)
+	if err != nil {
+		fmt.Printf("[RPC] SaveBuffer RPC call failed: %v\n", err)
+		return fmt.Errorf("RPC call failed: %v", err)
+	}
+	if resp != nil {
+		fmt.Printf("[RPC] SaveBuffer failed on host: %v\n", resp)
+	} else {
+		fmt.Printf("[RPC] SaveBuffer succeeded on host\n")
+	}
+	return resp
 }
 
 func (h *RPCHostClient) GetOption(name string) (interface{}, error) {
