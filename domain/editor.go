@@ -2,6 +2,7 @@ package domain
 
 import (
 	"reflect"
+	"strings"
 	"github.com/TakahashiShuuhei/gmacs/events"
 	"github.com/TakahashiShuuhei/gmacs/log"
 )
@@ -504,9 +505,15 @@ func (e *Editor) RegisterPluginCommands(plugin PluginInterface) error {
 				log.Debug("Direct CommandPlugin execution for: %s", cmdName)
 				err := cmdPlugin.ExecuteCommand(cmdName)
 				if err != nil {
-					// Check if it's a success message disguised as an error
+					// Check if it's a plugin message disguised as an error
 					errMsg := err.Error()
-					if len(errMsg) > 8 && errMsg[:8] == "SUCCESS:" {
+					if strings.HasPrefix(errMsg, "PLUGIN_MESSAGE:") {
+						// Extract and display the plugin message
+						message := strings.TrimPrefix(errMsg, "PLUGIN_MESSAGE:")
+						editor.SetMinibufferMessage(message)
+						return nil
+					}
+					if strings.HasPrefix(errMsg, "SUCCESS:") {
 						// Extract and display the success message
 						editor.SetMinibufferMessage(errMsg[9:]) // Remove "SUCCESS: " prefix
 						return nil

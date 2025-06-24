@@ -73,6 +73,7 @@ func (pm *PluginManager) LoadPlugin(name string) error {
 		Cmd:             exec.Command(pluginPath),
 		AllowedProtocols: []plugin.Protocol{
 			plugin.ProtocolNetRPC,
+			plugin.ProtocolGRPC,
 		},
 	})
 

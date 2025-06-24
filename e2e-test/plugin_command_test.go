@@ -3,9 +3,12 @@ package test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/TakahashiShuuhei/gmacs/domain"
 	"github.com/TakahashiShuuhei/gmacs/events"
+	"github.com/TakahashiShuuhei/gmacs/log"
+	"github.com/TakahashiShuuhei/gmacs/plugin"
 )
 
 /**
@@ -158,4 +161,75 @@ func TestNonExistentPluginCommand(t *testing.T) {
 	}
 
 	t.Logf("Non-existent plugin command error handling test passed")
+}
+
+/**
+ * @spec プラグインシステム/実際のプラグインコマンド実行
+ * @scenario 実際にインストールされたプラグインコマンドの実行
+ * @description 実際にインストールされたプラグインのコマンドをM-xで実行し、メッセージ表示を確認
+ * @given プラグインがインストールされた状態のエディタ
+ * @when M-xでプラグインコマンドを実行
+ * @then プラグインのメッセージが表示される
+ * @implementation domain/editor.go RegisterPluginCommands
+ */
+func TestRealPluginCommandExecution(t *testing.T) {
+	// Create editor with actual plugin paths
+	pluginPaths := []string{"/home/shuhei/.local/share/gmacs/plugins"}
+	editor := plugin.CreateEditorWithPluginsAndPaths(nil, nil, pluginPaths)
+	defer editor.Cleanup()
+	
+	// Wait for plugin loading
+	time.Sleep(100 * time.Millisecond)
+	
+	// Test plugin commands that should return PLUGIN_MESSAGE
+	testCommands := []struct {
+		name           string
+		expectedPrefix string
+	}{
+		{"example-greet", "[EXAMPLE]"},
+		{"example-test-host-api", "[TEST]"},
+		{"example-buffer-ops", "[BUFFER-OPS]"},
+		{"example-command-exec", "[COMMAND-EXEC]"},
+		{"example-file-ops", "[FILE-OPS]"},
+		{"example-options", "[OPTIONS]"},
+		{"example-hooks", "[HOOKS]"},
+	}
+	
+	for _, tc := range testCommands {
+		t.Run(tc.name, func(t *testing.T) {
+			// Start M-x
+			escEvent := events.KeyEventData{Key: "\x1b", Rune: 0}
+			editor.HandleEvent(escEvent)
+			xEvent := events.KeyEventData{Key: "x", Rune: 'x'}
+			editor.HandleEvent(xEvent)
+			
+			// Type command name
+			for _, ch := range tc.name {
+				event := events.KeyEventData{Key: string(ch), Rune: ch}
+				editor.HandleEvent(event)
+			}
+			
+			// Execute command
+			enterEvent := events.KeyEventData{Key: "Enter", Rune: '\n'}
+			editor.HandleEvent(enterEvent)
+			
+			// Wait for command execution
+			time.Sleep(50 * time.Millisecond)
+			
+			// Check minibuffer message
+			minibuffer := editor.Minibuffer()
+			message := minibuffer.Message()
+			
+			log.Debug("Command %s result: %s", tc.name, message)
+			
+			// Verify message was set and contains expected prefix
+			if message == "" {
+				t.Errorf("Command %s produced no message", tc.name)
+			} else if !strings.Contains(message, tc.expectedPrefix) {
+				t.Errorf("Command %s message '%s' does not contain expected prefix '%s'", tc.name, message, tc.expectedPrefix)
+			} else {
+				t.Logf("✓ Command %s returned: %s", tc.name, message)
+			}
+		})
+	}
 }

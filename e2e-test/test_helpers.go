@@ -42,3 +42,27 @@ func NewEditorWithDefaults() *domain.Editor {
 	
 	return editor
 }
+
+// NewEditorWithTestPlugins creates an editor with test plugins loaded
+func NewEditorWithTestPlugins() *domain.Editor {
+	configLoader := luaconfig.NewConfigLoader()
+	hookManager := luaconfig.NewHookManager()
+	
+	// Use test plugin directory
+	testPluginPaths := []string{"/tmp/gmacs-test-plugins"}
+	editor := plugin.CreateEditorWithPluginsAndPaths(configLoader, hookManager, testPluginPaths)
+	
+	// Register Lua API
+	apiBindings := luaconfig.NewAPIBindings(editor, configLoader.GetVM())
+	if err := apiBindings.RegisterGmacsAPI(); err != nil {
+		panic("Failed to register Lua API in test: " + err.Error())
+	}
+	
+	// Load default configuration
+	err := configLoader.GetVM().ExecuteString(getDefaultConfig())
+	if err != nil {
+		panic("Failed to load default config in test: " + err.Error())
+	}
+	
+	return editor
+}

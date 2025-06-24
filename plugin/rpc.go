@@ -25,6 +25,27 @@ func init() {
 	gob.RegisterName("main.StringError", StringError{})
 }
 
+// RPCHostServer はgmacs側でホスト機能をRPC経由で提供するサーバー
+type RPCHostServer struct {
+	Impl HostInterface
+}
+
+// ShowMessage handles RPC calls from plugins to show messages
+func (h *RPCHostServer) ShowMessage(message string, resp *error) error {
+	h.Impl.ShowMessage(message)
+	*resp = nil
+	return nil
+}
+
+// SetStatus handles RPC calls from plugins to set status
+func (h *RPCHostServer) SetStatus(message string, resp *error) error {
+	h.Impl.SetStatus(message)
+	*resp = nil
+	return nil
+}
+
+// TODO: Add other HostInterface methods as needed
+
 // RPCHostClient はプラグイン側でホストの機能をRPC経由で呼び出すクライアント
 type RPCHostClient struct {
 	client *rpc.Client
@@ -46,7 +67,12 @@ func (h *RPCHostClient) SetStatus(message string) {
 }
 
 func (h *RPCHostClient) ShowMessage(message string) {
-	// TODO: Implement RPC call to host
+	var resp error
+	err := h.client.Call("Host.ShowMessage", message, &resp)
+	if err != nil {
+		// Log error but don't return it, as ShowMessage shouldn't fail the plugin
+		fmt.Printf("[RPC] ShowMessage call failed: %v\n", err)
+	}
 }
 
 func (h *RPCHostClient) ExecuteCommand(name string, args ...interface{}) error {
@@ -128,10 +154,9 @@ type RPCPlugin struct {
 	Impl Plugin
 }
 
-func (p *RPCPlugin) Server(*plugin.MuxBroker) (interface{}, error) {
-	// TODO: Create a proper HostInterface implementation for RPC
-	// For now, create a basic implementation
-	return &RPCServer{Impl: p.Impl, Host: &RPCHostClient{}}, nil
+func (p *RPCPlugin) Server(broker *plugin.MuxBroker) (interface{}, error) {
+	// Create RPC server with MuxBroker for bidirectional communication
+	return &RPCServer{Impl: p.Impl, broker: broker}, nil
 }
 
 func (p *RPCPlugin) Client(b *plugin.MuxBroker, c *rpc.Client) (interface{}, error) {
@@ -140,8 +165,8 @@ func (p *RPCPlugin) Client(b *plugin.MuxBroker, c *rpc.Client) (interface{}, err
 
 // RPCServer はプラグイン側のRPCサーバー
 type RPCServer struct {
-	Impl Plugin
-	Host HostInterface
+	Impl   Plugin
+	broker *plugin.MuxBroker
 }
 
 // RPCClient はホスト側のRPCクライアント
@@ -280,8 +305,25 @@ func (s *RPCServer) Description(args interface{}, resp *string) error {
 }
 
 func (s *RPCServer) Initialize(args map[string]interface{}, resp *error) error {
-	// Pass the Host interface to the plugin
-	*resp = s.Impl.Initialize(context.Background(), s.Host)
+	// Extract the host broker ID from args
+	hostBrokerID, ok := args["hostBrokerID"].(uint32)
+	if !ok {
+		*resp = fmt.Errorf("hostBrokerID not provided")
+		return nil
+	}
+	
+	// Connect to the host's RPC server using MuxBroker
+	conn, err := s.broker.Dial(hostBrokerID)
+	if err != nil {
+		*resp = fmt.Errorf("failed to connect to host broker: %v", err)
+		return nil
+	}
+	
+	// Create RPC client for host interface
+	hostClient := &RPCHostClient{client: rpc.NewClient(conn)}
+	
+	// Initialize the plugin with the host interface
+	*resp = s.Impl.Initialize(context.Background(), hostClient)
 	return nil
 }
 

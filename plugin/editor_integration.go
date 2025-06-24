@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"fmt"
+	"strings"
 	"github.com/TakahashiShuuhei/gmacs/domain"
 	gmacslog "github.com/TakahashiShuuhei/gmacs/log"
 )
@@ -250,9 +251,21 @@ func (a *PluginAdapter) ExecuteCommand(name string, args ...interface{}) error {
 	
 	// Try to cast to CommandPlugin interface
 	if cmdPlugin, ok := a.plugin.(CommandPlugin); ok {
+		gmacslog.Info("Calling plugin ExecuteCommand for: %s", name)
 		err := cmdPlugin.ExecuteCommand(name, args...)
 		if err != nil {
 			gmacslog.Error("Plugin command execution failed: %v", err)
+			// Check if this is a plugin message disguised as an error
+			errMsg := err.Error()
+			if strings.HasPrefix(errMsg, "PLUGIN_MESSAGE:") {
+				// Extract the actual message and show it
+				message := strings.TrimPrefix(errMsg, "PLUGIN_MESSAGE:")
+				gmacslog.Info("Plugin returned message: %s", message)
+				// TODO: Find a way to get the editor instance and show the message
+				// For now, this will still appear as an error but with proper logging
+			}
+		} else {
+			gmacslog.Info("Plugin command execution completed successfully: %s", name)
 		}
 		return err
 	}
@@ -288,7 +301,7 @@ func (h *HostInterfaceImpl) GetCurrentBuffer() BufferInterface {
 	if h.editor != nil {
 		buffer := h.editor.CurrentBuffer()
 		if buffer != nil {
-			return (*BufferWrapper)(nil) // TODO: Fix proper buffer wrapping
+			return &BufferWrapper{buffer: buffer}
 		}
 	}
 	return nil
@@ -298,7 +311,7 @@ func (h *HostInterfaceImpl) GetCurrentWindow() WindowInterface {
 	if h.editor != nil {
 		window := h.editor.CurrentWindow()
 		if window != nil {
-			return (*WindowWrapper)(nil) // TODO: Fix proper window wrapping
+			return &WindowWrapper{window: window}
 		}
 	}
 	return nil
@@ -311,8 +324,13 @@ func (h *HostInterfaceImpl) SetStatus(message string) {
 }
 
 func (h *HostInterfaceImpl) ShowMessage(message string) {
+	gmacslog.Info("HostInterface.ShowMessage called with: %s", message)
 	if h.editor != nil {
+		gmacslog.Info("Setting minibuffer message: %s", message)
 		h.editor.SetMinibufferMessage(message)
+		gmacslog.Info("Minibuffer message set successfully")
+	} else {
+		gmacslog.Error("Editor is nil in ShowMessage")
 	}
 }
 
@@ -330,13 +348,27 @@ func (h *HostInterfaceImpl) ExecuteCommand(name string, args ...interface{}) err
 
 // モード管理
 func (h *HostInterfaceImpl) SetMajorMode(bufferName, modeName string) error {
-	// TODO: Implement major mode setting
-	return fmt.Errorf("SetMajorMode not implemented")
+	if h.editor != nil {
+		buffer := h.editor.FindBuffer(bufferName)
+		if buffer != nil {
+			// ModeManagerが実装されていれば使用、そうでなければ簡易実装
+			return fmt.Errorf("mode management not fully implemented yet")
+		}
+		return fmt.Errorf("buffer not found: %s", bufferName)
+	}
+	return fmt.Errorf("editor not available")
 }
 
 func (h *HostInterfaceImpl) ToggleMinorMode(bufferName, modeName string) error {
-	// TODO: Implement minor mode toggling
-	return fmt.Errorf("ToggleMinorMode not implemented")
+	if h.editor != nil {
+		buffer := h.editor.FindBuffer(bufferName)
+		if buffer != nil {
+			// ModeManagerが実装されていれば使用、そうでなければ簡易実装
+			return fmt.Errorf("mode management not fully implemented yet")
+		}
+		return fmt.Errorf("buffer not found: %s", bufferName)
+	}
+	return fmt.Errorf("editor not available")
 }
 
 // イベント・フック
@@ -354,7 +386,11 @@ func (h *HostInterfaceImpl) TriggerHook(event string, args ...interface{}) {
 
 // バッファ操作
 func (h *HostInterfaceImpl) CreateBuffer(name string) BufferInterface {
-	// TODO: Implement buffer creation
+	if h.editor != nil {
+		buffer := domain.NewBuffer(name)
+		h.editor.AddBuffer(buffer)
+		return &BufferWrapper{buffer: buffer}
+	}
 	return nil
 }
 
@@ -362,7 +398,7 @@ func (h *HostInterfaceImpl) FindBuffer(name string) BufferInterface {
 	if h.editor != nil {
 		buffer := h.editor.FindBuffer(name)
 		if buffer != nil {
-			return (*BufferWrapper)(nil) // TODO: Fix proper buffer wrapping
+			return &BufferWrapper{buffer: buffer}
 		}
 	}
 	return nil
@@ -382,13 +418,31 @@ func (h *HostInterfaceImpl) SwitchToBuffer(name string) error {
 
 // ファイル操作
 func (h *HostInterfaceImpl) OpenFile(path string) error {
-	// TODO: Implement file opening
-	return fmt.Errorf("OpenFile not implemented")
+	if h.editor != nil {
+		buffer, err := domain.NewBufferFromFile(path)
+		if err != nil {
+			return fmt.Errorf("failed to open file %s: %v", path, err)
+		}
+		if buffer != nil {
+			h.editor.AddBuffer(buffer)
+			h.editor.SwitchToBuffer(buffer)
+			return nil
+		}
+		return fmt.Errorf("failed to open file: %s", path)
+	}
+	return fmt.Errorf("editor not available")
 }
 
 func (h *HostInterfaceImpl) SaveBuffer(bufferName string) error {
-	// TODO: Implement buffer saving
-	return fmt.Errorf("SaveBuffer not implemented")
+	if h.editor != nil {
+		buffer := h.editor.FindBuffer(bufferName)
+		if buffer != nil {
+			// Buffer save functionality needs to be implemented in domain.Buffer
+			return fmt.Errorf("buffer save not implemented in domain.Buffer yet")
+		}
+		return fmt.Errorf("buffer not found: %s", bufferName)
+	}
+	return fmt.Errorf("editor not available")
 }
 
 // 設定
@@ -439,10 +493,12 @@ func CreateEditorWithPluginsAndPaths(configLoader domain.ConfigLoader, hookManag
 		fmt.Printf("[DEBUG] Processing plugin: %s\n", pluginInfo.Name)
 		if plugin, found := pluginManager.GetPlugin(pluginInfo.Name); found {
 			fmt.Printf("[DEBUG] Plugin %s found, initializing...\n", pluginInfo.Name)
-			// Initialize the plugin with proper HostInterface
-			gmacslog.Info("Initializing plugin %s with HostInterface", pluginInfo.Name)
+			// Initialize the plugin with proper HostInterface via RPC
+			gmacslog.Info("Initializing plugin %s with HostInterface via RPC", pluginInfo.Name)
 			ctx := context.Background()
 			fmt.Printf("[DEBUG] Calling plugin.Initialize for %s...\n", pluginInfo.Name)
+			
+			// For now, call regular Initialize - bidirectional RPC setup will be done separately
 			if err := plugin.Initialize(ctx, hostInterface); err != nil {
 				fmt.Printf("[DEBUG] Failed to initialize plugin %s: %v\n", pluginInfo.Name, err)
 				gmacslog.Error("Failed to initialize plugin %s: %v", pluginInfo.Name, err)

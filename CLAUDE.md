@@ -99,13 +99,23 @@ go test ./... -v                # 全テスト（E2E + 単体）実行
 
 ### ビルド
 ```bash
+cd /home/shuhei/dev/gmacs/gmacs/
 make build    # Makefileを使用（推奨）
 go build -o gmacs  # 直接実行
 ```
 
 ### 実行
 ```bash
+cd /home/shuhei/dev/gmacs/gmacs/
 ./gmacs
+```
+
+### 重要: gmacs はシステムにインストールされていません
+- `gmacs` コマンドを実行する際は、必ず `/home/shuhei/dev/gmacs/gmacs/` ディレクトリでビルドしたバイナリを使用してください
+- プラグインのインストールも同様に、ビルドしたバイナリを使用します：
+```bash
+cd /home/shuhei/dev/gmacs/gmacs/
+./gmacs plugin install /path/to/plugin/
 ```
 
 ### 開発サイクル
